@@ -38,38 +38,10 @@ export interface ReportMapEntry {
   columns: ColumnMap[];
 }
 
-export const REPORT_MAP: ReportMapEntry[] = [
-  {
-    request: 'inventory amazon',
-    dashboardName: 'Inventory',
-    daxTable: 'InventoryAmazon',
-    targetTable: 'inventory_amazon',
-    businessKeys: ['sku', 'warehouse'],
-    columns: [
-      { source: 'SKU', target: 'sku', type: 'text' },
-      { source: 'Warehouse', target: 'warehouse', type: 'text' },
-      { source: 'ProductName', target: 'product_name', type: 'text' },
-      { source: 'QtyOnHand', target: 'qty_on_hand', type: 'integer' },
-      { source: 'UnitCost', target: 'unit_cost', type: 'numeric' },
-    ],
-  },
-  {
-    request: 'amazon sales',
-    dashboardName: 'Sales',
-    daxTable: 'AmazonSales',
-    targetTable: 'amazon_sales',
-    // Sales refreshes weekly (Wednesday). A new snapshot_date set is inserted
-    // each run; re-running the same week upserts corrections in place.
-    businessKeys: ['order_id', 'sku'],
-    columns: [
-      { source: 'OrderId', target: 'order_id', type: 'text' },
-      { source: 'SKU', target: 'sku', type: 'text' },
-      { source: 'OrderDate', target: 'order_date', type: 'date' },
-      { source: 'Units', target: 'units', type: 'integer' },
-      { source: 'Revenue', target: 'revenue', type: 'numeric' },
-    ],
-  },
-];
+// Add one entry per fixed-schema table you want backed up on the weekly cron.
+// The interactive flow (pick report → choose columns → sync → upload) does not
+// use this list.
+export const REPORT_MAP: ReportMapEntry[] = [];
 
 export function findReportEntry(request: string): ReportMapEntry | undefined {
   const r = request.trim().toLowerCase();

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import * as dotenv from 'dotenv';
 import { Pool } from 'pg';
-import { REPORT_MAP, PgType } from './sync/report-map.config';
+import { REPORT_MAP, PgType } from '../sync/report-map.config';
 
 dotenv.config();
 
