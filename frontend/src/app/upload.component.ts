@@ -73,17 +73,30 @@ import { PagerComponent } from './pager.component';
           <div class="scroll-list">
             <table>
               <thead>
-                <tr><th style="width:40px;"></th><th>Column</th><th>Data type</th></tr>
+                <tr>
+                  <th style="width:40px;">Use</th>
+                  <th>Column</th>
+                  <th>Data type</th>
+                  <th style="width:80px; text-align:center;">Key</th>
+                </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let c of activeColumns()">
                   <td><input type="checkbox" [checked]="selected()[c.name]" (change)="toggle(c.name)" /></td>
-                  <td>{{ c.name }} <span class="badge badge-ok" *ngIf="c.isKey">key</span></td>
+                  <td>{{ c.name }} <span class="badge badge-ok" *ngIf="c.isKey">model key</span></td>
                   <td class="tag">{{ c.dataType }}</td>
+                  <td style="text-align:center;">
+                    <input type="checkbox" [checked]="keySelected()[c.name]"
+                           (change)="toggleKeyCol(c.name)" title="use as upsert/primary key" />
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <p class="tag" style="margin-top:6px;">
+            Tick <strong>Key</strong> on the column(s) that uniquely identify a row — those become the
+            upsert keys so re-syncs update instead of duplicate.
+          </p>
 
           <div *ngIf="dateColumns().length" style="margin-top:16px;">
             <label>Filter by date range (optional)</label>
@@ -163,17 +176,24 @@ import { PagerComponent } from './pager.component';
           </div>
 
           <div *ngIf="mode === 'upsert'" style="margin-top:10px;">
-            <label>Business key(s) — rows matching these are updated, not duplicated{{ autoKeyNote() }}</label>
+            <label>Upsert keys{{ autoKeyNote() }}</label>
             <div class="keychips">
-              <label class="chip" *ngFor="let n of selectedNames()">
-                <input type="checkbox" [checked]="keySelected()[n]" (change)="toggleKey(n)" /> {{ n }}
-              </label>
+              <span class="chip" *ngFor="let n of selectedKeyNames()">{{ n }}</span>
+              <span class="muted" *ngIf="selectedKeyNames().length === 0">
+                No keys ticked — tick the “Key” box on the column(s) above.
+              </span>
             </div>
+          </div>
+
+          <div class="warn" *ngIf="targetLocked()">
+            The table has been created and cannot be edited.
           </div>
 
           <div class="row-between" style="margin-top:14px;">
             <span class="tag">{{ loadedRows().length }} rows ready</span>
-            <button (click)="upload()" [disabled]="busy() || loadedRows().length === 0">Upload to database</button>
+            <button (click)="upload()" [disabled]="busy() || loadedRows().length === 0 || targetLocked()">
+              Upload to database
+            </button>
           </div>
         </div>
 
@@ -191,9 +211,12 @@ import { PagerComponent } from './pager.component';
               <input [(ngModel)]="cron" placeholder="0 6 * * 3  (Wed 06:00)" />
             </label>
           </div>
+          <div class="warn" *ngIf="targetLocked()">
+            The table has been created and cannot be edited.
+          </div>
           <div class="row-between">
             <span class="tag">examples: <code>0 6 * * *</code> daily 06:00 · <code>0 */4 * * *</code> every 4h</span>
-            <button class="secondary" (click)="saveJob()" [disabled]="busy()">Save job</button>
+            <button class="secondary" (click)="saveJob()" [disabled]="busy() || targetLocked()">Save job</button>
           </div>
         </div>
       </ng-container>
@@ -218,6 +241,7 @@ import { PagerComponent } from './pager.component';
         <div>
           <strong>{{ d.label }}</strong>
           <span class="badge badge-ok">{{ d.kind }}</span>
+          <span class="badge badge-no" *ngIf="d.locked">locked</span>
           <div class="tag">table: {{ d.table_name }} · {{ d.last_rows }} rows</div>
         </div>
         <div style="display:flex;gap:6px;">
@@ -438,6 +462,27 @@ export class UploadComponent implements OnInit {
   columnCount(table: string): number {
     return this.columns().filter((c) => c.table === table).length;
   }
+
+  /** Mirror of the backend table-name sanitiser, to detect locked targets. */
+  private slugTable(raw: string): string {
+    let s = (raw ?? '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    if (!s) return '';
+    if (/^[0-9]/.test(s)) s = '_' + s;
+    return s.slice(0, 60);
+  }
+  targetTableName(): string {
+    return this.slugTable(this.tableName);
+  }
+  targetLocked(): boolean {
+    const t = this.targetTableName();
+    return !!t && this.datasets().some((d) => d.table_name === t && d.locked);
+  }
   autoKeyNote(): string {
     return this.activeColumns().some((c) => c.isKey)
       ? ' · auto-detected from the model'
@@ -452,16 +497,34 @@ export class UploadComponent implements OnInit {
       .slice(0, 60);
   }
   toggle(name: string) {
-    this.selected.update((s) => ({ ...s, [name]: !s[name] }));
+    const willInclude = !this.selected()[name];
+    this.selected.update((s) => ({ ...s, [name]: willInclude }));
+    // A column that's excluded can't be a key.
+    if (!willInclude && this.keySelected()[name]) {
+      this.keySelected.update((s) => ({ ...s, [name]: false }));
+      this.syncModeToKeys();
+    }
+  }
+
+  /** Toggle a column as an upsert/primary key (also includes it). */
+  toggleKeyCol(name: string) {
+    const willBeKey = !this.keySelected()[name];
+    this.keySelected.update((s) => ({ ...s, [name]: willBeKey }));
+    if (willBeKey) {
+      this.selected.update((s) => ({ ...s, [name]: true }));
+    }
+    this.syncModeToKeys();
+  }
+
+  /** Upsert when at least one key is ticked, otherwise append. */
+  private syncModeToKeys() {
+    this.mode = this.selectedKeyNames().length > 0 ? 'upsert' : 'append';
   }
   toggleAll(ev: Event) {
     const on = (ev.target as HTMLInputElement).checked;
     const sel: Record<string, boolean> = { ...this.selected() };
     for (const c of this.activeColumns()) sel[c.name] = on;
     this.selected.set(sel);
-  }
-  toggleKey(name: string) {
-    this.keySelected.update((s) => ({ ...s, [name]: !s[name] }));
   }
 
   prevPage() { this.page.update((p) => Math.max(0, p - 1)); }

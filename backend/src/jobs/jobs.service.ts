@@ -124,6 +124,11 @@ export class JobsService implements OnModuleInit {
     } catch (e: any) {
       throw new BadRequestException(e.message);
     }
+    if (await this.dyn.isLocked(target)) {
+      throw new BadRequestException(
+        'The table has been created and cannot be edited.',
+      );
+    }
     const mode = dto.mode === 'upsert' ? 'upsert' : 'append';
     if (mode === 'upsert' && (!dto.businessKeys || dto.businessKeys.length === 0)) {
       throw new BadRequestException('Upsert mode needs at least one business key.');

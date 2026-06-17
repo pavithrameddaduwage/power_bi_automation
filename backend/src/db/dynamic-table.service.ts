@@ -191,24 +191,81 @@ export class DynamicTableService {
         owner text,
         columns jsonb,
         last_rows integer,
+        locked boolean NOT NULL DEFAULT false,
         updated_at timestamptz NOT NULL DEFAULT now()
       );
     `);
+    await this.pool.query(
+      `ALTER TABLE dynamic_datasets ADD COLUMN IF NOT EXISTS locked boolean NOT NULL DEFAULT false`,
+    );
   }
 
+  /** A table is locked once created with primary keys — no more frontend edits. */
+  async isLocked(table: string): Promise<boolean> {
+    await this.ensureRegistry();
+    const { rows } = await this.pool.query(
+      `SELECT locked FROM dynamic_datasets WHERE table_name = $1`,
+      [table],
+    );
+    return rows[0]?.locked === true;
+  }
+
+  private async tableExists(table: string): Promise<boolean> {
+    const { rows } = await this.pool.query(`SELECT to_regclass($1) AS r`, [
+      `public.${table}`,
+    ]);
+    return rows[0]?.r != null;
+  }
+
+  private async columnExists(table: string, col: string): Promise<boolean> {
+    const { rows } = await this.pool.query(
+      `SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
+      [table, col],
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * Create the table if missing, then widen it for any new columns.
+   * When `keyCols` is given (a fresh upsert table), the table's PRIMARY KEY is
+   * those columns and there is NO surrogate `_id`. Otherwise an `_id` surrogate
+   * PK is used (append tables with no natural key).
+   */
   private async ensureTable(
     table: string,
     columns: DynamicColumn[],
+    keyCols: string[] = [],
   ): Promise<void> {
     const t = ident(table);
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS ${t} (
-        _id bigserial PRIMARY KEY,
+    if (keyCols.length > 0) {
+      const colDefs = columns
+        .map(
+          (c) =>
+            `${ident(c.name)} ${TYPE_SQL[c.type]}${
+              keyCols.includes(c.name) ? ' NOT NULL' : ''
+            }`,
+        )
+        .join(',\n        ');
+      await this.pool.query(`
+        CREATE TABLE IF NOT EXISTS ${t} (
         _owner text,
         _source text,
-        _uploaded_at timestamptz NOT NULL DEFAULT now()
-      );
-    `);
+        _uploaded_at timestamptz NOT NULL DEFAULT now(),
+        ${colDefs},
+        PRIMARY KEY (${keyCols.map(ident).join(', ')})
+        );
+      `);
+    } else {
+      await this.pool.query(`
+        CREATE TABLE IF NOT EXISTS ${t} (
+          _id bigserial PRIMARY KEY,
+          _owner text,
+          _source text,
+          _uploaded_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+    }
     // Add any newly-seen columns. IF NOT EXISTS makes this safe to repeat.
     for (const c of columns) {
       await this.pool.query(
@@ -232,16 +289,6 @@ export class DynamicTableService {
     const rows = Array.isArray(input.rows) ? input.rows : [];
     const columns = this.deriveColumns(rows);
 
-    await this.ensureRegistry();
-    await this.ensureTable(input.table, columns);
-
-    if (input.replaceSource) {
-      await this.pool.query(
-        `DELETE FROM ${ident(input.table)} WHERE _source = $1`,
-        [input.source],
-      );
-    }
-
     // Resolve business keys (original or sanitised names) to column names.
     const keyCols =
       input.mode === 'upsert'
@@ -258,9 +305,29 @@ export class DynamicTableService {
       throw new Error('Upsert mode requires at least one valid business key.');
     }
 
+    await this.ensureRegistry();
+    // A brand-new upsert table is created with the keys as its PRIMARY KEY (no
+    // surrogate _id). Existing tables keep their shape.
+    const existed = await this.tableExists(input.table);
+    await this.ensureTable(input.table, columns, existed ? [] : keyCols);
+
+    // For pre-existing tables that still use a surrogate _id, make sure a unique
+    // index backs the ON CONFLICT target. New keyed tables already have the PK.
+    if (input.mode === 'upsert' && keyCols.length > 0 && existed) {
+      if (await this.columnExists(input.table, '_id')) {
+        await this.ensureUniqueIndex(input.table, keyCols);
+      }
+    }
+
+    if (input.replaceSource) {
+      await this.pool.query(
+        `DELETE FROM ${ident(input.table)} WHERE _source = $1`,
+        [input.source],
+      );
+    }
+
     let workRows = rows;
     if (input.mode === 'upsert' && keyCols.length > 0) {
-      await this.ensureUniqueIndex(input.table, keyCols);
       workRows = this.dedupeByKeys(rows, columns, keyCols);
     }
 
@@ -268,21 +335,7 @@ export class DynamicTableService {
     if (workRows.length > 0) {
       const colNames = ['_owner', '_source', ...columns.map((c) => c.name)];
       const colSql = colNames.map(ident).join(', ');
-      const values: any[] = [];
-      const tuples: string[] = [];
-      let p = 1;
-      for (const row of workRows) {
-        const ph: string[] = [];
-        values.push(input.owner ?? null);
-        ph.push(`$${p++}`);
-        values.push(input.source);
-        ph.push(`$${p++}`);
-        for (const c of columns) {
-          values.push(coerce(row?.[c.original], c.type));
-          ph.push(`$${p++}`);
-        }
-        tuples.push(`(${ph.join(', ')})`);
-      }
+      const perRow = colNames.length; // bind params per row
 
       let conflict = '';
       if (input.mode === 'upsert' && keyCols.length > 0) {
@@ -300,23 +353,48 @@ export class DynamicTableService {
           .join(', ')}) DO UPDATE SET ${setSql}`;
       }
 
-      await this.pool.query(
-        `INSERT INTO ${ident(input.table)} (${colSql}) VALUES ${tuples.join(', ')}${conflict}`,
-        values,
-      );
+      // Postgres allows at most 65535 bind params per statement, so insert in
+      // batches sized to stay well under that for any column count.
+      const batchSize = Math.max(1, Math.floor(60000 / perRow));
+      for (let start = 0; start < workRows.length; start += batchSize) {
+        const batch = workRows.slice(start, start + batchSize);
+        const values: any[] = [];
+        const tuples: string[] = [];
+        let p = 1;
+        for (const row of batch) {
+          const ph: string[] = [];
+          values.push(input.owner ?? null);
+          ph.push(`$${p++}`);
+          values.push(input.source);
+          ph.push(`$${p++}`);
+          for (const c of columns) {
+            values.push(coerce(row?.[c.original], c.type));
+            ph.push(`$${p++}`);
+          }
+          tuples.push(`(${ph.join(', ')})`);
+        }
+        await this.pool.query(
+          `INSERT INTO ${ident(input.table)} (${colSql}) VALUES ${tuples.join(', ')}${conflict}`,
+          values,
+        );
+      }
       written = workRows.length;
     }
 
+    // A table created fresh with primary keys is locked from further frontend
+    // edits. Once locked it stays locked.
+    const lockedNow = !existed && keyCols.length > 0;
     const total = await this.rowCount(input.table);
     await this.pool.query(
-      `INSERT INTO dynamic_datasets (kind, label, table_name, owner, columns, last_rows, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6, now())
+      `INSERT INTO dynamic_datasets (kind, label, table_name, owner, columns, last_rows, locked, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7, now())
        ON CONFLICT (table_name) DO UPDATE SET
          kind = EXCLUDED.kind,
          label = EXCLUDED.label,
          owner = EXCLUDED.owner,
          columns = EXCLUDED.columns,
          last_rows = EXCLUDED.last_rows,
+         locked = dynamic_datasets.locked OR EXCLUDED.locked,
          updated_at = now()`,
       [
         input.kind,
@@ -325,6 +403,7 @@ export class DynamicTableService {
         input.owner ?? null,
         JSON.stringify(columns),
         total,
+        lockedNow,
       ],
     );
 
@@ -382,7 +461,7 @@ export class DynamicTableService {
       throw new Error(`Unknown dynamic table: ${table}`);
     }
     const { rows } = await this.pool.query(
-      `SELECT * FROM ${ident(table)} ORDER BY _id`,
+      `SELECT * FROM ${ident(table)} ORDER BY _uploaded_at`,
     );
     if (rows.length === 0) return '';
     const headers = Object.keys(rows[0]);
@@ -400,7 +479,7 @@ export class DynamicTableService {
   async listDatasets(): Promise<any[]> {
     await this.ensureRegistry();
     const { rows } = await this.pool.query(
-      `SELECT kind, label, table_name, owner, columns, last_rows, updated_at
+      `SELECT kind, label, table_name, owner, columns, last_rows, locked, updated_at
          FROM dynamic_datasets
         ORDER BY updated_at DESC`,
     );
@@ -419,7 +498,7 @@ export class DynamicTableService {
     }
     const lim = Math.min(Math.max(parseInt(String(limit), 10) || 100, 1), 1000);
     const { rows } = await this.pool.query(
-      `SELECT * FROM ${ident(table)} ORDER BY _uploaded_at DESC, _id DESC LIMIT $1`,
+      `SELECT * FROM ${ident(table)} ORDER BY _uploaded_at DESC LIMIT $1`,
       [lim],
     );
     return rows;

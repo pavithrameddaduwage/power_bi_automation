@@ -59,6 +59,7 @@ export interface DynamicDataset {
   owner: string | null;
   columns: { original: string; name: string; type: string }[];
   last_rows: number;
+  locked: boolean;
   updated_at: string;
 }
 export interface UploadResult {

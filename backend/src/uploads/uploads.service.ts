@@ -58,6 +58,12 @@ export class UploadsService {
     } catch (e: any) {
       throw new BadRequestException(e.message);
     }
+    // Once a table is created with primary keys it is locked from frontend edits.
+    if (await this.dyn.isLocked(table)) {
+      throw new BadRequestException(
+        'The table has been created and cannot be edited.',
+      );
+    }
     await this.upsert.ensureSyncLogTable();
     try {
       const result = await this.dyn.upload({
