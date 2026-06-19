@@ -68,7 +68,13 @@ export class CatalogController {
     );
   }
 
-  /** Pull the selected columns' data from Power BI (the "sync" step). */
+  /** Measures (DAX calculations) of a report's dataset, viewed separately. */
+  @Get('datasets/:datasetId/measures')
+  measures(@Param('datasetId') datasetId: string) {
+    return this.powerbi.getDatasetMeasures(datasetId);
+  }
+
+  /** Pull the selected columns'/measures' data from Power BI (the "sync" step). */
   @Post('data')
   data(
     @Body()
@@ -76,6 +82,7 @@ export class CatalogController {
       datasetId: string;
       table: string;
       columns: string[];
+      measures?: string[];
       limit?: number;
       dateColumn?: string;
       dateFrom?: string;
@@ -92,6 +99,7 @@ export class CatalogController {
         dateFrom: body.dateFrom,
         dateTo: body.dateTo,
       },
+      body.measures ?? [],
     );
   }
 }

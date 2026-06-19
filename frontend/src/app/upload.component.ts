@@ -6,6 +6,7 @@ import {
   DynamicDataset,
   ReportWithAccess,
   DatasetColumn,
+  DatasetMeasure,
 } from './sync.service';
 import { ToastService } from './toast.service';
 import { PagerComponent } from './pager.component';
@@ -17,7 +18,7 @@ import { PagerComponent } from './pager.component';
   template: `
     <h2>1 · Pick a report</h2>
     <div class="card">
-      <input placeholder="filter reports…" [ngModel]="filter" (ngModelChange)="onFilterChange($event)" />
+      <input class="search" placeholder="Search reports by name or workspace…" [ngModel]="filter" (ngModelChange)="onFilterChange($event)" />
       <div class="report-list">
         <div
           *ngFor="let r of pagedReports()"
@@ -47,7 +48,7 @@ import { PagerComponent } from './pager.component';
           {{ finalOnly ? 'Final report table — the combined output users download' : 'Tables connected to this report' }}
           ({{ tables().length }})
         </label>
-        <input *ngIf="tables().length" placeholder="filter tables…"
+        <input *ngIf="tables().length" class="search" placeholder="Search tables…"
                [ngModel]="tableFilter()" (ngModelChange)="tableFilter.set($event)" />
         <div class="scroll-list" *ngIf="tables().length">
           <div
@@ -70,6 +71,7 @@ import { PagerComponent } from './pager.component';
             </label>
             <span class="tag">{{ selectedNames().length }} of {{ activeColumns().length }} selected · {{ activeTable() }}</span>
           </div>
+          <input class="search" placeholder="Search columns…" [ngModel]="columnFilter()" (ngModelChange)="columnFilter.set($event)" />
           <div class="scroll-list">
             <table>
               <thead>
@@ -81,7 +83,7 @@ import { PagerComponent } from './pager.component';
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let c of activeColumns()">
+                <tr *ngFor="let c of filteredColumns()">
                   <td><input type="checkbox" [checked]="selected()[c.name]" (change)="toggle(c.name)" /></td>
                   <td>{{ c.name }} <span class="badge badge-ok" *ngIf="c.isKey">model key</span></td>
                   <td class="tag">{{ c.dataType }}</td>
@@ -97,6 +99,30 @@ import { PagerComponent } from './pager.component';
             Tick <strong>Key</strong> on the column(s) that uniquely identify a row — those become the
             upsert keys so re-syncs update instead of duplicate.
           </p>
+
+          <div *ngIf="measures().length" class="measures-block">
+            <div class="row-between">
+              <strong>Measures — viewed separately ({{ measures().length }})</strong>
+              <span class="tag">{{ selectedMeasureNames().length }} selected</span>
+            </div>
+            <p class="muted" style="margin:4px 0;">
+              DAX calculations (totals, ratios, %). When ticked, the data is grouped by the
+              columns above and these are computed per group.
+            </p>
+            <input class="search" placeholder="Search measures…" [ngModel]="measureFilter()" (ngModelChange)="measureFilter.set($event)" />
+            <div class="scroll-list">
+              <table>
+                <thead><tr><th style="width:40px;">Use</th><th>Measure</th><th>Type</th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let m of filteredMeasures()">
+                    <td><input type="checkbox" [checked]="measureSelected()[m.name]" (change)="toggleMeasure(m.name)" /></td>
+                    <td>{{ m.name }}</td>
+                    <td class="tag">{{ m.dataType }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           <div *ngIf="dateColumns().length" style="margin-top:16px;">
             <label>Filter by date range (optional)</label>
@@ -123,7 +149,7 @@ import { PagerComponent } from './pager.component';
                 <input type="number" min="1" [(ngModel)]="limit" style="width:90px;" />
               </label>
             </div>
-            <button (click)="sync()" [disabled]="busy() || selectedNames().length === 0">
+            <button (click)="sync()" [disabled]="busy() || (selectedNames().length === 0 && selectedMeasureNames().length === 0)">
               <span *ngIf="busy()" class="spinner"></span>
               {{ busy() ? 'Syncing…' : 'Sync from Power BI' }}
             </button>
@@ -272,6 +298,10 @@ export class UploadComponent implements OnInit {
   selectedReport = signal<ReportWithAccess | null>(null);
 
   columns = signal<DatasetColumn[]>([]);
+  columnFilter = signal('');
+  measures = signal<DatasetMeasure[]>([]);
+  measureFilter = signal('');
+  measureSelected = signal<Record<string, boolean>>({});
   loadingCols = signal(false);
   colError = signal('');
   tables = signal<string[]>([]);
@@ -328,6 +358,19 @@ export class UploadComponent implements OnInit {
   activeColumns = computed(() =>
     this.columns().filter((c) => c.table === this.activeTable()),
   );
+  filteredColumns = computed(() => {
+    const f = this.columnFilter().trim().toLowerCase();
+    const cols = this.activeColumns();
+    return f ? cols.filter((c) => c.name.toLowerCase().includes(f)) : cols;
+  });
+  filteredMeasures = computed(() => {
+    const f = this.measureFilter().trim().toLowerCase();
+    const m = this.measures();
+    return f ? m.filter((x) => x.name.toLowerCase().includes(f)) : m;
+  });
+  selectedMeasureNames = computed(() =>
+    this.measures().map((m) => m.name).filter((n) => this.measureSelected()[n]),
+  );
   dateColumns = computed(() =>
     this.activeColumns().filter((c) => /date|time/i.test(c.dataType)),
   );
@@ -378,6 +421,10 @@ export class UploadComponent implements OnInit {
   pickReport(r: ReportWithAccess) {
     this.selectedReport.set(r);
     this.columns.set([]);
+    this.measures.set([]);
+    this.measureSelected.set({});
+    this.measureFilter.set('');
+    this.columnFilter.set('');
     this.tables.set([]);
     this.tableFilter.set('');
     this.selected.set({});
@@ -388,6 +435,11 @@ export class UploadComponent implements OnInit {
       this.colError.set('This report has no dataset to read columns from.');
       return;
     }
+    // Measures are dataset-wide; load them alongside the columns.
+    this.api.datasetMeasures(r.datasetId).subscribe({
+      next: (m) => this.measures.set(m),
+      error: () => this.measures.set([]),
+    });
     this.loadingCols.set(true);
     this.api.datasetColumns(r.datasetId, this.finalOnly).subscribe({
       next: (cols) => {
@@ -506,6 +558,10 @@ export class UploadComponent implements OnInit {
     }
   }
 
+  toggleMeasure(name: string) {
+    this.measureSelected.update((s) => ({ ...s, [name]: !s[name] }));
+  }
+
   /** Toggle a column as an upsert/primary key (also includes it). */
   toggleKeyCol(name: string) {
     const willBeKey = !this.keySelected()[name];
@@ -541,6 +597,7 @@ export class UploadComponent implements OnInit {
         this.selectedNames(),
         this.effectiveLimit(),
         this.filterPayload(),
+        this.selectedMeasureNames(),
       )
       .subscribe({
         next: (rows) => {
@@ -600,6 +657,7 @@ export class UploadComponent implements OnInit {
         datasetId: rep.datasetId,
         sourceTable: this.activeTable(),
         columns: this.selectedNames(),
+        measures: this.selectedMeasureNames(),
         targetTable: this.tableName,
         mode: this.mode,
         businessKeys: this.selectedKeyNames(),

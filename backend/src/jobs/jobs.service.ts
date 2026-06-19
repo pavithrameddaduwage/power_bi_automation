@@ -22,6 +22,8 @@ export interface CreateJobDto {
   /** The DAX table to read from. */
   sourceTable: string;
   columns: string[];
+  /** Measures to compute (grouped by columns). */
+  measures?: string[];
   /** Destination Postgres table (sanitised). */
   targetTable: string;
   mode?: 'append' | 'upsert';
@@ -91,6 +93,9 @@ export class JobsService implements OnModuleInit {
     await this.pool.query(
       `ALTER TABLE report_jobs ADD COLUMN IF NOT EXISTS date_to date`,
     );
+    await this.pool.query(
+      `ALTER TABLE report_jobs ADD COLUMN IF NOT EXISTS measures jsonb`,
+    );
   }
 
   async list(): Promise<any[]> {
@@ -115,8 +120,10 @@ export class JobsService implements OnModuleInit {
     if (!dto.datasetId || !dto.sourceTable) {
       throw new BadRequestException('datasetId and sourceTable are required.');
     }
-    if (!Array.isArray(dto.columns) || dto.columns.length === 0) {
-      throw new BadRequestException('At least one column is required.');
+    const hasCols = Array.isArray(dto.columns) && dto.columns.length > 0;
+    const hasMeas = Array.isArray(dto.measures) && dto.measures.length > 0;
+    if (!hasCols && !hasMeas) {
+      throw new BadRequestException('At least one column or measure is required.');
     }
     let target: string;
     try {
@@ -139,15 +146,15 @@ export class JobsService implements OnModuleInit {
       `INSERT INTO report_jobs
          (name, report_name, dataset_id, source_table, columns, target_table,
           mode, business_keys, row_limit, owner, cron, enabled,
-          date_column, date_from, date_to)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true,$12,$13,$14)
+          date_column, date_from, date_to, measures)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true,$12,$13,$14,$15)
        RETURNING *`,
       [
         dto.name.trim(),
         dto.reportName ?? null,
         dto.datasetId,
         dto.sourceTable,
-        JSON.stringify(dto.columns),
+        JSON.stringify(dto.columns ?? []),
         target,
         mode,
         dto.businessKeys ? JSON.stringify(dto.businessKeys) : null,
@@ -157,6 +164,7 @@ export class JobsService implements OnModuleInit {
         dto.dateColumn ?? null,
         dto.dateFrom ?? null,
         dto.dateTo ?? null,
+        dto.measures ? JSON.stringify(dto.measures) : null,
       ],
     ).catch((e) => {
       if (String(e.message).includes('duplicate key')) {
@@ -195,6 +203,7 @@ export class JobsService implements OnModuleInit {
             ? new Date(job.date_to).toISOString().slice(0, 10)
             : undefined,
         },
+        job.measures ?? [],
       );
       const res = await this.dyn.upload({
         table: job.target_table,

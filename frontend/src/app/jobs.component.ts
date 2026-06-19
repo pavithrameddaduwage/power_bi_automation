@@ -24,7 +24,8 @@ import { PagerComponent } from './pager.component';
           <span class="badge" [class.badge-ok]="j.mode === 'upsert'" [class.badge-no]="j.mode === 'append'">
             {{ j.mode }}
           </span>
-          <span class="badge badge-ok" *ngIf="j.cron">⏱ {{ j.cron }}</span>
+          <span class="badge badge-ok" *ngIf="j.cron">scheduled: {{ j.cron }}</span>
+          <span class="badge" *ngIf="!j.cron">manual</span>
           <div class="tag">
             {{ j.report_name }} · {{ j.source_table }} → {{ j.target_table }} ·
             {{ j.columns.length }} cols

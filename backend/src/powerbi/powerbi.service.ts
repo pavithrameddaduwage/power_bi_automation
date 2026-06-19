@@ -351,6 +351,65 @@ export class PowerBiService {
       .filter((c) => c.table && c.name);
   }
 
+  /**
+   * Measures of a dataset (table + name + data type). Measures are DAX
+   * calculations (totals, ratios, %), not stored columns — they must be
+   * evaluated grouped by columns, so they're surfaced separately.
+   */
+  async getDatasetMeasures(
+    datasetId: string,
+  ): Promise<{ table: string; name: string; dataType: string }[]> {
+    const rows = await this.executeQueryByDataset(
+      datasetId,
+      'EVALUATE INFO.VIEW.MEASURES()',
+    );
+    return rows
+      .filter((r) => r.IsHidden !== true)
+      .map((r) => ({
+        table: String(r.Table ?? ''),
+        name: String(r.Name ?? ''),
+        dataType: String(r.DataType ?? 'Number'),
+      }))
+      .filter((m) => m.name);
+  }
+
+  /**
+   * Build a SUMMARIZECOLUMNS query: group by the chosen columns and compute the
+   * chosen measures. Group-by columns are optional when measures are present
+   * (measures-only gives the grand totals).
+   */
+  private buildMeasureQuery(
+    table: string,
+    groupCols: string[],
+    measures: string[],
+    limit: number,
+    filter?: DataFilter,
+  ): string {
+    const t = `'${table.replace(/'/g, "''")}'`;
+    const args: string[] = [];
+    for (const c of groupCols) {
+      args.push(`${t}[${c.replace(/]/g, ']]')}]`);
+    }
+    if (filter?.dateColumn && (filter.dateFrom || filter.dateTo)) {
+      const col = filter.dateColumn.replace(/]/g, ']]');
+      const from = this.daxDate(filter.dateFrom);
+      const to = this.daxDate(filter.dateTo);
+      const conds: string[] = [];
+      if (from) conds.push(`${t}[${col}] >= ${from}`);
+      if (to) conds.push(`${t}[${col}] <= ${to}`);
+      if (conds.length) {
+        args.push(`FILTER(ALL(${t}[${col}]), ${conds.join(' && ')})`);
+      }
+    }
+    for (const m of measures) {
+      args.push(`"${m}", [${m.replace(/]/g, ']]')}]`);
+    }
+    const inner = `SUMMARIZECOLUMNS(${args.join(', ')})`;
+    return limit && limit > 0
+      ? `EVALUATE TOPN(${limit}, ${inner})`
+      : `EVALUATE ${inner}`;
+  }
+
   /** An optional date-range filter applied to one date/datetime column. */
   private daxDate(iso?: string): string | null {
     if (!iso) return null;
@@ -399,11 +458,19 @@ export class PowerBiService {
     columns: string[],
     limit = 500,
     filter?: DataFilter,
+    measures: string[] = [],
   ): Promise<Record<string, any>[]> {
-    if (!table || !Array.isArray(columns) || columns.length === 0) {
-      throw new Error('table and at least one column are required.');
+    const cols = Array.isArray(columns) ? columns : [];
+    const meas = Array.isArray(measures) ? measures : [];
+    if (!table) throw new Error('table is required.');
+    if (cols.length === 0 && meas.length === 0) {
+      throw new Error('Select at least one column or measure.');
     }
-    const dax = this.buildProjection(table, columns, limit, filter);
+    // Measures must be grouped → SUMMARIZECOLUMNS. Plain columns → SELECTCOLUMNS.
+    const dax =
+      meas.length > 0
+        ? this.buildMeasureQuery(table, cols, meas, limit, filter)
+        : this.buildProjection(table, cols, limit, filter);
     return this.executeQueryByDataset(datasetId, dax);
   }
 }

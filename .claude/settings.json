@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD=0006 psql -h localhost -U postgres -d power_bi_sync -c \"DROP TABLE IF EXISTS meas_job; DELETE FROM dynamic_datasets WHERE table_name='meas_job'; DELETE FROM report_jobs WHERE name='measjob';\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/jobs -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('  job id:',d.get\\('id'\\),'measures:',d.get\\('measures'\\),d.get\\('message',''\\)\\)\")",
+      "Bash(python3 -c \"import sys,json;print\\(' ->',json.load\\(sys.stdin\\)\\)\")",
+      "Bash(PGPASSWORD=0006 psql -h localhost -U postgres -d power_bi_sync -c 'SELECT product_code, \"On PO Qty\" FROM meas_job LIMIT 3;')",
+      "Bash(pkill -f \"node dist/main.js\")",
+      "Bash(pkill -f \"nest start\")",
+      "Bash(echo \"port 3000 free: $\\(lsof -ti:3000 || echo yes\\)\")"
+    ]
+  }
+}

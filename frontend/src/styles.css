@@ -116,6 +116,13 @@ input:focus, textarea:focus, select:focus {
 input[type="checkbox"] { width: auto; display: inline-block; margin: 0; transform: scale(1.15); accent-color: var(--accent-2); }
 textarea { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* Search inputs: magnifier icon + roomy padding */
+input.search {
+  padding-left: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 12px center;
+}
 .upload-bar { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
 .upload-bar button { margin-bottom: 12px; }
 code { background: #eef1f7; padding: 2px 6px; border-radius: 6px; font-size: 13px; }
@@ -168,6 +175,11 @@ button.danger:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(210,58,58,0.2);
 
 /* Pager */
 .pager { margin: 4px 2px 16px; }
+
+/* Measures block — visually separated from columns */
+.measures-block {
+  margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--border);
+}
 
 /* Warning banner */
 .warn {

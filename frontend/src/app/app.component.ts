@@ -1,16 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CatalogComponent } from './catalog.component';
 import { UploadComponent } from './upload.component';
 import { JobsComponent } from './jobs.component';
 import { ToastService } from './toast.service';
 
-type Tab = 'catalog' | 'final' | 'upload' | 'jobs';
+type Tab = 'final' | 'all' | 'jobs';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, CatalogComponent, UploadComponent, JobsComponent],
+  imports: [CommonModule, UploadComponent, JobsComponent],
   template: `
     <header class="appbar">
       <div class="appbar-inner">
@@ -22,23 +21,19 @@ type Tab = 'catalog' | 'final' | 'upload' | 'jobs';
 
     <div class="container">
       <nav class="tabs">
-        <button [class.active]="tab() === 'catalog'" (click)="tab.set('catalog')">
-          Catalog &amp; access
-        </button>
         <button [class.active]="tab() === 'final'" (click)="tab.set('final')">
-          Final reports
+          Reports
         </button>
-        <button [class.active]="tab() === 'upload'" (click)="tab.set('upload')">
-          Reports &amp; upload
+        <button [class.active]="tab() === 'all'" (click)="tab.set('all')">
+          All tables
         </button>
         <button [class.active]="tab() === 'jobs'" (click)="tab.set('jobs')">
           Jobs &amp; history
         </button>
       </nav>
 
-      <app-catalog *ngIf="tab() === 'catalog'"></app-catalog>
       <app-upload *ngIf="tab() === 'final'" [finalOnly]="true"></app-upload>
-      <app-upload *ngIf="tab() === 'upload'"></app-upload>
+      <app-upload *ngIf="tab() === 'all'"></app-upload>
       <app-jobs *ngIf="tab() === 'jobs'"></app-jobs>
     </div>
 
@@ -56,6 +51,6 @@ type Tab = 'catalog' | 'final' | 'upload' | 'jobs';
   `,
 })
 export class AppComponent {
-  tab = signal<Tab>('catalog');
+  tab = signal<Tab>('final');
   toast = inject(ToastService);
 }

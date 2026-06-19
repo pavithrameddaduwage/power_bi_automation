@@ -52,6 +52,11 @@ export interface DatasetColumn {
   dataType: string;
   isKey?: boolean;
 }
+export interface DatasetMeasure {
+  table: string;
+  name: string;
+  dataType: string;
+}
 export interface DynamicDataset {
   kind: string;
   label: string;
@@ -95,6 +100,7 @@ export interface CreateJob {
   datasetId: string;
   sourceTable: string;
   columns: string[];
+  measures?: string[];
   targetTable: string;
   mode: 'append' | 'upsert';
   businessKeys?: string[];
@@ -148,17 +154,24 @@ export class SyncApiService {
       { params },
     );
   }
+  datasetMeasures(datasetId: string): Observable<DatasetMeasure[]> {
+    return this.http.get<DatasetMeasure[]>(
+      `${API}/catalog/datasets/${datasetId}/measures`,
+    );
+  }
   reportData(
     datasetId: string,
     table: string,
     columns: string[],
     limit = 500,
     filter?: { dateColumn?: string; dateFrom?: string; dateTo?: string },
+    measures: string[] = [],
   ): Observable<any[]> {
     return this.http.post<any[]>(`${API}/catalog/data`, {
       datasetId,
       table,
       columns,
+      measures,
       limit,
       ...filter,
     });
