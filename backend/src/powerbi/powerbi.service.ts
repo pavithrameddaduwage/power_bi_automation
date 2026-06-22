@@ -303,11 +303,23 @@ export class PowerBiService {
       });
       return this.cleanRows(data?.results?.[0]?.tables?.[0]?.rows ?? []);
     } catch (err: any) {
-      const pbi =
-        err?.response?.data?.error?.['pbi.error']?.details?.[0]?.detail?.value ||
-        err?.response?.data?.error?.message ||
+      const errBody = err?.response?.data?.error;
+      // Power BI nests the real reason in a few different places depending on the
+      // failure; dig out the most specific one we can find.
+      const pbiErr = errBody?.['pbi.error'];
+      const detail =
+        pbiErr?.details?.find((d: any) => d?.detail?.value)?.detail?.value ||
+        pbiErr?.details?.[0]?.detail?.value ||
+        pbiErr?.code ||
+        errBody?.message ||
         err.message;
-      throw new Error(`DAX failed: ${pbi}`);
+      // Log the full body once so the underlying cause is never hidden again.
+      this.logger.error(
+        `executeQueries failed (dataset ${datasetId}): ${JSON.stringify(
+          err?.response?.data ?? err?.message,
+        )}\nDAX: ${dax}`,
+      );
+      throw new Error(`DAX failed: ${detail}`);
     }
   }
 
