@@ -195,6 +195,9 @@ export class SyncApiService {
   exportUrl(table: string): string {
     return `${API}/uploads/datasets/${table}/export`;
   }
+  emailDataset(table: string, recipients: string[], subject: string): Observable<any> {
+    return this.http.post(`${API}/uploads/datasets/${table}/email`, { recipients, subject });
+  }
 
   // ── Jobs ────────────────────────────────────────────────────────
   jobs(): Observable<Job[]> {

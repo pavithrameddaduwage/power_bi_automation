@@ -51,6 +51,12 @@ export class UploadsController {
     );
   }
 
+  /** Email a dynamic dataset */
+  @Post('datasets/:table/email')
+  emailDataset(@Param('table') table: string, @Body() body: { recipients: string[], subject: string }) {
+    return this.uploads.emailDataset(table, body.recipients, body.subject);
+  }
+
   /** Download a dynamic dataset as CSV (opens in Excel). */
   @Get('datasets/:table/export')
   async export(@Param('table') table: string, @Res() res: Response) {

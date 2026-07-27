@@ -284,6 +284,10 @@ import { PagerComponent } from './pager.component';
           <button class="secondary" (click)="preview(d.table_name)" [disabled]="busy()">Preview</button>
         </div>
       </div>
+      <div style="margin-top:12px; display:flex; gap:6px; align-items:center;">
+        <input style="flex:1" placeholder="Email recipients (comma separated)" [(ngModel)]="datasetEmails[d.table_name]" />
+        <button class="secondary" (click)="sendEmail(d.table_name)" [disabled]="busy() || !datasetEmails[d.table_name]">Send Excel via Email</button>
+      </div>
       <div *ngIf="previewTable() === d.table_name" style="overflow:auto;margin-top:10px;">
         <table>
           <thead><tr><th *ngFor="let c of previewCols()">{{ c }}</th></tr></thead>
@@ -344,6 +348,7 @@ export class UploadComponent implements OnInit {
   busy = signal(false);
 
   datasets = signal<DynamicDataset[]>([]);
+  datasetEmails: Record<string, string> = {};
   previewTable = signal('');
   previewCols = signal<string[]>([]);
   previewRows = signal<any[]>([]);
@@ -741,6 +746,24 @@ export class UploadComponent implements OnInit {
     this.busy.set(false);
     this.toast.error(this.msg(e));
   }
+  
+  sendEmail(table: string) {
+    const recipientsStr = this.datasetEmails[table];
+    if (!recipientsStr) return;
+    const recipients = recipientsStr.split(',').map(e => e.trim()).filter(e => e);
+    if (recipients.length === 0) return;
+    
+    this.busy.set(true);
+    this.api.emailDataset(table, recipients, `Export of ${table}`).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.toast.success(`Successfully sent ${table} to ${recipients.join(', ')}`);
+        this.datasetEmails[table] = ''; // clear input
+      },
+      error: (e) => this.fail(e),
+    });
+  }
+
   private msg(e: any): string {
     return e?.error?.message || e?.message || 'Request failed';
   }

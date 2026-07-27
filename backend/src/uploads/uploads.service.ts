@@ -44,6 +44,24 @@ export class UploadsService {
     private readonly emailService: EmailService,
   ) {}
 
+  /** Email an existing dataset */
+  async emailDataset(
+    table: string,
+    recipients: string[],
+    subject: string,
+  ): Promise<void> {
+    if (!recipients || recipients.length === 0) {
+      throw new Error('No recipients provided.');
+    }
+    const result = await this.db.query(`SELECT * FROM "${table}" LIMIT 100000`); const rows = result.rows;
+    const excelBuffer = await this.excelService.generateExcelBuffer(
+      rows,
+      table,
+    );
+    const fileName = `${table}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    await this.emailService.sendReport(recipients, subject || `Data export: ${table}`, excelBuffer, fileName);
+  }
+
   /**
    * A person uploads (or appends to) a custom report. The destination table is
    * derived from the report name and created on first use; later uploads —
