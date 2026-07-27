@@ -16,149 +16,227 @@ import { PagerComponent } from './pager.component';
   standalone: true,
   imports: [CommonModule, FormsModule, PagerComponent],
   template: `
-    <h2>1 · Pick a report</h2>
-    <div class="card">
-      <input class="search" placeholder="Search reports by name or workspace…" [ngModel]="filter" (ngModelChange)="onFilterChange($event)" />
-      <div class="report-list">
-        <div
-          *ngFor="let r of pagedReports()"
-          class="report-row"
-          [class.active]="selectedReport()?.id === r.id"
-          (click)="pickReport(r)"
-        >
-          <span>{{ r.name }}</span>
-          <span class="tag">{{ r.workspaceName }}</span>
-        </div>
-        <div *ngIf="filteredReports().length === 0" class="muted" style="padding:12px;">
-          <span *ngIf="!reports().length" class="spinner"></span>
-          {{ reports().length ? 'No match.' : 'Loading reports…' }}
-        </div>
+    <div class="wizard-header">
+      <div class="step" [class.active]="currentStep() === 1" (click)="setStep(1)">
+        <div class="step-num">1</div>
+        <div class="step-label">Pick Report</div>
       </div>
-      <app-pager [page]="repPage()" [total]="filteredReports().length" [pageSize]="pageSize"
-                 (go)="repPage.set($event)"></app-pager>
+      <div class="step" [class.active]="currentStep() === 2" [class.disabled]="!selectedReport()" (click)="selectedReport() && setStep(2)">
+        <div class="step-num">2</div>
+        <div class="step-label">Columns</div>
+      </div>
+      <div class="step" [class.active]="currentStep() === 3" [class.disabled]="!loadedRows().length && !loadedCols().length" (click)="(loadedRows().length || loadedCols().length) && setStep(3)">
+        <div class="step-num">3</div>
+        <div class="step-label">Data</div>
+      </div>
+      <div class="step" [class.active]="currentStep() === 4" [class.disabled]="!loadedRows().length && !loadedCols().length" (click)="(loadedRows().length || loadedCols().length) && setStep(4)">
+        <div class="step-num">4</div>
+        <div class="step-label">Database</div>
+      </div>
+      <div class="step" [class.active]="currentStep() === 5" [class.disabled]="!loadedRows().length && !loadedCols().length" (click)="(loadedRows().length || loadedCols().length) && setStep(5)">
+        <div class="step-num">5</div>
+        <div class="step-label">Schedule</div>
+      </div>
     </div>
 
-    <ng-container *ngIf="selectedReport() as rep">
-      <h2>2 · Choose table &amp; columns</h2>
-      <div class="card">
-        <div *ngIf="loadingCols()" class="muted"><span class="spinner"></span> Loading columns…</div>
-        <div *ngIf="colError()" class="status-error">{{ colError() }}</div>
-
-        <label *ngIf="tables().length">
-          {{ finalOnly ? 'Final report table — the combined output users download' : 'Tables connected to this report' }}
-          ({{ tables().length }})
-        </label>
-        <input *ngIf="tables().length" class="search" placeholder="Search tables…"
-               [ngModel]="tableFilter()" (ngModelChange)="tableFilter.set($event)" />
-        <div class="scroll-list" *ngIf="tables().length">
-          <div
-            *ngFor="let t of filteredTables()"
-            class="report-row"
-            [class.active]="activeTable() === t"
-            (click)="setTable(t)"
-          >
-            <span>{{ t }}</span>
-            <span class="tag">{{ columnCount(t) }} cols</span>
+    <div class="wizard-body">
+      <!-- STEP 1 -->
+      <ng-container *ngIf="currentStep() === 1">
+        <h2>1 Pick a report</h2>
+        <div class="card">
+          <input class="search" placeholder="Search reports by name or workspace…" [ngModel]="filter" (ngModelChange)="onFilterChange($event)" />
+          <div class="report-list">
+            <div
+              *ngFor="let r of pagedReports()"
+              class="report-row"
+              [class.active]="selectedReport()?.id === r.id"
+              (click)="pickReport(r)"
+            >
+              <span>{{ r.name }}</span>
+              <span class="tag">{{ r.workspaceName }}</span>
+            </div>
+            <div *ngIf="filteredReports().length === 0" class="muted" style="padding:12px;">
+              <span *ngIf="!reports().length" class="spinner"></span>
+              {{ reports().length ? 'No match.' : 'Loading reports…' }}
+            </div>
           </div>
-          <div *ngIf="filteredTables().length === 0" class="muted" style="padding:12px;">No match.</div>
+          <app-pager [page]="repPage()" [total]="filteredReports().length" [pageSize]="pageSize"
+                     (go)="repPage.set($event)"></app-pager>
         </div>
-
-        <ng-container *ngIf="activeColumns().length">
-          <div class="row-between" style="margin-top:16px;">
-            <label class="pick" style="margin:0;">
-              <input type="checkbox" [checked]="allChecked()" (change)="toggleAll($event)" />
-              Select all columns
-            </label>
-            <span class="tag">{{ selectedNames().length }} of {{ activeColumns().length }} selected · {{ activeTable() }}</span>
+        
+        <ng-container *ngIf="!finalOnly">
+          <h2>Principals</h2>
+          <div class="card">
+            <div class="row-between">
+              <strong>Sync principals (access) from Power BI</strong>
+              <button class="btn-secondary" (click)="syncPrincipals()" [disabled]="busy()">Sync from Power BI</button>
+            </div>
           </div>
-          <input class="search" placeholder="Search columns…" [ngModel]="columnFilter()" (ngModelChange)="columnFilter.set($event)" />
-          <div class="scroll-list">
+        </ng-container>
+
+        <div class="row-between" style="margin-top: 30px;">
+          <h2>Stored datasets</h2>
+          <button class="btn-secondary" (click)="loadDatasets()" [disabled]="busy()">Refresh</button>
+        </div>
+        <div class="card" *ngFor="let d of pagedDatasets()">
+          <div class="row-between">
+            <div>
+              <strong>{{ d.label }}</strong>
+              <span class="badge badge-ok">{{ d.kind }}</span>
+              <span class="badge badge-no" *ngIf="d.locked">locked</span>
+              <div class="tag">table: {{ d.table_name }} · {{ d.last_rows }} rows</div>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <a class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center;" [href]="api.exportUrl(d.table_name)">Export CSV</a>
+              <button class="btn-secondary" (click)="preview(d.table_name)" [disabled]="busy()">Preview</button>
+            </div>
+          </div>
+          <div style="margin-top:12px; display:flex; gap:6px; align-items:center;">
+            <input style="flex:1" placeholder="Email recipients (comma separated)" [(ngModel)]="datasetEmails[d.table_name]" />
+            <button class="btn-secondary" (click)="sendEmail(d.table_name)" [disabled]="busy() || !datasetEmails[d.table_name]">Send Excel via Email</button>
+          </div>
+          <div *ngIf="previewTable() === d.table_name" style="overflow:auto;margin-top:10px;">
             <table>
-              <thead>
-                <tr>
-                  <th style="width:40px;">Use</th>
-                  <th>Column</th>
-                  <th>Data type</th>
-                  <th style="width:80px; text-align:center;">Key</th>
-                </tr>
-              </thead>
+              <thead><tr><th *ngFor="let c of previewCols()">{{ c }}</th></tr></thead>
               <tbody>
-                <tr *ngFor="let c of filteredColumns()">
-                  <td><input type="checkbox" [checked]="selected()[c.name]" (change)="toggle(c.name)" /></td>
-                  <td>{{ c.name }} <span class="badge badge-ok" *ngIf="c.isKey">model key</span></td>
-                  <td class="tag">{{ c.dataType }}</td>
-                  <td style="text-align:center;">
-                    <input type="checkbox" [checked]="keySelected()[c.name]"
-                           (change)="toggleKeyCol(c.name)" title="use as upsert/primary key" />
-                  </td>
-                </tr>
+                <tr *ngFor="let row of previewRows()"><td *ngFor="let c of previewCols()">{{ row[c] }}</td></tr>
               </tbody>
             </table>
           </div>
-          <p class="tag" style="margin-top:6px;">
-            Tick <strong>Key</strong> on the column(s) that uniquely identify a row — those become the
-            upsert keys so re-syncs update instead of duplicate.
-          </p>
+        </div>
+        <app-pager [page]="dsPage()" [total]="datasets().length" [pageSize]="pageSize"
+                   (go)="dsPage.set($event)"></app-pager>
+        <div class="card" *ngIf="datasets().length === 0"><span class="muted">Nothing stored yet.</span></div>
+      </ng-container>
 
-          <div *ngIf="measures().length" class="measures-block">
-            <div class="row-between">
-              <strong>Measures — viewed separately ({{ measures().length }})</strong>
-              <span class="tag">{{ selectedMeasureNames().length }} selected</span>
+      <!-- STEP 2 -->
+      <ng-container *ngIf="currentStep() === 2 && selectedReport() as rep">
+        <h2>2 Choose table &amp; columns</h2>
+        <div class="card">
+          <div *ngIf="loadingCols()" class="muted"><span class="spinner"></span> Loading columns…</div>
+          <div *ngIf="colError()" class="status-error">{{ colError() }}</div>
+
+          <label *ngIf="tables().length">
+            {{ finalOnly ? 'Final report table — the combined output users download' : 'Tables connected to this report' }}
+            ({{ tables().length }})
+          </label>
+          <input *ngIf="tables().length" class="search" placeholder="Search tables…"
+                 [ngModel]="tableFilter()" (ngModelChange)="tableFilter.set($event)" />
+          <div class="scroll-list" *ngIf="tables().length">
+            <div
+              *ngFor="let t of filteredTables()"
+              class="report-row"
+              [class.active]="activeTable() === t"
+              (click)="setTable(t)"
+            >
+              <span>{{ t }}</span>
+              <span class="tag">{{ columnCount(t) }} cols</span>
             </div>
-            <p class="muted" style="margin:4px 0;">
-              DAX calculations (totals, ratios, %). When ticked, the data is grouped by the
-              columns above and these are computed per group.
-            </p>
-            <input class="search" placeholder="Search measures…" [ngModel]="measureFilter()" (ngModelChange)="measureFilter.set($event)" />
+            <div *ngIf="filteredTables().length === 0" class="muted" style="padding:12px;">No match.</div>
+          </div>
+
+          <ng-container *ngIf="activeColumns().length">
+            <div class="row-between" style="margin-top:16px;">
+              <label class="pick" style="margin:0;">
+                <input type="checkbox" [checked]="allChecked()" (change)="toggleAll($event)" />
+                Select all columns
+              </label>
+              <span class="tag">{{ selectedNames().length }} of {{ activeColumns().length }} selected · {{ activeTable() }}</span>
+            </div>
+            <input class="search" placeholder="Search columns…" [ngModel]="columnFilter()" (ngModelChange)="columnFilter.set($event)" />
             <div class="scroll-list">
               <table>
-                <thead><tr><th style="width:40px;">Use</th><th>Measure</th><th>Type</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th style="width:40px;">Use</th>
+                    <th>Column</th>
+                    <th>Data type</th>
+                    <th style="width:80px; text-align:center;">Key</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  <tr *ngFor="let m of filteredMeasures()">
-                    <td><input type="checkbox" [checked]="measureSelected()[m.name]" (change)="toggleMeasure(m.name)" /></td>
-                    <td>{{ m.name }}</td>
-                    <td class="tag">{{ m.dataType }}</td>
+                  <tr *ngFor="let c of filteredColumns()">
+                    <td><input type="checkbox" [checked]="selected()[c.name]" (change)="toggle(c.name)" /></td>
+                    <td>{{ c.name }} <span class="badge badge-ok" *ngIf="c.isKey">model key</span></td>
+                    <td class="tag">{{ c.dataType }}</td>
+                    <td style="text-align:center;">
+                      <input type="checkbox" [checked]="keySelected()[c.name]"
+                             (change)="toggleKeyCol(c.name)" title="use as upsert/primary key" />
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-          </div>
+            <p class="tag" style="margin-top:6px;">
+              Tick <strong>Key</strong> on the column(s) that uniquely identify a row — those become the
+              upsert keys so re-syncs update instead of duplicate.
+            </p>
 
-          <div *ngIf="dateColumns().length" style="margin-top:16px;">
-            <label>Filter by date range (optional)</label>
-            <div class="daterow">
-              <select [ngModel]="dateColumn()" (ngModelChange)="dateColumn.set($event)">
-                <option value="">— no date filter —</option>
-                <option *ngFor="let c of dateColumns()" [value]="c.name">{{ c.name }}</option>
-              </select>
-              <label style="margin:0;">From
-                <input type="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)" [disabled]="!dateColumn()" />
-              </label>
-              <label style="margin:0;">To
-                <input type="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)" [disabled]="!dateColumn()" />
-              </label>
+            <div *ngIf="measures().length" class="measures-block">
+              <div class="row-between">
+                <strong>Measures — viewed separately ({{ measures().length }})</strong>
+                <span class="tag">{{ selectedMeasureNames().length }} selected</span>
+              </div>
+              <p class="muted" style="margin:4px 0;">
+                DAX calculations (totals, ratios, %). When ticked, the data is grouped by the
+                columns above and these are computed per group.
+              </p>
+              <input class="search" placeholder="Search measures…" [ngModel]="measureFilter()" (ngModelChange)="measureFilter.set($event)" />
+              <div class="scroll-list">
+                <table>
+                  <thead><tr><th style="width:40px;">Use</th><th>Measure</th><th>Type</th></tr></thead>
+                  <tbody>
+                    <tr *ngFor="let m of filteredMeasures()">
+                      <td><input type="checkbox" [checked]="measureSelected()[m.name]" (change)="toggleMeasure(m.name)" /></td>
+                      <td>{{ m.name }}</td>
+                      <td class="tag">{{ m.dataType }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
-          <div class="row-between" style="margin-top:14px;">
-            <div style="display:flex;gap:16px;align-items:center;">
-              <label class="pick" style="margin:0;">
-                <input type="checkbox" [ngModel]="allRows()" (ngModelChange)="allRows.set($event)" /> All rows
-              </label>
-              <label style="margin:0;" *ngIf="!allRows()">max rows
-                <input type="number" min="1" [(ngModel)]="limit" style="width:90px;" />
-              </label>
+            <div *ngIf="dateColumns().length" style="margin-top:16px;">
+              <label>Filter by date range (optional)</label>
+              <div class="daterow">
+                <select [ngModel]="dateColumn()" (ngModelChange)="dateColumn.set($event)">
+                  <option value="">— no date filter —</option>
+                  <option *ngFor="let c of dateColumns()" [value]="c.name">{{ c.name }}</option>
+                </select>
+                <label style="margin:0;">From
+                  <input type="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)" [disabled]="!dateColumn()" />
+                </label>
+                <label style="margin:0;">To
+                  <input type="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)" [disabled]="!dateColumn()" />
+                </label>
+              </div>
             </div>
-            <button (click)="sync()" [disabled]="busy() || (selectedNames().length === 0 && selectedMeasureNames().length === 0)">
-              <span *ngIf="busy()" class="spinner"></span>
-              {{ busy() ? 'Syncing…' : 'Sync from Power BI' }}
-            </button>
-          </div>
-        </ng-container>
-      </div>
 
-      <ng-container *ngIf="loadedRows().length || loadedCols().length">
-        <h2>3 · Synced data ({{ loadedRows().length }} rows)</h2>
+            <div class="row-between" style="margin-top:14px;">
+              <div style="display:flex;gap:16px;align-items:center;">
+                <label class="pick" style="margin:0;">
+                  <input type="checkbox" [ngModel]="allRows()" (ngModelChange)="allRows.set($event)" /> All rows
+                </label>
+                <label style="margin:0;" *ngIf="!allRows()">max rows
+                  <input type="number" min="1" [(ngModel)]="limit" style="width:90px;" />
+                </label>
+              </div>
+              <button class="btn-primary" (click)="sync()" [disabled]="busy() || (selectedNames().length === 0 && selectedMeasureNames().length === 0)">
+                <span *ngIf="busy()" class="spinner-white"></span>
+                {{ busy() ? 'Syncing…' : 'Sync from Power BI' }}
+              </button>
+            </div>
+          </ng-container>
+        </div>
+        <div class="wizard-footer row-between">
+          <button class="btn-secondary" (click)="setStep(1)">‹ Back</button>
+          <button class="btn-primary" (click)="setStep(3)" [disabled]="!loadedRows().length && !loadedCols().length">Next ›</button>
+        </div>
+      </ng-container>
+
+      <!-- STEP 3 -->
+      <ng-container *ngIf="currentStep() === 3 && (loadedRows().length || loadedCols().length)">
+        <h2>3 Synced data ({{ loadedRows().length }} rows)</h2>
         <div class="card">
           <div style="overflow:auto;">
             <table>
@@ -173,13 +251,20 @@ import { PagerComponent } from './pager.component';
           <div class="row-between" *ngIf="pageCount() > 1">
             <span class="tag">page {{ page() + 1 }} / {{ pageCount() }}</span>
             <div style="display:flex;gap:6px;">
-              <button class="secondary" (click)="prevPage()" [disabled]="page() === 0">‹ Prev</button>
-              <button class="secondary" (click)="nextPage()" [disabled]="page() + 1 >= pageCount()">Next ›</button>
+              <button class="btn-secondary" (click)="prevPage()" [disabled]="page() === 0">‹ Prev</button>
+              <button class="btn-secondary" (click)="nextPage()" [disabled]="page() + 1 >= pageCount()">Next ›</button>
             </div>
           </div>
         </div>
+        <div class="wizard-footer row-between">
+          <button class="btn-secondary" (click)="setStep(2)">‹ Back</button>
+          <button class="btn-primary" (click)="setStep(4)">Next ›</button>
+        </div>
+      </ng-container>
 
-        <h2>4 · Write to database</h2>
+      <!-- STEP 4 -->
+      <ng-container *ngIf="currentStep() === 4 && (loadedRows().length || loadedCols().length)">
+        <h2>4 Write to database</h2>
         <div class="card">
           <div class="grid2">
             <label>Table name in database
@@ -226,13 +311,20 @@ import { PagerComponent } from './pager.component';
 
           <div class="row-between" style="margin-top:14px;">
             <span class="tag">{{ loadedRows().length }} rows ready</span>
-            <button (click)="upload()" [disabled]="busy() || loadedRows().length === 0 || targetLocked()">
+            <button class="btn-primary" (click)="upload()" [disabled]="busy() || loadedRows().length === 0 || targetLocked()">
               Upload to database
             </button>
           </div>
         </div>
+        <div class="wizard-footer row-between">
+          <button class="btn-secondary" (click)="setStep(3)">‹ Back</button>
+          <button class="btn-primary" (click)="setStep(5)">Next ›</button>
+        </div>
+      </ng-container>
 
-        <h2>5 · Save as a scheduled job (optional)</h2>
+      <!-- STEP 5 -->
+      <ng-container *ngIf="currentStep() === 5 && (loadedRows().length || loadedCols().length)">
+        <h2>5 Save as a scheduled job (optional)</h2>
         <div class="card">
           <p class="muted">
             Saves this exact setup (report · table · columns · mode) so it can be
@@ -251,62 +343,144 @@ import { PagerComponent } from './pager.component';
           </div>
           <div class="row-between">
             <span class="tag">examples: <code>0 6 * * *</code> daily 06:00 · <code>0 */4 * * *</code> every 4h</span>
-            <button class="secondary" (click)="saveJob()" [disabled]="busy() || targetLocked()">Save job</button>
+            <button class="btn-primary" (click)="saveJob()" [disabled]="busy() || targetLocked()">Save job</button>
           </div>
         </div>
+        <div class="wizard-footer row-between">
+          <button class="btn-secondary" (click)="setStep(4)">‹ Back</button>
+          <button class="btn-primary" (click)="setStep(1)">Finish</button>
+        </div>
       </ng-container>
-    </ng-container>
-
-    <ng-container *ngIf="!finalOnly">
-      <h2>Principals</h2>
-      <div class="card">
-        <div class="row-between">
-          <strong>Sync principals (access) from Power BI</strong>
-          <button class="secondary" (click)="syncPrincipals()" [disabled]="busy()">Sync from Power BI</button>
-        </div>
-      </div>
-    </ng-container>
-
-    <div class="row-between">
-      <h2>Stored datasets</h2>
-      <button class="secondary" (click)="loadDatasets()" [disabled]="busy()">Refresh</button>
     </div>
-    <div class="card" *ngFor="let d of pagedDatasets()">
-      <div class="row-between">
-        <div>
-          <strong>{{ d.label }}</strong>
-          <span class="badge badge-ok">{{ d.kind }}</span>
-          <span class="badge badge-no" *ngIf="d.locked">locked</span>
-          <div class="tag">table: {{ d.table_name }} · {{ d.last_rows }} rows</div>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <a class="btnlink" [href]="api.exportUrl(d.table_name)">Export CSV</a>
-          <button class="secondary" (click)="preview(d.table_name)" [disabled]="busy()">Preview</button>
-        </div>
-      </div>
-      <div style="margin-top:12px; display:flex; gap:6px; align-items:center;">
-        <input style="flex:1" placeholder="Email recipients (comma separated)" [(ngModel)]="datasetEmails[d.table_name]" />
-        <button class="secondary" (click)="sendEmail(d.table_name)" [disabled]="busy() || !datasetEmails[d.table_name]">Send Excel via Email</button>
-      </div>
-      <div *ngIf="previewTable() === d.table_name" style="overflow:auto;margin-top:10px;">
-        <table>
-          <thead><tr><th *ngFor="let c of previewCols()">{{ c }}</th></tr></thead>
-          <tbody>
-            <tr *ngFor="let row of previewRows()"><td *ngFor="let c of previewCols()">{{ row[c] }}</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <app-pager [page]="dsPage()" [total]="datasets().length" [pageSize]="pageSize"
-               (go)="dsPage.set($event)"></app-pager>
-    <div class="card" *ngIf="datasets().length === 0"><span class="muted">Nothing stored yet.</span></div>
   `,
+  styles: [`
+    .wizard-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      background: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border: 1px solid #e0e4eb;
+    }
+    .search {
+      margin-bottom: 16px;
+      margin-top: 8px;
+      padding: 12px;
+      font-size: 14px;
+    }
+    .daterow {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+      margin-top: 8px;
+    }
+    .daterow select {
+      flex: 1;
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: all 0.3s ease;
+    }
+    .step.active {
+      opacity: 1;
+    }
+    .step.disabled {
+      cursor: not-allowed;
+      opacity: 0.3;
+    }
+    .step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #f0f0f0;
+      color: #666;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+    }
+    .step.active .step-num {
+      background: #3b82f6;
+      color: white;
+      border: 1px solid #1e40af;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+    .step-label {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+    .wizard-footer {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #eaeaea;
+    }
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+      border: 1px solid #1e40af;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #2563eb;
+    }
+    .btn-primary:disabled {
+      background: #ccc;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: white;
+      color: #4b5563;
+      border: 1px solid #d1d5db;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #f9fafb;
+      border-color: #9ca3af;
+    }
+    .btn-secondary:disabled {
+      background: #f3f4f6;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+    .spinner-white {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  `],
 })
 export class UploadComponent implements OnInit {
   /** When true, only the curated/combined "final report" tables are shown. */
   @Input() finalOnly = false;
 
+  currentStep = signal(1);
   reports = signal<ReportWithAccess[]>([]);
+  setStep(s: number) { this.currentStep.set(s); }
   filter = '';
   selectedReport = signal<ReportWithAccess | null>(null);
 
@@ -437,6 +611,7 @@ export class UploadComponent implements OnInit {
 
   pickReport(r: ReportWithAccess) {
     this.selectedReport.set(r);
+    this.currentStep.set(2);
     this.columns.set([]);
     this.measures.set([]);
     this.measureSelected.set({});
@@ -623,6 +798,7 @@ export class UploadComponent implements OnInit {
           this.page.set(0);
           this.busy.set(false);
           this.toast.success(`Synced ${rows.length} row(s) from Power BI.`);
+          this.currentStep.set(3);
         },
         error: (e) => this.fail(e),
       });

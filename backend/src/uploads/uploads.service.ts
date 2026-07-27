@@ -1,4 +1,6 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Inject } from '@nestjs/common';
+import { Pool } from 'pg';
+import { PG_POOL } from '../db/database.module';
 import {
   DynamicTableService,
   UploadResult,
@@ -42,6 +44,7 @@ export class UploadsService {
     private readonly upsert: UpsertService,
     private readonly excelService: ExcelService,
     private readonly emailService: EmailService,
+    @Inject(PG_POOL) private readonly db: Pool,
   ) {}
 
   /** Email an existing dataset */

@@ -13,6 +13,7 @@ import {
   UploadReportDto,
   UploadPrincipalsDto,
 } from './uploads.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('api/uploads')
 export class UploadsController {
@@ -58,6 +59,7 @@ export class UploadsController {
   }
 
   /** Download a dynamic dataset as CSV (opens in Excel). */
+  @Public()
   @Get('datasets/:table/export')
   async export(@Param('table') table: string, @Res() res: Response) {
     const csv = await this.uploads.exportCsv(table);

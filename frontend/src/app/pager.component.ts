@@ -10,8 +10,8 @@ import { CommonModule } from '@angular/common';
     <div class="row-between pager" *ngIf="pageCount > 1">
       <span class="tag">page {{ page + 1 }} / {{ pageCount }} · {{ total }} items</span>
       <div style="display:flex;gap:6px;">
-        <button class="secondary" (click)="go.emit(page - 1)" [disabled]="page === 0">‹ Prev</button>
-        <button class="secondary" (click)="go.emit(page + 1)" [disabled]="page + 1 >= pageCount">Next ›</button>
+        <button class="btn-secondary" (click)="go.emit(page - 1)" [disabled]="page === 0">‹ Prev</button>
+        <button class="btn-secondary" (click)="go.emit(page + 1)" [disabled]="page + 1 >= pageCount">Next ›</button>
       </div>
     </div>
   `,
