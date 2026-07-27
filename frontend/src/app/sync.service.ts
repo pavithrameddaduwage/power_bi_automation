@@ -110,6 +110,8 @@ export interface CreateJob {
   dateColumn?: string;
   dateFrom?: string;
   dateTo?: string;
+  recipients?: string;
+  emailSubject?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -185,6 +187,8 @@ export class SyncApiService {
     tableName?: string;
     mode?: 'append' | 'upsert';
     businessKeys?: string[];
+    recipients?: string[];
+    subject?: string;
   }): Observable<UploadResult> {
     return this.http.post<UploadResult>(`${API}/uploads/report`, input);
   }
@@ -222,5 +226,10 @@ export class SyncApiService {
     return this.http.get<any[]>(`${API}/uploads/datasets/${table}/rows`, {
       params,
     });
+  }
+
+  // ── Auth / AD ───────────────────────────────────────────────────
+  searchUsers(query: string): Observable<any[]> {
+    return this.http.post<any[]>(`${API}/auth/searchUsers`, { searchkey: query });
   }
 }

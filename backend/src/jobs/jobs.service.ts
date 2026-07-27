@@ -13,6 +13,8 @@ import { PG_POOL } from '../db/database.module';
 import { DynamicTableService } from '../db/dynamic-table.service';
 import { UpsertService } from '../db/upsert.service';
 import { PowerBiService } from '../powerbi/powerbi.service';
+import { EmailService } from '../notifications/email.service';
+import { ExcelService } from '../exports/excel.service';
 
 export interface CreateJobDto {
   /** Friendly job name, unique. */
@@ -37,6 +39,8 @@ export interface CreateJobDto {
   dateColumn?: string;
   dateFrom?: string;
   dateTo?: string;
+  recipients?: string;
+  emailSubject?: string;
 }
 
 @Injectable()
@@ -49,6 +53,8 @@ export class JobsService implements OnModuleInit {
     private readonly dyn: DynamicTableService,
     private readonly upsert: UpsertService,
     private readonly registry: SchedulerRegistry,
+    private readonly emailService: EmailService,
+    private readonly excelService: ExcelService,
   ) {}
 
   async onModuleInit() {
@@ -95,6 +101,12 @@ export class JobsService implements OnModuleInit {
     );
     await this.pool.query(
       `ALTER TABLE report_jobs ADD COLUMN IF NOT EXISTS measures jsonb`,
+    );
+    await this.pool.query(
+      `ALTER TABLE report_jobs ADD COLUMN IF NOT EXISTS recipients text`,
+    );
+    await this.pool.query(
+      `ALTER TABLE report_jobs ADD COLUMN IF NOT EXISTS email_subject text`,
     );
   }
 
@@ -146,8 +158,8 @@ export class JobsService implements OnModuleInit {
       `INSERT INTO report_jobs
          (name, report_name, dataset_id, source_table, columns, target_table,
           mode, business_keys, row_limit, owner, cron, enabled,
-          date_column, date_from, date_to, measures)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true,$12,$13,$14,$15)
+          date_column, date_from, date_to, measures, recipients, email_subject)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true,$12,$13,$14,$15,$16,$17)
        RETURNING *`,
       [
         dto.name.trim(),
@@ -165,6 +177,8 @@ export class JobsService implements OnModuleInit {
         dto.dateFrom ?? null,
         dto.dateTo ?? null,
         dto.measures ? JSON.stringify(dto.measures) : null,
+        dto.recipients ?? null,
+        dto.emailSubject ?? null,
       ],
     ).catch((e) => {
       if (String(e.message).includes('duplicate key')) {
@@ -225,6 +239,19 @@ export class JobsService implements OnModuleInit {
         rowsWritten: res.rowsWritten,
         status: 'success',
       });
+
+      if (job.recipients && job.recipients.trim() !== '') {
+        try {
+          const excelBuffer = await this.excelService.generateExcelBuffer(data, job.target_table);
+          const subject = job.email_subject || `Scheduled Report: ${job.name}`;
+          const fileName = `${job.target_table}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+          await this.emailService.sendReport(job.recipients, subject, excelBuffer, fileName);
+          this.logger.log(`Emailed scheduled report ${job.name} to ${job.recipients}`);
+        } catch (emailErr: any) {
+          this.logger.error(`Failed to send scheduled email for ${job.name}: ${emailErr.message}`);
+        }
+      }
+
       return { rowsWritten: res.rowsWritten, totalRows: res.totalRows };
     } catch (e: any) {
       const msg = e?.message ?? String(e);

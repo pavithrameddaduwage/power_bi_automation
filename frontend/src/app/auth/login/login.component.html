@@ -1,0 +1,40 @@
+<div class="login-container">
+  <div class="login-card">
+    <h2>Welcome to Power BI Backup</h2>
+    <p>Please log in with your Active Directory credentials.</p>
+    
+    <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+      <div class="form-group">
+        <label for="username">USERNAME / EMAIL</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username" 
+          [(ngModel)]="username" 
+          required 
+          placeholder="Enter your username"
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="password">PASSWORD</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          [(ngModel)]="password" 
+          required 
+          placeholder="Enter your password"
+        />
+      </div>
+      
+      <div class="error-message" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+      
+      <button type="submit" [disabled]="!loginForm.form.valid || loading" class="btn-primary">
+        {{ loading ? 'Logging in...' : 'Log In' }}
+      </button>
+    </form>
+  </div>
+</div>

@@ -15,12 +15,16 @@ import { UploadsController } from './uploads/uploads.controller';
 import { UploadsService } from './uploads/uploads.service';
 import { JobsController } from './jobs/jobs.controller';
 import { JobsService } from './jobs/jobs.service';
+import { AuthModule } from './auth/auth.module';
+import { ExcelService } from './exports/excel.service';
+import { EmailService } from './notifications/email.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     ScheduleModule.forRoot(),
     DatabaseModule,
+    AuthModule,
   ],
   controllers: [
     SyncController,
@@ -37,6 +41,8 @@ import { JobsService } from './jobs/jobs.service';
     SyncScheduler,
     UploadsService,
     JobsService,
+    ExcelService,
+    EmailService,
   ],
 })
 export class AppModule {}

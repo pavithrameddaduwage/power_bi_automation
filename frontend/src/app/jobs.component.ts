@@ -9,51 +9,64 @@ import { PagerComponent } from './pager.component';
   standalone: true,
   imports: [CommonModule, PagerComponent],
   template: `
-    <div class="row-between">
-      <h2>Saved jobs</h2>
-      <button class="secondary" (click)="load()" [disabled]="busy()">Refresh</button>
+    <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
+      <h3 style="margin: 0;">Saved jobs</h3>
+      <button class="btn-secondary" (click)="load()" [disabled]="busy()">Refresh</button>
     </div>
-    <p class="muted">
-      Saved from the Reports tab. Run one on demand, or let its cron schedule run it.
-    </p>
 
-    <div class="card" *ngFor="let j of pagedJobs()">
-      <div class="row-between">
-        <div>
-          <strong>{{ j.name }}</strong>
-          <span class="badge" [class.badge-ok]="j.mode === 'upsert'" [class.badge-no]="j.mode === 'append'">
-            {{ j.mode }}
-          </span>
-          <span class="badge badge-ok" *ngIf="j.cron">scheduled: {{ j.cron }}</span>
-          <span class="badge" *ngIf="!j.cron">manual</span>
-          <div class="tag">
-            {{ j.report_name }} · {{ j.source_table }} → {{ j.target_table }} ·
-            {{ j.columns.length }} cols
-            <ng-container *ngIf="j.business_keys?.length">· key: {{ j.business_keys?.join(' + ') }}</ng-container>
-          </div>
-          <div class="tag" *ngIf="j.last_run_at">
-            last run: {{ j.last_run_at | date: 'short' }} ·
-            <span [class]="'status-' + j.last_status">{{ j.last_status }}</span>
-            <ng-container *ngIf="j.last_rows != null"> · {{ j.last_rows }} rows</ng-container>
-          </div>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <button (click)="run(j)" [disabled]="busy()">
-            <span *ngIf="running() === j.id" class="spinner"></span> Run now
-          </button>
-          <button class="secondary danger" (click)="remove(j)" [disabled]="busy()">Delete</button>
-        </div>
+    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
+      <table style="margin: 0;">
+        <thead>
+          <tr>
+            <th>Job Name</th>
+            <th>Type & Schedule</th>
+            <th>Target Table</th>
+            <th>Last Run</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let j of pagedJobs()">
+            <td style="font-weight: 600;">{{ j.name }}</td>
+            <td>
+              <span class="badge" [class.badge-ok]="j.mode === 'upsert'" [class.badge-no]="j.mode === 'append'">{{ j.mode }}</span>
+              <span class="badge badge-ok" *ngIf="j.cron">{{ j.cron }}</span>
+              <span class="badge" *ngIf="!j.cron">manual</span>
+            </td>
+            <td>
+              <div class="tag">{{ j.report_name }} &rarr; {{ j.target_table }}</div>
+            </td>
+            <td>
+              <div class="tag" *ngIf="j.last_run_at">
+                {{ j.last_run_at | date: 'short' }} · <span [class]="'status-' + j.last_status">{{ j.last_status }}</span>
+              </div>
+              <div class="muted" *ngIf="!j.last_run_at">Never</div>
+            </td>
+            <td>
+              <div style="display:flex;gap:6px;">
+                <button (click)="run(j)" [disabled]="busy()">
+                  <span *ngIf="running() === j.id" class="spinner"></span> Run
+                </button>
+                <button class="btn-secondary danger" (click)="remove(j)" [disabled]="busy()">Delete</button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="jobs().length === 0">
+            <td colspan="5" class="placeholder" style="padding: 24px;">No jobs yet.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="padding: 16px 24px;" *ngIf="jobs().length > 0">
+        <app-pager [page]="jobPage()" [total]="jobs().length" [pageSize]="pageSize"
+                   (go)="jobPage.set($event)"></app-pager>
       </div>
     </div>
-    <div class="card" *ngIf="jobs().length === 0">
-      <span class="muted">No jobs yet — save one from the Reports &amp; upload tab.</span>
-    </div>
-    <app-pager [page]="jobPage()" [total]="jobs().length" [pageSize]="pageSize"
-               (go)="jobPage.set($event)"></app-pager>
 
-    <h2>Run history</h2>
-    <div class="card">
-      <table>
+    <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
+      <h3 style="margin: 0;">Run history</h3>
+    </div>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <table style="margin: 0;">
         <thead>
           <tr><th>Request</th><th>Table</th><th>Rows</th><th>Status</th><th>When</th></tr>
         </thead>
@@ -67,11 +80,13 @@ import { PagerComponent } from './pager.component';
             </td>
             <td class="muted">{{ r.started_at | date: 'short' }}</td>
           </tr>
-          <tr *ngIf="runs().length === 0"><td colspan="5" class="muted">No runs yet.</td></tr>
+          <tr *ngIf="runs().length === 0"><td colspan="5" class="placeholder" style="padding: 24px;">No runs yet.</td></tr>
         </tbody>
       </table>
-      <app-pager [page]="runPage()" [total]="runs().length" [pageSize]="pageSize"
-                 (go)="runPage.set($event)"></app-pager>
+      <div style="padding: 16px 24px;">
+        <app-pager [page]="runPage()" [total]="runs().length" [pageSize]="pageSize"
+                   (go)="runPage.set($event)"></app-pager>
+      </div>
     </div>
   `,
 })

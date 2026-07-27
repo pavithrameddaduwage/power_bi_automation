@@ -16,30 +16,55 @@ import { PagerComponent } from './pager.component';
   standalone: true,
   imports: [CommonModule, FormsModule, PagerComponent],
   template: `
-    <h2>1 · Pick a report</h2>
+    <div *ngIf="!selectedReport()">
+      <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
+        <h3 style="margin: 0;">Pick a report</h3>
+      </div>
     <div class="card">
       <input class="search" placeholder="Search reports by name or workspace…" [ngModel]="filter" (ngModelChange)="onFilterChange($event)" />
       <div class="report-list">
-        <div
-          *ngFor="let r of pagedReports()"
-          class="report-row"
-          [class.active]="selectedReport()?.id === r.id"
-          (click)="pickReport(r)"
-        >
-          <span>{{ r.name }}</span>
-          <span class="tag">{{ r.workspaceName }}</span>
+        <div class="report-item" *ngFor="let r of pagedReports()" (click)="pickReport(r)" [class.active]="selectedReport()?.id === r.id">
+          <div style="display:flex; align-items:center; gap: 16px;">
+            <div class="icon-btn-square">
+              <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z"/></svg>
+            </div>
+            <div>
+              <strong>{{ r.name }}</strong>
+              <div class="muted" style="font-size:12px;">Workspace: {{ r.workspaceName }}</div>
+            </div>
+          </div>
         </div>
         <div *ngIf="filteredReports().length === 0" class="muted" style="padding:12px;">
           <span *ngIf="!reports().length" class="spinner"></span>
           {{ reports().length ? 'No match.' : 'Loading reports…' }}
         </div>
       </div>
-      <app-pager [page]="repPage()" [total]="filteredReports().length" [pageSize]="pageSize"
-                 (go)="repPage.set($event)"></app-pager>
+        <app-pager [page]="repPage()" [total]="filteredReports().length" [pageSize]="pageSize"
+                   (go)="repPage.set($event)"></app-pager>
+      </div>
     </div>
 
     <ng-container *ngIf="selectedReport() as rep">
-      <h2>2 · Choose table &amp; columns</h2>
+      <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
+        <div style="display:flex; align-items:center; gap: 24px;">
+          <button class="icon-btn-circle" (click)="selectedReport.set(null)" title="Change report">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div style="width: 1px; height: 32px; background: var(--border);"></div>
+          <div>
+            <div class="muted" style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">WORKSPACE</div>
+            <div style="font-size:18px;font-weight:600;color:var(--text);">{{ rep.workspaceName }}</div>
+          </div>
+          <div>
+            <div class="muted" style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">REPORT</div>
+            <div style="font-size:18px;font-weight:600;color:var(--text);">{{ rep.name }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
+        <h3 style="margin: 0;">Choose table &amp; columns</h3>
+      </div>
       <div class="card">
         <div *ngIf="loadingCols()" class="muted"><span class="spinner"></span> Loading columns…</div>
         <div *ngIf="colError()" class="status-error">{{ colError() }}</div>
@@ -149,7 +174,7 @@ import { PagerComponent } from './pager.component';
                 <input type="number" min="1" [(ngModel)]="limit" style="width:90px;" />
               </label>
             </div>
-            <button (click)="sync()" [disabled]="busy() || (selectedNames().length === 0 && selectedMeasureNames().length === 0)">
+            <button class="btn-primary" (click)="sync()" [disabled]="busy() || (selectedNames().length === 0 && selectedMeasureNames().length === 0)">
               <span *ngIf="busy()" class="spinner"></span>
               {{ busy() ? 'Syncing…' : 'Sync from Power BI' }}
             </button>
@@ -158,10 +183,12 @@ import { PagerComponent } from './pager.component';
       </div>
 
       <ng-container *ngIf="loadedRows().length || loadedCols().length">
-        <h2>3 · Synced data ({{ loadedRows().length }} rows)</h2>
-        <div class="card">
+        <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
+          <h3 style="margin: 0;">Synced data ({{ loadedRows().length }} rows)</h3>
+        </div>
+        <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
           <div style="overflow:auto;">
-            <table>
+            <table style="margin: 0;">
               <thead><tr><th *ngFor="let c of loadedCols()">{{ c }}</th></tr></thead>
               <tbody>
                 <tr *ngFor="let row of pagedRows()">
@@ -173,13 +200,15 @@ import { PagerComponent } from './pager.component';
           <div class="row-between" *ngIf="pageCount() > 1">
             <span class="tag">page {{ page() + 1 }} / {{ pageCount() }}</span>
             <div style="display:flex;gap:6px;">
-              <button class="secondary" (click)="prevPage()" [disabled]="page() === 0">‹ Prev</button>
-              <button class="secondary" (click)="nextPage()" [disabled]="page() + 1 >= pageCount()">Next ›</button>
+              <button class="btn-secondary" (click)="prevPage()" [disabled]="page() === 0">‹ Prev</button>
+              <button class="btn-secondary" (click)="nextPage()" [disabled]="page() + 1 >= pageCount()">Next ›</button>
             </div>
           </div>
         </div>
 
-        <h2>4 · Write to database</h2>
+        <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
+          <h3 style="margin: 0;">Write to database</h3>
+        </div>
         <div class="card">
           <div class="grid2">
             <label>Table name in database
@@ -217,13 +246,15 @@ import { PagerComponent } from './pager.component';
 
           <div class="row-between" style="margin-top:14px;">
             <span class="tag">{{ loadedRows().length }} rows ready</span>
-            <button (click)="upload()" [disabled]="busy() || loadedRows().length === 0 || targetLocked()">
+            <button class="btn-primary" (click)="upload()" [disabled]="busy() || loadedRows().length === 0 || targetLocked()">
               Upload to database
             </button>
           </div>
         </div>
 
-        <h2>5 · Save as a scheduled job (optional)</h2>
+        <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
+          <h3 style="margin: 0;">Save as a scheduled job (optional)</h3>
+        </div>
         <div class="card">
           <p class="muted">
             Saves this exact setup (report · table · columns · mode) so it can be
@@ -242,51 +273,79 @@ import { PagerComponent } from './pager.component';
           </div>
           <div class="row-between">
             <span class="tag">examples: <code>0 6 * * *</code> daily 06:00 · <code>0 */4 * * *</code> every 4h</span>
-            <button class="secondary" (click)="saveJob()" [disabled]="busy() || targetLocked()">Save job</button>
+            <button class="btn-secondary" (click)="saveJob()" [disabled]="busy() || targetLocked()">Save job</button>
           </div>
         </div>
       </ng-container>
     </ng-container>
 
+    <!-- User access sync is currently hidden as per request 
     <ng-container *ngIf="!finalOnly">
-      <h2>Principals</h2>
+      <h2>User Access & Roles</h2>
       <div class="card">
         <div class="row-between">
-          <strong>Sync principals (access) from Power BI</strong>
-          <button class="secondary" (click)="syncPrincipals()" [disabled]="busy()">Sync from Power BI</button>
+          <strong>Sync user roles and access from Power BI</strong>
+          <button class="btn-secondary" (click)="syncPrincipals()" [disabled]="busy()">Sync from Power BI</button>
         </div>
       </div>
     </ng-container>
+    -->
 
-    <div class="row-between">
-      <h2>Stored datasets</h2>
-      <button class="secondary" (click)="loadDatasets()" [disabled]="busy()">Refresh</button>
+    <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
+      <h3 style="margin: 0;">Stored datasets</h3>
+      <button class="btn-secondary" (click)="loadDatasets()" [disabled]="busy()">Refresh</button>
     </div>
-    <div class="card" *ngFor="let d of pagedDatasets()">
-      <div class="row-between">
-        <div>
-          <strong>{{ d.label }}</strong>
-          <span class="badge badge-ok">{{ d.kind }}</span>
-          <span class="badge badge-no" *ngIf="d.locked">locked</span>
-          <div class="tag">table: {{ d.table_name }} · {{ d.last_rows }} rows</div>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <a class="btnlink" [href]="api.exportUrl(d.table_name)">Export CSV</a>
-          <button class="secondary" (click)="preview(d.table_name)" [disabled]="busy()">Preview</button>
-        </div>
-      </div>
-      <div *ngIf="previewTable() === d.table_name" style="overflow:auto;margin-top:10px;">
-        <table>
-          <thead><tr><th *ngFor="let c of previewCols()">{{ c }}</th></tr></thead>
-          <tbody>
-            <tr *ngFor="let row of previewRows()"><td *ngFor="let c of previewCols()">{{ row[c] }}</td></tr>
-          </tbody>
-        </table>
+
+    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
+      <table style="margin: 0;">
+        <thead>
+          <tr>
+            <th>Label & Kind</th>
+            <th>Table & Rows</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <ng-container *ngFor="let d of pagedDatasets()">
+            <tr>
+              <td>
+                <strong>{{ d.label }}</strong>
+                <span class="badge badge-ok" style="margin-left: 8px;">{{ d.kind }}</span>
+                <span class="badge badge-no" *ngIf="d.locked" style="margin-left: 8px;">locked</span>
+              </td>
+              <td>
+                <div class="tag">{{ d.table_name }} · {{ d.last_rows }} rows</div>
+              </td>
+              <td>
+                <div style="display:flex;gap:6px;">
+                  <a class="btn-secondary" style="text-decoration:none;" [href]="api.exportUrl(d.table_name)">Export CSV</a>
+                  <button class="btn-secondary" (click)="preview(d.table_name)" [disabled]="busy()">Preview</button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="previewTable() === d.table_name">
+              <td colspan="3" style="padding: 16px;">
+                <div style="overflow:auto;">
+                  <table style="margin: 0;">
+                    <thead><tr><th *ngFor="let c of previewCols()">{{ c }}</th></tr></thead>
+                    <tbody>
+                      <tr *ngFor="let row of previewRows()"><td *ngFor="let c of previewCols()">{{ row[c] }}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </ng-container>
+          <tr *ngIf="datasets().length === 0">
+            <td colspan="3" class="placeholder" style="padding: 24px;">Nothing stored yet.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="padding: 16px 24px;" *ngIf="datasets().length > 0">
+        <app-pager [page]="dsPage()" [total]="datasets().length" [pageSize]="pageSize"
+                   (go)="dsPage.set($event)"></app-pager>
       </div>
     </div>
-    <app-pager [page]="dsPage()" [total]="datasets().length" [pageSize]="pageSize"
-               (go)="dsPage.set($event)"></app-pager>
-    <div class="card" *ngIf="datasets().length === 0"><span class="muted">Nothing stored yet.</span></div>
   `,
 })
 export class UploadComponent implements OnInit {

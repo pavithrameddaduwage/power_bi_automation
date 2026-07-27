@@ -5,6 +5,8 @@ import {
 } from '../db/dynamic-table.service';
 import { UpsertService } from '../db/upsert.service';
 import { PowerBiService } from '../powerbi/powerbi.service';
+import { ExcelService } from '../exports/excel.service';
+import { EmailService } from '../notifications/email.service';
 
 export interface UploadReportDto {
   /** The report this data belongs to, e.g. "Inventory Amazon". */
@@ -17,6 +19,10 @@ export interface UploadReportDto {
   mode?: 'append' | 'upsert';
   /** Business keys used when mode = 'upsert'. */
   businessKeys?: string[];
+  /** Optional recipients for emailing the exported Excel */
+  recipients?: string[];
+  /** Optional subject for the email */
+  subject?: string;
   /** The rows. Keys become columns; the table grows to fit them. */
   rows: Record<string, any>[];
 }
@@ -34,6 +40,8 @@ export class UploadsService {
     private readonly dyn: DynamicTableService,
     private readonly powerbi: PowerBiService,
     private readonly upsert: UpsertService,
+    private readonly excelService: ExcelService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -82,6 +90,19 @@ export class UploadsService {
         rowsWritten: result.rowsWritten,
         status: 'success',
       });
+      
+      // Email Excel if recipients are provided
+      if (dto.recipients && dto.recipients.length > 0) {
+        try {
+          const excelBuffer = await this.excelService.generateExcelBuffer(dto.rows, dto.reportName.trim());
+          const subject = dto.subject || `New Report: ${dto.reportName.trim()}`;
+          const fileName = `${dto.reportName.trim().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+          await this.emailService.sendReport(dto.recipients, subject, excelBuffer, fileName);
+        } catch (exportErr) {
+          console.error('Failed to export/email report:', exportErr);
+        }
+      }
+
       return result;
     } catch (e: any) {
       await this.upsert.logRun({
