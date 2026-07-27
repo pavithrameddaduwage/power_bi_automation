@@ -85,21 +85,31 @@ export class PowerBiService {
     return (data.value || []).map((g: any) => ({ id: g.id, name: g.name }));
   }
 
-  /** Every dashboard across every accessible workspace. */
   async listAllDashboards(): Promise<PbiDashboard[]> {
     const groups = await this.listGroups();
     const all: PbiDashboard[] = [];
     const http = await this.client();
-    for (const g of groups) {
-      const { data } = await http.get(`/groups/${g.id}/dashboards`);
-      for (const d of data.value || []) {
-        all.push({
-          id: d.id,
-          displayName: d.displayName,
-          groupId: g.id,
-          groupName: g.name,
-        });
-      }
+    
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < groups.length; i += CHUNK_SIZE) {
+      const chunk = groups.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (g) => {
+          try {
+            const { data } = await http.get(`/groups/${g.id}/dashboards`);
+            for (const d of data.value || []) {
+              all.push({
+                id: d.id,
+                displayName: d.displayName,
+                groupId: g.id,
+                groupName: g.name,
+              });
+            }
+          } catch (e) {
+            this.logger.warn(`Could not read dashboards for workspace ${g.name}: ${e}`);
+          }
+        })
+      );
     }
     return all;
   }
@@ -126,29 +136,38 @@ export class PowerBiService {
     const groups = await this.listGroups();
     const http = await this.client();
     const out: PbiReportWithAccess[] = [];
-    for (const g of groups) {
-      let access: PbiAccessEntry[] = [];
-      try {
-        access = await this.listGroupUsers(g.id);
-      } catch (e) {
-        this.logger.warn(`Could not read users for workspace ${g.name}: ${e}`);
-      }
-      const { data } = await http.get(`/groups/${g.id}/reports`);
-      for (const r of data.value || []) {
-        out.push({
-          id: r.id,
-          name: r.name,
-          reportType: r.reportType,
-          webUrl: r.webUrl,
-          datasetId: r.datasetId,
-          workspaceId: g.id,
-          workspaceName: g.name,
-          // PowerBIReport artifacts can be exported/downloaded; paginated &
-          // others generally cannot.
-          downloadable: r.reportType === 'PowerBIReport',
-          access,
-        });
-      }
+    
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < groups.length; i += CHUNK_SIZE) {
+      const chunk = groups.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (g) => {
+          let access: PbiAccessEntry[] = [];
+          try {
+            access = await this.listGroupUsers(g.id);
+          } catch (e) {
+            this.logger.warn(`Could not read users for workspace ${g.name}: ${e}`);
+          }
+          try {
+            const { data } = await http.get(`/groups/${g.id}/reports`);
+            for (const r of data.value || []) {
+              out.push({
+                id: r.id,
+                name: r.name,
+                reportType: r.reportType,
+                webUrl: r.webUrl,
+                datasetId: r.datasetId,
+                workspaceId: g.id,
+                workspaceName: g.name,
+                downloadable: r.reportType === 'PowerBIReport',
+                access,
+              });
+            }
+          } catch (e) {
+            this.logger.warn(`Could not read reports for workspace ${g.name}: ${e}`);
+          }
+        })
+      );
     }
     return out;
   }
@@ -157,25 +176,30 @@ export class PowerBiService {
   async allWorkspaceUsers(): Promise<PbiWorkspaceUser[]> {
     const groups = await this.listGroups();
     const out: PbiWorkspaceUser[] = [];
-    for (const g of groups) {
-      let users: PbiAccessEntry[] = [];
-      try {
-        users = await this.listGroupUsers(g.id);
-      } catch (e) {
-        this.logger.warn(`Could not read users for workspace ${g.name}: ${e}`);
-        continue;
-      }
-      for (const u of users) {
-        out.push({
-          workspace_id: g.id,
-          workspace_name: g.name,
-          display_name: u.name,
-          email: u.email,
-          role: u.role,
-          principal_type: u.principalType,
-          can_download: u.canDownload,
-        });
-      }
+    
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < groups.length; i += CHUNK_SIZE) {
+      const chunk = groups.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (g) => {
+          try {
+            const users = await this.listGroupUsers(g.id);
+            for (const u of users) {
+              out.push({
+                workspace_id: g.id,
+                workspace_name: g.name,
+                display_name: u.name,
+                email: u.email,
+                role: u.role,
+                principal_type: u.principalType,
+                can_download: u.canDownload,
+              });
+            }
+          } catch (e) {
+            this.logger.warn(`Could not read users for workspace ${g.name}: ${e}`);
+          }
+        })
+      );
     }
     return out;
   }
