@@ -215,6 +215,15 @@ import { PagerComponent } from './pager.component';
             The table has been created and cannot be edited.
           </div>
 
+          <div class="grid2" style="margin-top:14px;">
+            <label>Email recipients (comma-separated, optional)
+              <input [(ngModel)]="recipients" placeholder="user@company.com, team@company.com" />
+            </label>
+            <label>Email subject (optional)
+              <input [(ngModel)]="emailSubject" placeholder="Scheduled Report Export" />
+            </label>
+          </div>
+
           <div class="row-between" style="margin-top:14px;">
             <span class="tag">{{ loadedRows().length }} rows ready</span>
             <button (click)="upload()" [disabled]="busy() || loadedRows().length === 0 || targetLocked()">
@@ -328,6 +337,9 @@ export class UploadComponent implements OnInit {
 
   jobName = '';
   cron = '';
+
+  recipients = '';
+  emailSubject = '';
 
   busy = signal(false);
 
@@ -627,6 +639,8 @@ export class UploadComponent implements OnInit {
         tableName: this.tableName,
         mode: this.mode,
         businessKeys: this.selectedKeyNames(),
+        recipients: this.recipients ? this.recipients.split(',').map(e => e.trim()).filter(e => e) : undefined,
+        subject: this.emailSubject.trim() || undefined,
       })
       .subscribe({
         next: (res) => {
@@ -667,6 +681,8 @@ export class UploadComponent implements OnInit {
         dateColumn: this.dateColumn() || undefined,
         dateFrom: (this.dateColumn() && this.dateFrom()) || undefined,
         dateTo: (this.dateColumn() && this.dateTo()) || undefined,
+        recipients: this.recipients.trim() || undefined,
+        emailSubject: this.emailSubject.trim() || undefined,
       })
       .subscribe({
         next: () => {
