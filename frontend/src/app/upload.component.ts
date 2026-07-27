@@ -16,7 +16,6 @@ import { PagerComponent } from './pager.component';
   standalone: true,
   imports: [CommonModule, FormsModule, PagerComponent],
   template: `
-    <!-- Power BI Report Selection temporarily hidden as requested
     <div *ngIf="!selectedReport()">
       <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
         <h3 style="margin: 0;">Pick a report</h3>
@@ -44,9 +43,7 @@ import { PagerComponent } from './pager.component';
                    (go)="repPage.set($event)"></app-pager>
       </div>
     </div>
-    -->
 
-    <!-- Power BI Sync Configuration temporarily hidden as requested
     <ng-container *ngIf="selectedReport() as rep">
       <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
         <div style="display:flex; align-items:center; gap: 24px;">
@@ -281,7 +278,6 @@ import { PagerComponent } from './pager.component';
         </div>
       </ng-container>
     </ng-container>
-    -->
 
     <!-- User access sync is currently hidden as per request 
     <ng-container *ngIf="!finalOnly">
@@ -464,7 +460,7 @@ export class UploadComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // this.loadReports(); // Temporarily disabled to bypass Power BI authorization
+    this.loadReports();
     this.loadDatasets();
   }
 
