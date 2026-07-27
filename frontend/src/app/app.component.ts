@@ -23,8 +23,7 @@ type Tab = 'final' | 'all' | 'jobs' | 'history' | 'email-history';
         <!-- Full-width Top Nav -->
         <nav class="top-nav" style="border-bottom: 1px solid var(--border); padding: 0; display: flex; align-items: stretch; justify-content: space-between; height: 64px;">
           <div style="display: flex; align-items: center; height: 100%;">
-            <div style="font-size: 20px; font-weight: 700; width: 250px; padding: 0 24px; box-sizing: border-box; color: #111827;">Power BI Portal</div>
-            <div style="width: 1px; height: 100%; background: var(--border);"></div>
+            <div style="font-size: 20px; font-weight: 700; width: 250px; padding: 0 24px; box-sizing: border-box; color: #111827; height: 100%; display: flex; align-items: center; border-right: 1px solid var(--border);">Power BI Portal</div>
             <div class="breadcrumb" style="font-size: 15px; font-weight: 600; padding: 0 24px; color: #111827; display: flex; align-items: center; gap: 8px;">
             </div>
           </div>
