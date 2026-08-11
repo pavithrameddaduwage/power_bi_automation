@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, computed, signal } from '@angular/core';
+import { Component, HostListener, Input, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -7,6 +7,8 @@ import {
   ReportWithAccess,
   DatasetColumn,
   DatasetMeasure,
+  DbConnection,
+  NewDbDto,
 } from './sync.service';
 import { ToastService } from './toast.service';
 import { PagerComponent } from './pager.component';
@@ -23,7 +25,7 @@ import { PagerComponent } from './pager.component';
       </div>
       <div class="step" [class.active]="currentStep() === 2" [class.disabled]="!selectedReport()" (click)="selectedReport() && setStep(2)">
         <div class="step-num">2</div>
-        <div class="step-label">Columns</div>
+        <div class="step-label">Tables & Columns</div>
       </div>
       <div class="step" [class.active]="currentStep() === 3" [class.disabled]="!loadedRows().length && !loadedCols().length" (click)="(loadedRows().length || loadedCols().length) && setStep(3)">
         <div class="step-num">3</div>
@@ -95,7 +97,7 @@ import { PagerComponent } from './pager.component';
             <input style="flex:1" placeholder="Email recipients (comma separated)" [(ngModel)]="datasetEmails[d.table_name]" />
             <button class="btn-secondary" (click)="sendEmail(d.table_name)" [disabled]="busy() || !datasetEmails[d.table_name]">Send Excel via Email</button>
           </div>
-          <div *ngIf="previewTable() === d.table_name" style="overflow:auto;margin-top:10px;">
+          <div *ngIf="previewTable() === d.table_name" class="table-container" style="overflow:auto;margin-top:10px;">
             <table>
               <thead><tr><th *ngFor="let c of previewCols()">{{ c }}</th></tr></thead>
               <tbody>
@@ -111,29 +113,43 @@ import { PagerComponent } from './pager.component';
 
       <!-- STEP 2 -->
       <ng-container *ngIf="currentStep() === 2 && selectedReport() as rep">
-        <h2>2 Choose table &amp; columns</h2>
+        <h2>2 Choose tables &amp; columns</h2>
         <div class="card">
           <div *ngIf="loadingCols()" class="muted"><span class="spinner"></span> Loading columns…</div>
           <div *ngIf="colError()" class="status-error">{{ colError() }}</div>
 
-          <label *ngIf="tables().length">
-            {{ finalOnly ? 'Final report table — the combined output users download' : 'Tables connected to this report' }}
-            ({{ tables().length }})
-          </label>
-          <input *ngIf="tables().length" class="search" placeholder="Search tables…"
-                 [ngModel]="tableFilter()" (ngModelChange)="tableFilter.set($event)" />
-          <div class="scroll-list" *ngIf="tables().length">
-            <div
-              *ngFor="let t of filteredTables()"
-              class="report-row"
-              [class.active]="activeTable() === t"
-              (click)="setTable(t)"
-            >
-              <span>{{ t }}</span>
-              <span class="tag">{{ columnCount(t) }} cols</span>
+          <ng-container *ngIf="tables().length">
+            <div class="row-between" style="margin-bottom:8px;">
+              <label>
+                {{ finalOnly ? 'Final report tables' : 'Tables connected to this report' }}
+                ({{ tables().length }}) — <strong>tick multiple</strong>
+              </label>
+              <label class="pick" style="margin:0; font-size:13px;">
+                <input type="checkbox" [(ngModel)]="showAllTables" (ngModelChange)="reloadColumnsForHiddenToggle()" />
+                Show all tables (incl. hidden)
+              </label>
             </div>
-            <div *ngIf="filteredTables().length === 0" class="muted" style="padding:12px;">No match.</div>
-          </div>
+            <input *ngIf="tables().length" class="search" placeholder="Search tables…"
+                   [ngModel]="tableFilter()" (ngModelChange)="tableFilter.set($event)" />
+            <div class="scroll-list" *ngIf="tables().length">
+              <div
+                *ngFor="let t of filteredTables()"
+                class="report-row multi-table-row"
+                [class.active]="selectedTables().includes(t)"
+                (click)="toggleTable(t)"
+              >
+                <input type="checkbox" [checked]="selectedTables().includes(t)" (click)="$event.stopPropagation()" (change)="toggleTable(t)" />
+                <span style="flex:1">{{ t }}</span>
+                <span class="tag">{{ columnCount(t) }} cols</span>
+              </div>
+              <div *ngIf="filteredTables().length === 0" class="muted" style="padding:12px;">No match.</div>
+            </div>
+
+            <div *ngIf="selectedTables().length > 0" class="selected-tables-summary">
+              <span class="badge badge-ok" *ngFor="let t of selectedTables()">{{ t }}</span>
+              <span class="tag">{{ activeColumns().length }} total columns</span>
+            </div>
+          </ng-container>
 
           <ng-container *ngIf="activeColumns().length">
             <div class="row-between" style="margin-top:16px;">
@@ -141,7 +157,7 @@ import { PagerComponent } from './pager.component';
                 <input type="checkbox" [checked]="allChecked()" (change)="toggleAll($event)" />
                 Select all columns
               </label>
-              <span class="tag">{{ selectedNames().length }} of {{ activeColumns().length }} selected · {{ activeTable() }}</span>
+              <span class="tag">{{ selectedNames().length }} of {{ activeColumns().length }} selected</span>
             </div>
             <input class="search" placeholder="Search columns…" [ngModel]="columnFilter()" (ngModelChange)="columnFilter.set($event)" />
             <div class="scroll-list">
@@ -150,6 +166,7 @@ import { PagerComponent } from './pager.component';
                   <tr>
                     <th style="width:40px;">Use</th>
                     <th>Column</th>
+                    <th>Table</th>
                     <th>Data type</th>
                     <th style="width:80px; text-align:center;">Key</th>
                   </tr>
@@ -158,6 +175,7 @@ import { PagerComponent } from './pager.component';
                   <tr *ngFor="let c of filteredColumns()">
                     <td><input type="checkbox" [checked]="selected()[c.name]" (change)="toggle(c.name)" /></td>
                     <td>{{ c.name }} <span class="badge badge-ok" *ngIf="c.isKey">model key</span></td>
+                    <td class="tag" style="font-size:11px;">{{ c.table }}</td>
                     <td class="tag">{{ c.dataType }}</td>
                     <td style="text-align:center;">
                       <input type="checkbox" [checked]="keySelected()[c.name]"
@@ -196,23 +214,17 @@ import { PagerComponent } from './pager.component';
               </div>
             </div>
 
-            <div *ngIf="dateColumns().length" style="margin-top:16px;">
-              <label>Filter by date range (optional)</label>
-              <div class="daterow">
-                <select [ngModel]="dateColumn()" (ngModelChange)="dateColumn.set($event)">
-                  <option value="">— no date filter —</option>
-                  <option *ngFor="let c of dateColumns()" [value]="c.name">{{ c.name }}</option>
-                </select>
-                <label style="margin:0;">From
-                  <input type="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)" [disabled]="!dateColumn()" />
-                </label>
-                <label style="margin:0;">To
-                  <input type="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)" [disabled]="!dateColumn()" />
-                </label>
-              </div>
+
+            <div class="grid2" style="margin-top:16px; border-top:1px solid var(--border); padding-top:14px;">
+              <label>Email recipients (comma-separated, optional)
+                <input [(ngModel)]="recipients" placeholder="user@company.com, team@company.com" />
+              </label>
+              <label>Email subject (optional)
+                <input [(ngModel)]="emailSubject" placeholder="Excel Report Export" />
+              </label>
             </div>
 
-            <div class="row-between" style="margin-top:14px;">
+            <div class="row-between" style="margin-top:16px; flex-wrap:wrap; gap:10px;">
               <div style="display:flex;gap:16px;align-items:center;">
                 <label class="pick" style="margin:0;">
                   <input type="checkbox" [ngModel]="allRows()" (ngModelChange)="allRows.set($event)" /> All rows
@@ -221,38 +233,109 @@ import { PagerComponent } from './pager.component';
                   <input type="number" min="1" [(ngModel)]="limit" style="width:90px;" />
                 </label>
               </div>
-              <button class="btn-primary" (click)="sync()" [disabled]="busy() || (selectedNames().length === 0 && selectedMeasureNames().length === 0)">
-                <span *ngIf="busy()" class="spinner-white"></span>
-                {{ busy() ? 'Syncing…' : 'Sync from Power BI' }}
-              </button>
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <button class="btn-secondary" (click)="syncAndEmailFromStep2()" [disabled]="busy() || selectedTables().length === 0 || !recipients.trim()">
+                  <span *ngIf="busy()" class="spinner"></span>
+                  📧 Send Report via Email
+                </button>
+                <button class="btn-primary" (click)="sync()" [disabled]="busy() || selectedTables().length === 0 || (selectedNames().length === 0 && selectedMeasureNames().length === 0)">
+                  <span *ngIf="busy()" class="spinner-white"></span>
+                  {{ busy() ? 'Syncing…' : '🔄 Sync & Preview Data' }}
+                </button>
+              </div>
             </div>
           </ng-container>
         </div>
         <div class="wizard-footer row-between">
           <button class="btn-secondary" (click)="setStep(1)">‹ Back</button>
-          <button class="btn-primary" (click)="setStep(3)" [disabled]="!loadedRows().length && !loadedCols().length">Next ›</button>
+          <button class="btn-primary" (click)="nextFromStep2()" [disabled]="busy() || selectedTables().length === 0">Next ›</button>
         </div>
       </ng-container>
 
-      <!-- STEP 3 -->
+      <!-- STEP 3 — Data with column filters -->
       <ng-container *ngIf="currentStep() === 3 && (loadedRows().length || loadedCols().length)">
-        <h2>3 Synced data ({{ loadedRows().length }} rows)</h2>
+        <div class="row-between" style="margin-bottom:12px;">
+          <h2>3 Synced data
+            <span class="tag" style="font-size:13px; margin-left:8px;">
+              {{ filteredLoadedRows().length }} of {{ loadedRows().length }} rows
+              <ng-container *ngIf="hasActiveColFilters()"> (filtered)</ng-container>
+            </span>
+          </h2>
+          <button class="btn-secondary" (click)="clearColFilters()" *ngIf="hasActiveColFilters()">✕ Clear Filters</button>
+        </div>
         <div class="card">
-          <div style="overflow:auto;">
+          <div class="table-container" style="overflow:auto;">
             <table>
-              <thead><tr><th *ngFor="let c of loadedCols()">{{ c }}</th></tr></thead>
-              <tbody>
-                <tr *ngFor="let row of pagedRows()">
-                  <td *ngFor="let c of loadedCols()">{{ row[c] }}</td>
+              <thead>
+                <tr>
+                  <th *ngFor="let c of loadedCols()" style="cursor: pointer;" (click)="toggleHeaderFilter(c, $event)">
+                    <div class="th-header-cell">
+                      <span class="th-title">{{ c }}</span>
+
+                      <ng-container *ngIf="colFilters()[c] || colFilterFrom()[c] || colFilterTo()[c]; else normalArrow">
+                        <span class="active-filter-badge" (click)="clearSingleFilter(c, $event)" title="Clear filter">
+                          {{ colFilters()[c] || 'Filtered' }} ✕
+                        </span>
+                      </ng-container>
+                      <ng-template #normalArrow>
+                        <span class="th-arrow-btn" [class.open]="activeFilterCol() === c">▾</span>
+                      </ng-template>
+                    </div>
+                  </th>
                 </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of pagedRows()"><td *ngFor="let c of loadedCols()">{{ row[c] }}</td></tr>
               </tbody>
             </table>
           </div>
-          <div class="row-between" *ngIf="pageCount() > 1">
-            <span class="tag">page {{ page() + 1 }} / {{ pageCount() }}</span>
+
+          <!-- Floating Popover Filter Menu (fixed positioning prevents container overflow clipping) -->
+          <div *ngIf="activeFilterCol() as c"
+               class="filter-popover"
+               [style.top.px]="popoverPos().top"
+               [style.left.px]="popoverPos().left"
+               (click)="$event.stopPropagation()">
+            <ng-container *ngIf="isDateCol(c); else valuePopover">
+              <div class="popover-header">Filter Date Range</div>
+              <div class="popover-field">
+                <label>From</label>
+                <input type="date" [ngModel]="colFilterFrom()[c] || ''" (ngModelChange)="setColFilterFrom(c, $event)" />
+              </div>
+              <div class="popover-field">
+                <label>To</label>
+                <input type="date" [ngModel]="colFilterTo()[c] || ''" (ngModelChange)="setColFilterTo(c, $event)" />
+              </div>
+              <div class="popover-actions">
+                <button class="btn-popover-sub" (click)="clearSingleFilter(c, $event)">Clear</button>
+                <button class="btn-popover-main" (click)="activeFilterCol.set(null)">Apply</button>
+              </div>
+            </ng-container>
+
+            <ng-template #valuePopover>
+              <div class="popover-header">Filter {{ c }}</div>
+              <input class="popover-search-input" placeholder="Search values…"
+                     [ngModel]="popoverSearch[c] || ''"
+                     (ngModelChange)="popoverSearch[c] = $event"
+                     (click)="$event.stopPropagation()" />
+              <div class="popover-options-list">
+                <div class="popover-option" [class.active]="!colFilters()[c]" (click)="setColFilter(c, ''); activeFilterCol.set(null)">
+                  <span>— All —</span>
+                </div>
+                <div *ngFor="let v of filteredUniqueValues(c)"
+                     class="popover-option"
+                     [class.active]="colFilters()[c] === v"
+                     (click)="setColFilter(c, v); activeFilterCol.set(null)">
+                  <span>{{ v }}</span>
+                </div>
+              </div>
+            </ng-template>
+          </div>
+          <div class="row-between" *ngIf="filteredPageCount() > 1">
+            <span class="tag">page {{ page() + 1 }} / {{ filteredPageCount() }}</span>
             <div style="display:flex;gap:6px;">
               <button class="btn-secondary" (click)="prevPage()" [disabled]="page() === 0">‹ Prev</button>
-              <button class="btn-secondary" (click)="nextPage()" [disabled]="page() + 1 >= pageCount()">Next ›</button>
+              <button class="btn-secondary" (click)="nextPage()" [disabled]="page() + 1 >= filteredPageCount()">Next ›</button>
             </div>
           </div>
         </div>
@@ -262,9 +345,82 @@ import { PagerComponent } from './pager.component';
         </div>
       </ng-container>
 
-      <!-- STEP 4 -->
+      <!-- STEP 4 — Database + Write Mode -->
       <ng-container *ngIf="currentStep() === 4 && (loadedRows().length || loadedCols().length)">
         <h2>4 Write to database</h2>
+
+        <!-- Target Database Panel -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="row-between" style="margin-bottom:12px;">
+            <strong>🗄 Target Database</strong>
+            <button class="btn-secondary" (click)="loadDatabases()" [disabled]="busy()">Refresh</button>
+          </div>
+
+          <!-- Saved connections -->
+          <div *ngIf="databases().length > 0" style="margin-bottom:16px;">
+            <div class="db-conn-row" *ngFor="let db of databases()">
+              <div style="display:flex;align-items:center;gap:10px;flex:1;">
+                <input type="radio" name="activeDb" [checked]="db.is_active" (change)="switchDatabase(db.id)" />
+                <div>
+                  <strong>{{ db.label || db.host + ':' + db.port + '/' + db.dbname }}</strong>
+                  <div class="tag">{{ db.host }}:{{ db.port }} / {{ db.dbname }} · user: {{ db.username }}</div>
+                </div>
+                <span class="badge badge-ok" *ngIf="db.is_active">ACTIVE</span>
+              </div>
+              <button class="btn-secondary btn-danger-outline" (click)="removeDatabase(db.id)" [disabled]="busy()">Remove</button>
+            </div>
+          </div>
+          <div *ngIf="databases().length === 0" class="muted" style="margin-bottom:12px;">
+            No saved connections — using internal database. Add one below.
+          </div>
+
+          <!-- Add new database form -->
+          <div>
+            <button class="btn-secondary" (click)="showDbForm.set(!showDbForm())" style="margin-bottom:12px;">
+              {{ showDbForm() ? '▲ Hide' : '+ Add New Database' }}
+            </button>
+            <div *ngIf="showDbForm()" class="db-form">
+              <div class="grid3">
+                <label>Host
+                  <input [(ngModel)]="newDb.host" placeholder="192.168.1.100 or myserver.com" />
+                </label>
+                <label>Port
+                  <input type="number" [(ngModel)]="newDb.port" placeholder="5432" />
+                </label>
+                <label>Database name (will be created)
+                  <input [(ngModel)]="newDb.dbname" placeholder="my_powerbi_db" />
+                </label>
+              </div>
+              <div class="grid3">
+                <label>Username
+                  <input [(ngModel)]="newDb.username" placeholder="postgres" />
+                </label>
+                <label>Password
+                  <input type="password" [(ngModel)]="newDb.password" placeholder="••••••••" />
+                </label>
+                <label>Label (optional)
+                  <input [(ngModel)]="newDb.label" placeholder="My production DB" />
+                </label>
+              </div>
+              <div class="row-between" style="margin-top:12px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <button class="btn-secondary" (click)="testDbConnection()" [disabled]="busy() || !newDb.host || !newDb.dbname">
+                    <span *ngIf="dbTestState() === 'testing'" class="spinner"></span>
+                    Test Connection
+                  </button>
+                  <span *ngIf="dbTestState() === 'ok'" style="color:#16a34a;font-weight:600;">✅ Connected</span>
+                  <span *ngIf="dbTestState() === 'fail'" style="color:#dc2626;font-weight:600;">❌ {{ dbTestError() }}</span>
+                </div>
+                <button class="btn-primary" (click)="createDatabase()" [disabled]="busy() || !newDb.host || !newDb.dbname || !newDb.username || !newDb.password">
+                  <span *ngIf="busy()" class="spinner-white"></span>
+                  Create DB &amp; Set Active
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Write settings -->
         <div class="card">
           <div class="grid2">
             <label>Table name in database
@@ -275,23 +431,79 @@ import { PagerComponent } from './pager.component';
             </label>
           </div>
 
-          <label>Write mode</label>
+          <!-- Write mode: Total / Delta / Append / Upsert -->
+          <label style="margin-top:14px;display:block;">Write mode</label>
           <div class="modes">
-            <label class="pick"><input type="radio" name="mode" value="append" [(ngModel)]="mode" /> Append (add rows)</label>
-            <label class="pick"><input type="radio" name="mode" value="upsert" [(ngModel)]="mode" /> Upsert (update matching rows)</label>
+            <label class="pick"><input type="radio" name="writeMode" value="total" [(ngModel)]="writeMode" /> Total (all loaded rows)</label>
+            <label class="pick"><input type="radio" name="writeMode" value="delta" [(ngModel)]="writeMode" /> Delta (rows newer than last sync)</label>
+            <label class="pick"><input type="radio" name="writeMode" value="append" [(ngModel)]="writeMode" /> Append (add all rows as-is)</label>
+            <label class="pick"><input type="radio" name="writeMode" value="upsert" [(ngModel)]="writeMode" /> Upsert (update matching rows)</label>
           </div>
 
-          <div class="warn" *ngIf="mode === 'append'">
+          <div class="warn" *ngIf="writeMode === 'append'">
             ⚠ Append inserts every row on each run — re-running or scheduling this
             <strong>duplicates</strong> the data. Pick Upsert + a business key to update in place.
           </div>
+          <div *ngIf="writeMode === 'delta'" style="margin-top:10px;">
+            <label>Date column for delta
+              <select [(ngModel)]="deltaDateCol">
+                <option value="">— pick column —</option>
+                <option *ngFor="let c of loadedDateCols()" [value]="c">{{ c }}</option>
+              </select>
+            </label>
+            <div class="daterow" *ngIf="deltaDateCol">
+              <label style="margin:0;">Since
+                <input type="date" [(ngModel)]="deltaSince" />
+              </label>
+              <span class="tag" *ngIf="lastSyncAt()">Last sync: {{ lastSyncAt() | date:'short' }}</span>
+              <button class="btn-secondary" *ngIf="lastSyncAt()" (click)="useLast()" style="padding:6px 12px;">Use last sync date</button>
+            </div>
+          </div>
 
-          <div *ngIf="mode === 'upsert'" style="margin-top:10px;">
+          <!-- Custom column selection for write -->
+          <div style="margin-top:14px;">
+            <label class="pick" style="margin:0;">
+              <input type="checkbox" [(ngModel)]="customColumns" /> Choose which columns to write to DB
+            </label>
+            <div *ngIf="customColumns" class="scroll-list" style="max-height:160px;margin-top:8px;">
+              <label class="pick" *ngFor="let c of loadedCols()" style="display:flex;gap:8px;margin:4px 0;">
+                <input type="checkbox" [checked]="writeColSelected()[c]" (change)="toggleWriteCol(c)" />
+                {{ c }}
+              </label>
+            </div>
+          </div>
+
+          <!-- Year / date filter on loaded rows before writing -->
+          <div *ngIf="loadedDateCols().length" style="margin-top:14px;">
+            <label>Year / date filter (applied before writing)</label>
+            <div class="daterow">
+              <label style="margin:0;">Column
+                <select [(ngModel)]="writeDateCol">
+                  <option value="">— none —</option>
+                  <option *ngFor="let c of loadedDateCols()" [value]="c">{{ c }}</option>
+                </select>
+              </label>
+              <label style="margin:0;">Year from
+                <input type="number" [(ngModel)]="writeYearFrom" placeholder="2023" style="width:90px;" [disabled]="!writeDateCol" />
+              </label>
+              <label style="margin:0;">Year to
+                <input type="number" [(ngModel)]="writeYearTo" placeholder="2025" style="width:90px;" [disabled]="!writeDateCol" />
+              </label>
+              <label style="margin:0;">Date from
+                <input type="date" [(ngModel)]="writeDateFrom" [disabled]="!writeDateCol" />
+              </label>
+              <label style="margin:0;">Date to
+                <input type="date" [(ngModel)]="writeDateTo" [disabled]="!writeDateCol" />
+              </label>
+            </div>
+          </div>
+
+          <div *ngIf="writeMode === 'upsert'" style="margin-top:10px;">
             <label>Upsert keys{{ autoKeyNote() }}</label>
             <div class="keychips">
               <span class="chip" *ngFor="let n of selectedKeyNames()">{{ n }}</span>
               <span class="muted" *ngIf="selectedKeyNames().length === 0">
-                No keys ticked — tick the “Key” box on the column(s) above.
+                No keys ticked — tick the "Key" box on the column(s) above.
               </span>
             </div>
           </div>
@@ -309,11 +521,16 @@ import { PagerComponent } from './pager.component';
             </label>
           </div>
 
-          <div class="row-between" style="margin-top:14px;">
-            <span class="tag">{{ loadedRows().length }} rows ready</span>
-            <button class="btn-primary" (click)="upload()" [disabled]="busy() || loadedRows().length === 0 || targetLocked()">
-              Upload to database
-            </button>
+          <div class="row-between" style="margin-top:16px; flex-wrap:wrap; gap:10px;">
+            <span class="tag" style="font-size:13px;">{{ writeRows().length }} rows ready</span>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <button class="btn-secondary" (click)="sendReportEmail()" [disabled]="busy() || writeRows().length === 0 || !recipients.trim()">
+                📧 Send Report via Email
+              </button>
+              <button class="btn-primary" (click)="upload()" [disabled]="busy() || writeRows().length === 0 || targetLocked()">
+                💾 Upload to Database
+              </button>
+            </div>
           </div>
         </div>
         <div class="wizard-footer row-between">
@@ -327,7 +544,7 @@ import { PagerComponent } from './pager.component';
         <h2>5 Save as a scheduled job (optional)</h2>
         <div class="card">
           <p class="muted">
-            Saves this exact setup (report · table · columns · mode) so it can be
+            Saves this exact setup (report · tables · columns · mode) so it can be
             re-run or scheduled. Leave cron blank to just save it for one-click runs.
           </p>
           <div class="grid2">
@@ -354,128 +571,76 @@ import { PagerComponent } from './pager.component';
     </div>
   `,
   styles: [`
-    .wizard-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 32px;
-      background: white;
-      padding: 16px 24px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-      border: 1px solid #e0e4eb;
+    /* Only component-level overrides needed here — global styles.css handles the rest */
+    :host { display: block; }
+
+    /* Subtle step connector line between steps */
+    .wizard-header { gap: 4px; }
+    .step-connector {
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border2), var(--border));
+      max-width: 40px;
     }
-    .search {
-      margin-bottom: 16px;
-      margin-top: 8px;
-      padding: 12px;
-      font-size: 14px;
+
+    /* Table header filter popover */
+    .th-header-cell {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; user-select: none;
     }
-    .daterow {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-      margin-bottom: 16px;
-      margin-top: 8px;
+    .th-title {
+      font-size: 13px; font-weight: 700; color: #000000; white-space: nowrap;
     }
-    .daterow select {
-      flex: 1;
+    .th-arrow-btn {
+      font-size: 11px; color: #111827; transition: transform 0.15s; display: inline-block;
     }
-    .step {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      cursor: pointer;
-      opacity: 0.6;
-      transition: all 0.3s ease;
+    .th-arrow-btn.open { transform: rotate(180deg); }
+    .active-filter-badge {
+      display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px;
+      border-radius: 99px; background: #1d6ef5; color: #ffffff;
+      font-size: 11px; font-weight: 600; cursor: pointer;
     }
-    .step.active {
-      opacity: 1;
+
+    .filter-popover {
+      position: fixed; margin-top: 0;
+      min-width: 220px; max-width: 280px; background: #ffffff;
+      border: 1px solid #bce0fd; border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 12px;
+      z-index: 9999; cursor: default; text-transform: none; font-weight: normal;
     }
-    .step.disabled {
-      cursor: not-allowed;
-      opacity: 0.3;
+    .popover-header { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 8px; text-align: left; }
+    .popover-search-input {
+      font-size: 12px; padding: 6px 10px; border: 1px solid #c2ccd9;
+      border-radius: 6px; width: 100%; margin-bottom: 8px; outline: none;
     }
-    .step-num {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: #f0f0f0;
-      color: #666;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-weight: bold;
+    .popover-search-input:focus { border-color: #1d6ef5; }
+    .popover-options-list { max-height: 180px; overflow-y: auto; border: 1px solid #edf2f7; border-radius: 6px; text-align: left; }
+    .popover-option {
+      padding: 7px 10px; font-size: 12px; color: #1e293b; cursor: pointer;
+      border-bottom: 1px solid #f1f5f9; transition: background 0.1s;
     }
-    .step.active .step-num {
-      background: #3b82f6;
-      color: white;
-      border: 1px solid #1e40af;
-      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
-    }
-    .step-label {
+    .popover-option:last-child { border-bottom: none; }
+    .popover-option:hover { background: #eff5ff; color: #1d6ef5; }
+    .popover-option.active { background: #eff5ff; color: #1d6ef5; font-weight: 700; }
+    .popover-field { margin-bottom: 8px; text-align: left; }
+    .popover-field label { display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 2px; }
+    .popover-field input { font-size: 12px; padding: 5px 8px; border: 1px solid #c2ccd9; border-radius: 6px; width: 100%; }
+    .popover-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
+    .btn-popover-main { background: #1d6ef5; color: #fff; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-popover-sub { background: #ffffff; color: #374151; border: 1px solid #c2ccd9; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+    /* Table cell values */
+    td { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Compact scroll list row hover */
+    .scroll-list .report-row:hover { background: #f0f4ff; }
+    .scroll-list .report-row.active {
+      background: var(--accent-light);
+      color: var(--accent);
+      border-left: 3px solid var(--accent);
       font-weight: 600;
-      color: #333;
-      font-size: 14px;
-    }
-    .wizard-footer {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid #eaeaea;
-    }
-    .btn-primary {
-      background: #3b82f6;
-      color: white;
-      border: 1px solid #1e40af;
-      padding: 10px 24px;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-primary:hover:not(:disabled) {
-      background: #2563eb;
-    }
-    .btn-primary:disabled {
-      background: #ccc;
-      box-shadow: none;
-      cursor: not-allowed;
-    }
-    .btn-secondary {
-      background: white;
-      color: #4b5563;
-      border: 1px solid #d1d5db;
-      padding: 10px 24px;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-secondary:hover:not(:disabled) {
-      background: #f9fafb;
-      border-color: #9ca3af;
-    }
-    .btn-secondary:disabled {
-      background: #f3f4f6;
-      color: #9ca3af;
-      cursor: not-allowed;
-    }
-    .spinner-white {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 50%;
-      border-top-color: white;
-      animation: spin 1s ease-in-out infinite;
-      margin-right: 8px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
     }
   `],
 })
 export class UploadComponent implements OnInit {
-  /** When true, only the curated/combined "final report" tables are shown. */
   @Input() finalOnly = false;
 
   currentStep = signal(1);
@@ -491,9 +656,13 @@ export class UploadComponent implements OnInit {
   measureSelected = signal<Record<string, boolean>>({});
   loadingCols = signal(false);
   colError = signal('');
+
+  // ── Multi-table ───────────────────────────────────────────────────
   tables = signal<string[]>([]);
   tableFilter = signal('');
-  activeTable = signal('');
+  selectedTables = signal<string[]>([]);
+  showAllTables = false;
+
   selected = signal<Record<string, boolean>>({});
   limit = 500;
   allRows = signal(false);
@@ -510,23 +679,52 @@ export class UploadComponent implements OnInit {
 
   owner = '';
   tableName = '';
-  mode: 'append' | 'upsert' = 'append';
+  /** 'total' | 'delta' | 'append' | 'upsert' */
+  writeMode: 'total' | 'delta' | 'append' | 'upsert' = 'append';
   keySelected = signal<Record<string, boolean>>({});
+
+  // ── Delta / date filter ───────────────────────────────────────────
+  deltaDateCol = '';
+  deltaSince = '';
+  lastSyncAt = signal<string | null>(null);
+  writeDateCol = '';
+  writeYearFrom: number | null = null;
+  writeYearTo: number | null = null;
+  writeDateFrom = '';
+  writeDateTo = '';
+
+  // ── Custom column write selection ─────────────────────────────────
+  customColumns = false;
+  writeColSelected = signal<Record<string, boolean>>({});
 
   jobName = '';
   cron = '';
-
   recipients = '';
   emailSubject = '';
 
   busy = signal(false);
-
   datasets = signal<DynamicDataset[]>([]);
   datasetEmails: Record<string, string> = {};
   previewTable = signal('');
   previewCols = signal<string[]>([]);
   previewRows = signal<any[]>([]);
 
+  // ── Column filters (Step 3) ───────────────────────────────────────
+  colFilters = signal<Record<string, string>>({});
+  colFilterFrom = signal<Record<string, string>>({});
+  colFilterTo = signal<Record<string, string>>({});
+  activeFilterCol = signal<string | null>(null);
+  popoverPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
+  popoverSearch: Record<string, string> = {};
+
+  // ── Database management ───────────────────────────────────────────
+  databases = signal<DbConnection[]>([]);
+  showDbForm = signal(false);
+  newDb: NewDbDto & { label?: string; port?: number } = { host: '', port: 5432, dbname: '', username: '', password: '' };
+  dbTestState = signal<'idle' | 'testing' | 'ok' | 'fail'>('idle');
+  dbTestError = signal('');
+
+  // ── Computed ──────────────────────────────────────────────────────
   filterSig = signal('');
   filteredReports = computed(() => {
     const f = this.filterSig().trim().toLowerCase();
@@ -546,13 +744,18 @@ export class UploadComponent implements OnInit {
     const list = this.tables();
     return f ? list.filter((t) => t.toLowerCase().includes(f)) : list;
   });
-  activeColumns = computed(() =>
-    this.columns().filter((c) => c.table === this.activeTable()),
-  );
+
+  /** All columns across ALL selected tables. */
+  activeColumns = computed(() => {
+    const sel = this.selectedTables();
+    if (sel.length === 0) return [];
+    return this.columns().filter((c) => sel.includes(c.table));
+  });
+
   filteredColumns = computed(() => {
     const f = this.columnFilter().trim().toLowerCase();
     const cols = this.activeColumns();
-    return f ? cols.filter((c) => c.name.toLowerCase().includes(f)) : cols;
+    return f ? cols.filter((c) => c.name.toLowerCase().includes(f) || c.table.toLowerCase().includes(f)) : cols;
   });
   filteredMeasures = computed(() => {
     const f = this.measureFilter().trim().toLowerCase();
@@ -579,12 +782,122 @@ export class UploadComponent implements OnInit {
   selectedKeyNames = computed(() =>
     this.selectedNames().filter((n) => this.keySelected()[n]),
   );
-  pageCount = computed(() =>
-    Math.max(1, Math.ceil(this.loadedRows().length / this.pageSize)),
+
+  // ── Column filters computed ───────────────────────────────────────
+  filteredLoadedRows = computed(() => {
+    let rows = this.loadedRows();
+    const cf = this.colFilters();
+    const cfFrom = this.colFilterFrom();
+    const cfTo = this.colFilterTo();
+    for (const col of Object.keys(cf)) {
+      const v = cf[col];
+      if (v) rows = rows.filter((r) => String(r[col] ?? '') === v);
+    }
+    for (const col of Object.keys(cfFrom)) {
+      const from = cfFrom[col];
+      if (from) rows = rows.filter((r) => {
+        const rv = r[col];
+        return rv && new Date(rv) >= new Date(from);
+      });
+    }
+    for (const col of Object.keys(cfTo)) {
+      const to = cfTo[col];
+      if (to) rows = rows.filter((r) => {
+        const rv = r[col];
+        return rv && new Date(rv) <= new Date(to + 'T23:59:59');
+      });
+    }
+    return rows;
+  });
+  hasActiveColFilters = computed(() => {
+    const cf = this.colFilters();
+    const cfFrom = this.colFilterFrom();
+    const cfTo = this.colFilterTo();
+    return (
+      Object.values(cf).some((v) => !!v) ||
+      Object.values(cfFrom).some((v) => !!v) ||
+      Object.values(cfTo).some((v) => !!v)
+    );
+  });
+  filteredPageCount = computed(() =>
+    Math.max(1, Math.ceil(this.filteredLoadedRows().length / this.pageSize)),
   );
   pagedRows = computed(() =>
-    this.loadedRows().slice(this.page() * this.pageSize, (this.page() + 1) * this.pageSize),
+    this.filteredLoadedRows().slice(this.page() * this.pageSize, (this.page() + 1) * this.pageSize),
   );
+
+  // ── Date-col detection for loaded data ───────────────────────────
+  loadedDateCols = computed(() =>
+    this.loadedCols().filter((c) => {
+      const sample = this.loadedRows().find((r) => r[c] != null)?.[c];
+      if (sample == null) return false;
+
+      // Exclude numbers or numeric strings (e.g. 100, 10.5, "100")
+      if (typeof sample === 'number') return false;
+      const str = String(sample).trim();
+      if (/^-?\d+(\.\d+)?$/.test(str)) return false;
+
+      // Check if name matches date keywords or string matches ISO/date format
+      if (/(?:_at|_on|date|time|timestamp)$/i.test(c) || /\b(date|datetime|time|timestamp)\b/i.test(c)) return true;
+      if (/^\d{4}-\d{2}-\d{2}/.test(str)) return true;
+      if (sample instanceof Date) return true;
+
+      return false;
+    }),
+  );
+
+  // ── Rows to actually write (after delta/date/custom filtering) ────
+  writeRows = computed(() => {
+    let rows = this.loadedRows();
+
+    // Delta filter: keep only rows whose date col >= deltaSince
+    if (this.writeMode === 'delta' && this.deltaDateCol && this.deltaSince) {
+      const since = new Date(this.deltaSince);
+      rows = rows.filter((r) => {
+        const v = r[this.deltaDateCol];
+        return v && new Date(v) >= since;
+      });
+    }
+
+    // Year / date filter
+    if (this.writeDateCol) {
+      if (this.writeYearFrom) {
+        rows = rows.filter((r) => {
+          const v = r[this.writeDateCol]; if (!v) return false;
+          return new Date(v).getFullYear() >= (this.writeYearFrom ?? 0);
+        });
+      }
+      if (this.writeYearTo) {
+        rows = rows.filter((r) => {
+          const v = r[this.writeDateCol]; if (!v) return false;
+          return new Date(v).getFullYear() <= (this.writeYearTo ?? 9999);
+        });
+      }
+      if (this.writeDateFrom) {
+        const from = new Date(this.writeDateFrom);
+        rows = rows.filter((r) => { const v = r[this.writeDateCol]; return v && new Date(v) >= from; });
+      }
+      if (this.writeDateTo) {
+        const to = new Date(this.writeDateTo + 'T23:59:59');
+        rows = rows.filter((r) => { const v = r[this.writeDateCol]; return v && new Date(v) <= to; });
+      }
+    }
+
+    // Custom column projection
+    if (this.customColumns) {
+      const sel = this.writeColSelected();
+      const cols = Object.keys(sel).filter((c) => sel[c]);
+      if (cols.length > 0) {
+        rows = rows.map((r) => {
+          const out: Record<string, any> = {};
+          for (const c of cols) out[c] = r[c];
+          return out;
+        });
+      }
+    }
+
+    return rows;
+  });
 
   constructor(
     public api: SyncApiService,
@@ -594,6 +907,7 @@ export class UploadComponent implements OnInit {
   ngOnInit() {
     this.loadReports();
     this.loadDatasets();
+    this.loadDatabases();
   }
 
   loadReports() {
@@ -619,6 +933,7 @@ export class UploadComponent implements OnInit {
     this.columnFilter.set('');
     this.tables.set([]);
     this.tableFilter.set('');
+    this.selectedTables.set([]);
     this.selected.set({});
     this.loadedRows.set([]);
     this.loadedCols.set([]);
@@ -627,27 +942,28 @@ export class UploadComponent implements OnInit {
       this.colError.set('This report has no dataset to read columns from.');
       return;
     }
-    // Measures are dataset-wide; load them alongside the columns.
     this.api.datasetMeasures(r.datasetId).subscribe({
       next: (m) => this.measures.set(m),
       error: () => this.measures.set([]),
     });
     this.loadingCols.set(true);
-    this.api.datasetColumns(r.datasetId, this.finalOnly).subscribe({
+    this.api.datasetColumns(r.datasetId, this.finalOnly && !this.showAllTables).subscribe({
       next: (cols) => {
         this.columns.set(cols);
         const counts = new Map<string, number>();
         for (const c of cols) counts.set(c.table, (counts.get(c.table) ?? 0) + 1);
         const tbls = Array.from(counts.keys());
-        // In "final" mode, surface the most-complete (most-mapped) table first.
-        if (this.finalOnly) {
+        if (this.finalOnly && !this.showAllTables) {
           tbls.sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0));
         } else {
           tbls.sort();
         }
         this.tables.set(tbls);
-        this.activeTable.set(tbls[0] ?? '');
-        this.resetSelection();
+        // Auto-select first table.
+        if (tbls.length > 0) {
+          this.selectedTables.set([tbls[0]]);
+          this.resetSelection();
+        }
         this.loadingCols.set(false);
       },
       error: (e) => {
@@ -657,12 +973,18 @@ export class UploadComponent implements OnInit {
     });
   }
 
-  /** Called as the user types/picks a table. Only re-init when it's a real table. */
-  setTable(v: string) {
-    this.activeTable.set(v);
-    if (this.tables().includes(v)) this.onTableChange();
+  reloadColumnsForHiddenToggle() {
+    const rep = this.selectedReport();
+    if (rep) this.pickReport(rep);
   }
-  onTableChange() {
+
+  toggleTable(t: string) {
+    const cur = this.selectedTables();
+    if (cur.includes(t)) {
+      this.selectedTables.set(cur.filter((x) => x !== t));
+    } else {
+      this.selectedTables.set([...cur, t]);
+    }
     this.loadedRows.set([]);
     this.loadedCols.set([]);
     this.resetSelection();
@@ -671,29 +993,28 @@ export class UploadComponent implements OnInit {
   private resetSelection() {
     const sel: Record<string, boolean> = {};
     const keys: Record<string, boolean> = {};
+    const wc: Record<string, boolean> = {};
     let hasKey = false;
     for (const c of this.activeColumns()) {
       sel[c.name] = true;
-      if (c.isKey) {
-        keys[c.name] = true;
-        hasKey = true;
-      }
+      wc[c.name] = true;
+      if (c.isKey) { keys[c.name] = true; hasKey = true; }
     }
     this.selected.set(sel);
-    // If the model marks key column(s), default to upsert on them so recurring
-    // syncs update in place instead of duplicating. Otherwise append.
     this.keySelected.set(keys);
-    this.mode = hasKey ? 'upsert' : 'append';
+    this.writeColSelected.set(wc);
+    this.writeMode = hasKey ? 'upsert' : 'append';
     this.tableName = this.suggestName();
     this.page.set(0);
     this.dateColumn.set('');
     this.dateFrom.set('');
     this.dateTo.set('');
+    this.colFilters.set({});
+    this.colFilterFrom.set({});
+    this.colFilterTo.set({});
   }
 
-  private effectiveLimit(): number {
-    return this.allRows() ? 0 : this.limit;
-  }
+  private effectiveLimit(): number { return this.allRows() ? 0 : this.limit; }
   private filterPayload() {
     if (!this.dateColumn()) return undefined;
     return {
@@ -707,66 +1028,122 @@ export class UploadComponent implements OnInit {
     return this.columns().filter((c) => c.table === table).length;
   }
 
-  /** Mirror of the backend table-name sanitiser, to detect locked targets. */
+  uniqueValues(col: string): string[] {
+    const seen = new Set<string>();
+    for (const r of this.loadedRows()) {
+      const v = r[col];
+      if (v != null && String(v).trim() !== '') seen.add(String(v));
+    }
+    return Array.from(seen).sort().slice(0, 200);
+  }
+
+  isDateCol(col: string): boolean {
+    return this.loadedDateCols().includes(col);
+  }
+
+  setColFilter(col: string, val: string) {
+    this.colFilters.update((f) => ({ ...f, [col]: val }));
+    this.page.set(0);
+  }
+  setColFilterFrom(col: string, val: string) {
+    this.colFilterFrom.update((f) => ({ ...f, [col]: val }));
+    this.page.set(0);
+  }
+  setColFilterTo(col: string, val: string) {
+    this.colFilterTo.update((f) => ({ ...f, [col]: val }));
+    this.page.set(0);
+  }
+  clearColFilters() {
+    this.colFilters.set({});
+    this.colFilterFrom.set({});
+    this.colFilterTo.set({});
+    this.page.set(0);
+  }
+
+  @HostListener('window:scroll')
+  @HostListener('window:resize')
+  @HostListener('document:click')
+  closePopovers() {
+    this.activeFilterCol.set(null);
+  }
+
+  toggleHeaderFilter(col: string, ev: MouseEvent) {
+    ev.stopPropagation();
+    if (this.activeFilterCol() === col) {
+      this.activeFilterCol.set(null);
+      return;
+    }
+
+    const target = ev.currentTarget as HTMLElement;
+    const th = target.closest('th') || target;
+    const rect = th.getBoundingClientRect();
+
+    const popoverWidth = 240;
+    let left = rect.left;
+    if (left + popoverWidth > window.innerWidth - 16) {
+      left = Math.max(16, window.innerWidth - popoverWidth - 16);
+    }
+
+    const top = rect.bottom + 4;
+    this.popoverPos.set({ top, left });
+    this.activeFilterCol.set(col);
+  }
+  clearSingleFilter(col: string, ev: MouseEvent) {
+    ev.stopPropagation();
+    this.colFilters.update((f) => ({ ...f, [col]: '' }));
+    this.colFilterFrom.update((f) => ({ ...f, [col]: '' }));
+    this.colFilterTo.update((f) => ({ ...f, [col]: '' }));
+    this.page.set(0);
+  }
+
+  filteredUniqueValues(col: string): string[] {
+    const vals = this.uniqueValues(col);
+    const q = (this.popoverSearch[col] || '').trim().toLowerCase();
+    return q ? vals.filter((v) => v.toLowerCase().includes(q)) : vals;
+  }
+
   private slugTable(raw: string): string {
-    let s = (raw ?? '')
-      .toString()
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_+|_+$/g, '');
+    let s = (raw ?? '').toString().trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
     if (!s) return '';
     if (/^[0-9]/.test(s)) s = '_' + s;
     return s.slice(0, 60);
   }
-  targetTableName(): string {
-    return this.slugTable(this.tableName);
-  }
+  targetTableName(): string { return this.slugTable(this.tableName); }
   targetLocked(): boolean {
     const t = this.targetTableName();
     return !!t && this.datasets().some((d) => d.table_name === t && d.locked);
   }
   autoKeyNote(): string {
-    return this.activeColumns().some((c) => c.isKey)
-      ? ' · auto-detected from the model'
-      : '';
+    return this.activeColumns().some((c) => c.isKey) ? ' · auto-detected from the model' : '';
   }
   private suggestName(): string {
-    return `${this.selectedReport()?.name ?? ''} ${this.activeTable()}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_+|_+$/g, '')
-      .slice(0, 60);
+    const tbls = this.selectedTables();
+    return `${this.selectedReport()?.name ?? ''} ${tbls.join('_')}`
+      .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60);
   }
+
   toggle(name: string) {
     const willInclude = !this.selected()[name];
     this.selected.update((s) => ({ ...s, [name]: willInclude }));
-    // A column that's excluded can't be a key.
     if (!willInclude && this.keySelected()[name]) {
       this.keySelected.update((s) => ({ ...s, [name]: false }));
       this.syncModeToKeys();
     }
   }
-
   toggleMeasure(name: string) {
     this.measureSelected.update((s) => ({ ...s, [name]: !s[name] }));
   }
-
-  /** Toggle a column as an upsert/primary key (also includes it). */
   toggleKeyCol(name: string) {
     const willBeKey = !this.keySelected()[name];
     this.keySelected.update((s) => ({ ...s, [name]: willBeKey }));
-    if (willBeKey) {
-      this.selected.update((s) => ({ ...s, [name]: true }));
-    }
+    if (willBeKey) this.selected.update((s) => ({ ...s, [name]: true }));
     this.syncModeToKeys();
   }
-
-  /** Upsert when at least one key is ticked, otherwise append. */
   private syncModeToKeys() {
-    this.mode = this.selectedKeyNames().length > 0 ? 'upsert' : 'append';
+    if (this.writeMode === 'upsert' || this.writeMode === 'append') {
+      this.writeMode = this.selectedKeyNames().length > 0 ? 'upsert' : 'append';
+    }
   }
   toggleAll(ev: Event) {
     const on = (ev.target as HTMLInputElement).checked;
@@ -774,18 +1151,30 @@ export class UploadComponent implements OnInit {
     for (const c of this.activeColumns()) sel[c.name] = on;
     this.selected.set(sel);
   }
+  toggleWriteCol(name: string) {
+    this.writeColSelected.update((s) => ({ ...s, [name]: !s[name] }));
+  }
 
   prevPage() { this.page.update((p) => Math.max(0, p - 1)); }
-  nextPage() { this.page.update((p) => Math.min(this.pageCount() - 1, p + 1)); }
+  nextPage() { this.page.update((p) => Math.min(this.filteredPageCount() - 1, p + 1)); }
+
+  useLast() {
+    const s = this.lastSyncAt();
+    if (s) this.deltaSince = s.slice(0, 10);
+  }
 
   sync() {
     const rep = this.selectedReport();
     if (!rep?.datasetId) return;
+    if (this.selectedTables().length === 0) {
+      this.toast.error('Select at least one table.');
+      return;
+    }
     this.busy.set(true);
     this.api
       .reportData(
         rep.datasetId,
-        this.activeTable(),
+        this.selectedTables(),
         this.selectedNames(),
         this.effectiveLimit(),
         this.filterPayload(),
@@ -795,32 +1184,117 @@ export class UploadComponent implements OnInit {
         next: (rows) => {
           this.loadedRows.set(rows);
           this.loadedCols.set(rows.length ? Object.keys(rows[0]) : this.selectedNames());
+          // Reset write col selection to match new columns
+          const wc: Record<string, boolean> = {};
+          for (const c of (rows.length ? Object.keys(rows[0]) : this.selectedNames())) wc[c] = true;
+          this.writeColSelected.set(wc);
           this.page.set(0);
+          this.colFilters.set({});
+          this.colFilterFrom.set({});
+          this.colFilterTo.set({});
           this.busy.set(false);
           this.toast.success(`Synced ${rows.length} row(s) from Power BI.`);
           this.currentStep.set(3);
+          // Load last-sync date for delta mode
+          if (this.tableName) {
+            this.api.getLastSync(this.targetTableName()).subscribe({
+              next: (r) => this.lastSyncAt.set(r.lastSyncAt),
+              error: () => {},
+            });
+          }
         },
         error: (e) => this.fail(e),
+      });
+  }
+
+  nextFromStep2() {
+    if (this.loadedRows().length || this.loadedCols().length) {
+      this.setStep(3);
+    } else {
+      this.sync();
+    }
+  }
+
+  syncAndEmailFromStep2() {
+    const list = this.recipients
+      ? this.recipients.split(',').map((e) => e.trim()).filter((e) => e)
+      : [];
+    if (list.length === 0) {
+      this.toast.error('Please enter at least one recipient email address.');
+      return;
+    }
+    const rep = this.selectedReport();
+    if (!rep?.datasetId) return;
+
+    this.busy.set(true);
+    this.api
+      .reportData(
+        rep.datasetId,
+        this.selectedTables(),
+        this.selectedNames(),
+        this.effectiveLimit(),
+        this.filterPayload(),
+        this.selectedMeasureNames(),
+      )
+      .subscribe({
+        next: (rows) => {
+          this.loadedRows.set(rows);
+          this.loadedCols.set(rows.length ? Object.keys(rows[0]) : this.selectedNames());
+          const reportName = rep.name || 'Power BI Report';
+          const subject = this.emailSubject.trim() || `Excel Report Export: ${reportName}`;
+
+          this.api
+            .sendEmailReport({
+              reportName,
+              rows,
+              recipients: list,
+              subject,
+            })
+            .subscribe({
+              next: (res) => {
+                this.busy.set(false);
+                this.toast.success(`Excel report with ${res.count} row(s) emailed to ${list.join(', ')}.`);
+              },
+              error: (e) => {
+                this.busy.set(false);
+                this.fail(e);
+              },
+            });
+        },
+        error: (e) => {
+          this.busy.set(false);
+          this.fail(e);
+        },
       });
   }
 
   upload() {
     const rep = this.selectedReport();
     if (!rep) return;
-    if (this.mode === 'upsert' && this.selectedKeyNames().length === 0) {
+    if ((this.writeMode === 'upsert') && this.selectedKeyNames().length === 0) {
       this.toast.error('Pick at least one business key for upsert.');
       return;
     }
+    const rows = this.writeRows();
+    if (rows.length === 0) {
+      this.toast.error('No rows match the current filters — nothing to write.');
+      return;
+    }
     this.busy.set(true);
+    const effectiveMode: 'append' | 'upsert' =
+      this.writeMode === 'total' || this.writeMode === 'delta'
+        ? (this.selectedKeyNames().length > 0 ? 'upsert' : 'append')
+        : this.writeMode;
+
     this.api
       .uploadReport({
-        reportName: `${rep.name} · ${this.activeTable()}`,
+        reportName: `${rep.name} · ${this.selectedTables().join('+')}`,
         owner: this.owner || 'anonymous',
-        rows: this.loadedRows(),
+        rows,
         tableName: this.tableName,
-        mode: this.mode,
+        mode: effectiveMode,
         businessKeys: this.selectedKeyNames(),
-        recipients: this.recipients ? this.recipients.split(',').map(e => e.trim()).filter(e => e) : undefined,
+        recipients: this.recipients ? this.recipients.split(',').map((e) => e.trim()).filter((e) => e) : undefined,
         subject: this.emailSubject.trim() || undefined,
       })
       .subscribe({
@@ -828,21 +1302,56 @@ export class UploadComponent implements OnInit {
           this.busy.set(false);
           this.toast.success(`Uploaded ${res.rowsWritten} row(s) to ${res.table} (now ${res.totalRows}).`);
           this.loadDatasets();
+          this.lastSyncAt.set(new Date().toISOString());
         },
         error: (e) => this.fail(e),
+      });
+  }
+
+  sendReportEmail() {
+    const list = this.recipients
+      ? this.recipients.split(',').map((e) => e.trim()).filter((e) => e)
+      : [];
+    if (list.length === 0) {
+      this.toast.error('Please enter at least one recipient email address.');
+      return;
+    }
+    const rows = this.writeRows();
+    if (rows.length === 0) {
+      this.toast.error('No rows available to send.');
+      return;
+    }
+
+    const rep = this.selectedReport();
+    const reportName = rep ? rep.name : (this.tableName || 'Power BI Report');
+    const subject = this.emailSubject.trim() || `Excel Report Export: ${reportName}`;
+
+    this.busy.set(true);
+    this.api
+      .sendEmailReport({
+        reportName,
+        rows,
+        recipients: list,
+        subject,
+      })
+      .subscribe({
+        next: (res) => {
+          this.busy.set(false);
+          this.toast.success(`Excel report with ${res.count} row(s) emailed to ${list.join(', ')}.`);
+        },
+        error: (e) => {
+          this.busy.set(false);
+          this.fail(e);
+        },
       });
   }
 
   saveJob() {
     const rep = this.selectedReport();
     if (!rep?.datasetId) return;
-    if (!this.jobName.trim()) {
-      this.toast.error('Give the job a name.');
-      return;
-    }
-    if (this.mode === 'upsert' && this.selectedKeyNames().length === 0) {
-      this.toast.error('Pick at least one business key for upsert.');
-      return;
+    if (!this.jobName.trim()) { this.toast.error('Give the job a name.'); return; }
+    if (this.writeMode === 'upsert' && this.selectedKeyNames().length === 0) {
+      this.toast.error('Pick at least one business key for upsert.'); return;
     }
     this.busy.set(true);
     this.api
@@ -850,11 +1359,11 @@ export class UploadComponent implements OnInit {
         name: this.jobName.trim(),
         reportName: rep.name,
         datasetId: rep.datasetId,
-        sourceTable: this.activeTable(),
+        sourceTable: this.selectedTables().join(','),
         columns: this.selectedNames(),
         measures: this.selectedMeasureNames(),
         targetTable: this.tableName,
-        mode: this.mode,
+        mode: this.writeMode === 'upsert' ? 'upsert' : 'append',
         businessKeys: this.selectedKeyNames(),
         limit: this.effectiveLimit(),
         owner: this.owner || 'anonymous',
@@ -894,18 +1403,13 @@ export class UploadComponent implements OnInit {
 
   loadDatasets() {
     this.api.datasets().subscribe({
-      next: (d) => {
-        this.datasets.set(d);
-        this.dsPage.set(0);
-      },
+      next: (d) => { this.datasets.set(d); this.dsPage.set(0); },
       error: (e) => this.toast.error(this.msg(e)),
     });
   }
+
   preview(table: string) {
-    if (this.previewTable() === table) {
-      this.previewTable.set('');
-      return;
-    }
+    if (this.previewTable() === table) { this.previewTable.set(''); return; }
     this.busy.set(true);
     this.api.datasetRows(table, 100).subscribe({
       next: (rows) => {
@@ -918,23 +1422,80 @@ export class UploadComponent implements OnInit {
     });
   }
 
-  private fail(e: any) {
-    this.busy.set(false);
-    this.toast.error(this.msg(e));
+  // ── Database management ───────────────────────────────────────────
+
+  loadDatabases() {
+    this.api.getDatabases().subscribe({
+      next: (dbs) => this.databases.set(dbs),
+      error: () => {},
+    });
   }
-  
+
+  testDbConnection() {
+    this.dbTestState.set('testing');
+    this.dbTestError.set('');
+    this.api.testDatabase({ ...this.newDb, port: this.newDb.port ?? 5432 }).subscribe({
+      next: (r) => {
+        if (r.ok) { this.dbTestState.set('ok'); }
+        else { this.dbTestState.set('fail'); this.dbTestError.set(r.error ?? 'Connection failed'); }
+      },
+      error: (e) => { this.dbTestState.set('fail'); this.dbTestError.set(this.msg(e)); },
+    });
+  }
+
+  createDatabase() {
+    this.busy.set(true);
+    this.api.addDatabase({ ...this.newDb, port: this.newDb.port ?? 5432 }).subscribe({
+      next: (db) => {
+        this.busy.set(false);
+        this.toast.success(`Database "${db.dbname}" created & set as active!`);
+        this.showDbForm.set(false);
+        this.newDb = { host: '', port: 5432, dbname: '', username: '', password: '' };
+        this.dbTestState.set('idle');
+        this.loadDatabases();
+      },
+      error: (e) => this.fail(e),
+    });
+  }
+
+  switchDatabase(id: number) {
+    this.busy.set(true);
+    this.api.activateDatabase(id).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.toast.success('Active database switched.');
+        this.loadDatabases();
+      },
+      error: (e) => this.fail(e),
+    });
+  }
+
+  removeDatabase(id: number) {
+    if (!confirm('Remove this database connection?')) return;
+    this.busy.set(true);
+    this.api.deleteDatabase(id).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.toast.success('Connection removed.');
+        this.loadDatabases();
+      },
+      error: (e) => this.fail(e),
+    });
+  }
+
+  private fail(e: any) { this.busy.set(false); this.toast.error(this.msg(e)); }
+
   sendEmail(table: string) {
     const recipientsStr = this.datasetEmails[table];
     if (!recipientsStr) return;
-    const recipients = recipientsStr.split(',').map(e => e.trim()).filter(e => e);
+    const recipients = recipientsStr.split(',').map((e) => e.trim()).filter((e) => e);
     if (recipients.length === 0) return;
-    
     this.busy.set(true);
     this.api.emailDataset(table, recipients, `Export of ${table}`).subscribe({
       next: () => {
         this.busy.set(false);
         this.toast.success(`Successfully sent ${table} to ${recipients.join(', ')}`);
-        this.datasetEmails[table] = ''; // clear input
+        this.datasetEmails[table] = '';
       },
       error: (e) => this.fail(e),
     });

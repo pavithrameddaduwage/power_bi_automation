@@ -65,6 +65,39 @@ export class UploadsService {
     await this.emailService.sendReport(recipients, subject || `Data export: ${table}`, excelBuffer, fileName);
   }
 
+  async getEmailHistory() {
+    return this.emailService.getEmailHistory();
+  }
+
+  async getSmtpConfig() {
+    return this.emailService.getSmtpConfig();
+  }
+
+  async saveSmtpConfig(dto: any) {
+    return this.emailService.saveSmtpConfig(dto);
+  }
+
+  async sendEmailReport(dto: {
+    reportName: string;
+    rows: any[];
+    recipients: string[];
+    subject?: string;
+  }): Promise<{ ok: boolean; count: number }> {
+    if (!dto.recipients || dto.recipients.length === 0) {
+      throw new BadRequestException('No recipients provided.');
+    }
+    if (!dto.rows || dto.rows.length === 0) {
+      throw new BadRequestException('No rows provided to email.');
+    }
+    const name = dto.reportName?.trim() || 'Report';
+    const excelBuffer = await this.excelService.generateExcelBuffer(dto.rows, name);
+    const subject = dto.subject?.trim() || `Excel Report Export: ${name}`;
+    const fileName = `${name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    await this.emailService.sendReport(dto.recipients, subject, excelBuffer, fileName);
+    return { ok: true, count: dto.rows.length };
+  }
+
   /**
    * A person uploads (or appends to) a custom report. The destination table is
    * derived from the report name and created on first use; later uploads —
@@ -179,5 +212,9 @@ export class UploadsService {
 
   previewRows(table: string, limit?: number) {
     return this.dyn.previewRows(table, limit ?? 100);
+  }
+
+  getLastSyncAt(table: string): Promise<string | null> {
+    return this.dyn.getLastSyncAt(table);
   }
 }

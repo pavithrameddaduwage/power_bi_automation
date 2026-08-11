@@ -42,13 +42,13 @@ export class CatalogController {
     const cols = await this.powerbi.getDatasetColumns(datasetId);
     if (finalOnly === 'true') {
       const curated = cols.filter((c) => !this.isSourceTable(c.table));
-      // Keep only tables that actually map data together — drop tiny helper /
-      // measure / sort tables (1–3 columns).
+      // Keep tables that have at least 1 real column (removed the 4-col minimum
+      // that was hiding small but valid tables).
       const counts = new Map<string, number>();
       for (const c of curated) {
         counts.set(c.table, (counts.get(c.table) ?? 0) + 1);
       }
-      const MIN_FINAL_COLUMNS = 4;
+      const MIN_FINAL_COLUMNS = 1;
       return curated.filter(
         (c) => (counts.get(c.table) ?? 0) >= MIN_FINAL_COLUMNS,
       );
@@ -56,16 +56,21 @@ export class CatalogController {
     return cols;
   }
 
-  /** True for raw source views / internal helper tables (not a "final" report). */
+  /** True for well-known Power BI internal/generated tables only. */
   private isSourceTable(table: string): boolean {
     const n = table.toLowerCase();
     return (
-      n.startsWith('public ') ||
-      n.startsWith('localdatetable') ||
-      n.startsWith('datetabletemplate') ||
+      // Power BI auto-generates hidden date tables:
+      n.startsWith('localdatetable_') ||
+      n.startsWith('datetabletemplate_') ||
+      // Internal measure container tables:
       n === 'measures table' ||
-      n.endsWith(' measures')
+      n.endsWith(' measures') ||
+      // Underscore-prefixed internal tables:
+      n.startsWith('_')
     );
+    // NOTE: we deliberately NO LONGER drop tables whose names start with
+    // 'public ' — those are often real user tables in the dataset.
   }
 
   /** Measures (DAX calculations) of a report's dataset, viewed separately. */
@@ -80,7 +85,10 @@ export class CatalogController {
     @Body()
     body: {
       datasetId: string;
-      table: string;
+      /** Single table (legacy) */
+      table?: string;
+      /** Multiple tables — takes precedence over `table` when supplied. */
+      tables?: string[];
       columns: string[];
       measures?: string[];
       limit?: number;
@@ -89,9 +97,36 @@ export class CatalogController {
       dateTo?: string;
     },
   ) {
-    return this.powerbi.getReportData(
+    const tableList: string[] = body.tables?.length
+      ? body.tables
+      : body.table
+      ? [body.table]
+      : [];
+
+    if (tableList.length === 0) {
+      return [];
+    }
+
+    // Single table — original path (no merge overhead).
+    if (tableList.length === 1) {
+      return this.powerbi.getReportData(
+        body.datasetId,
+        tableList[0],
+        body.columns,
+        body.limit ?? 500,
+        {
+          dateColumn: body.dateColumn,
+          dateFrom: body.dateFrom,
+          dateTo: body.dateTo,
+        },
+        body.measures ?? [],
+      );
+    }
+
+    // Multiple tables — fetch each then merge (column union, nulls for missing).
+    return this.powerbi.getReportDataMulti(
       body.datasetId,
-      body.table,
+      tableList,
       body.columns,
       body.limit ?? 500,
       {

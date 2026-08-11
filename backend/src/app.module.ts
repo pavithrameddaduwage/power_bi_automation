@@ -16,6 +16,7 @@ import { UploadsService } from './uploads/uploads.service';
 import { JobsController } from './jobs/jobs.controller';
 import { JobsService } from './jobs/jobs.service';
 import { AuthModule } from './auth/auth.module';
+import { DatabasesModule } from './databases/databases.module';
 import { ExcelService } from './exports/excel.service';
 import { EmailService } from './notifications/email.service';
 
@@ -24,6 +25,7 @@ import { EmailService } from './notifications/email.service';
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     ScheduleModule.forRoot(),
     DatabaseModule,
+    DatabasesModule,
     AuthModule,
   ],
   controllers: [

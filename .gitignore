@@ -1,0 +1,14 @@
+# OS / IDE
+.DS_Store
+*.log
+
+# Dependencies & Build outputs
+node_modules/
+dist/
+.angular/
+backend/dist/
+frontend/dist/
+frontend/.angular/
+
+# Environment
+.env

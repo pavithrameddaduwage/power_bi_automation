@@ -412,6 +412,9 @@ export class PowerBiService {
   /**
    * Build a SUMMARIZECOLUMNS query: group by the chosen columns and compute the
    * chosen measures. Group-by columns are optional when measures are present
+  /**
+   * Build a SUMMARIZECOLUMNS query: group by the chosen columns and compute the
+   * chosen measures. Group-by columns are optional when measures are present
    * (measures-only gives the grand totals).
    */
   private buildMeasureQuery(
@@ -423,9 +426,13 @@ export class PowerBiService {
   ): string {
     const t = `'${table.replace(/'/g, "''")}'`;
     const args: string[] = [];
-    for (const c of groupCols) {
+
+    // Deduplicate group-by columns to prevent DAX error: "specified more than once in SUMMARIZECOLUMNS"
+    const uniqueCols = Array.from(new Set(groupCols.filter((c) => c && c.trim() !== '')));
+    for (const c of uniqueCols) {
       args.push(`${t}[${c.replace(/]/g, ']]')}]`);
     }
+
     if (filter?.dateColumn && (filter.dateFrom || filter.dateTo)) {
       const col = filter.dateColumn.replace(/]/g, ']]');
       const from = this.daxDate(filter.dateFrom);
@@ -437,13 +444,26 @@ export class PowerBiService {
         args.push(`FILTER(ALL(${t}[${col}]), ${conds.join(' && ')})`);
       }
     }
-    for (const m of measures) {
+
+    // Deduplicate measures
+    const uniqueMeasures = Array.from(new Set(measures.filter((m) => m && m.trim() !== '')));
+    for (const m of uniqueMeasures) {
       args.push(`"${m}", [${m.replace(/]/g, ']]')}]`);
     }
+
     const inner = `SUMMARIZECOLUMNS(${args.join(', ')})`;
-    return limit && limit > 0
-      ? `EVALUATE TOPN(${limit}, ${inner})`
-      : `EVALUATE ${inner}`;
+    // Memory governance guard: use a safe limit (default 20,000 if unconstrained) and order by first measure/column
+    const cap = limit && limit > 0 ? limit : 20000;
+    let orderExpr = '';
+    if (uniqueMeasures.length > 0) {
+      orderExpr = `[${uniqueMeasures[0].replace(/]/g, ']]')}]`;
+    } else if (uniqueCols.length > 0) {
+      orderExpr = `${t}[${uniqueCols[0].replace(/]/g, ']]')}]`;
+    }
+
+    return orderExpr
+      ? `EVALUATE TOPN(${cap}, ${inner}, ${orderExpr}, DESC)`
+      : `EVALUATE TOPN(${cap}, ${inner})`;
   }
 
   /** An optional date-range filter applied to one date/datetime column. */
@@ -474,17 +494,17 @@ export class PowerBiService {
       if (conds.length) tableExpr = `FILTER(${t}, ${conds.join(' && ')})`;
     }
 
-    const parts = columns
+    // Deduplicate projection columns
+    const uniqueCols = Array.from(new Set(columns.filter((c) => c && c.trim() !== '')));
+    const parts = uniqueCols
       .map((c) => {
         const col = c.replace(/]/g, ']]');
         return `"${c}", ${t}[${col}]`;
       })
       .join(', ');
     const inner = `SELECTCOLUMNS(${tableExpr}, ${parts})`;
-    // limit <= 0 means "all rows" (no TOPN cap).
-    return limit && limit > 0
-      ? `EVALUATE TOPN(${limit}, ${inner})`
-      : `EVALUATE ${inner}`;
+    const cap = limit && limit > 0 ? limit : 50000;
+    return `EVALUATE TOPN(${cap}, ${inner})`;
   }
 
   /** Pull the selected columns of one table from a dataset (the "sync" step). */
@@ -509,4 +529,89 @@ export class PowerBiService {
         : this.buildProjection(table, cols, limit, filter);
     return this.executeQueryByDataset(datasetId, dax);
   }
+
+  /**
+   * Pull columns from multiple tables and merge the results (column union).
+   * Rows from each table are appended; columns not present in a given table
+   * are filled with null. A `_source_table` meta-column is added so the UI
+   * can distinguish origin.
+   */
+  async getReportDataMulti(
+    datasetId: string,
+    tables: string[],
+    columns: string[],
+    limit = 500,
+    filter?: DataFilter,
+    measures: string[] = [],
+  ): Promise<Record<string, any>[]> {
+    // Attempt to map columns to their owning tables so we only query
+    // columns that actually belong to each target table.
+    let tableColsMap: Record<string, Set<string>> = {};
+    try {
+      const datasetCols = await this.getDatasetColumns(datasetId);
+      for (const item of datasetCols) {
+        if (!tableColsMap[item.table]) {
+          tableColsMap[item.table] = new Set();
+        }
+        tableColsMap[item.table].add(item.name);
+      }
+    } catch (e) {
+      tableColsMap = {};
+    }
+
+    const results = await Promise.all(
+      tables.map(async (table) => {
+        try {
+          // Filter requested columns to only those that belong to this table.
+          // Fall back to all columns if table mapping is unavailable.
+          const hasMap = tableColsMap[table] && tableColsMap[table].size > 0;
+          const tableCols = hasMap
+            ? columns.filter((c) => tableColsMap[table].has(c))
+            : columns;
+
+          const uniqueTableCols = Array.from(new Set(tableCols));
+
+          // If this table has no selected columns and no measures, skip querying it
+          if (uniqueTableCols.length === 0 && measures.length === 0) {
+            return [];
+          }
+
+          const rows = await this.getReportData(
+            datasetId,
+            table,
+            uniqueTableCols,
+            limit,
+            filter,
+            measures,
+          );
+          return rows.map((r) => ({ ...r, _source_table: table }));
+        } catch (err) {
+          this.logger.warn(`Multi-table fetch: skipped table "${table}": ${err}`);
+          return [];
+        }
+      }),
+    );
+
+    // Collect all column keys across all result sets.
+    const allKeys = new Set<string>();
+    for (const rows of results) {
+      for (const row of rows) {
+        for (const k of Object.keys(row)) allKeys.add(k);
+      }
+    }
+
+    // Merge: fill missing columns with null.
+    const merged: Record<string, any>[] = [];
+    for (const rows of results) {
+      for (const row of rows as Record<string, any>[]) {
+        const full: Record<string, any> = {};
+        for (const k of allKeys) {
+          full[k] = row[k] ?? null;
+        }
+        merged.push(full);
+      }
+    }
+    return merged;
+  }
 }
+

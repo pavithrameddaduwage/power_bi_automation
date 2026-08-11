@@ -52,10 +52,41 @@ export class UploadsController {
     );
   }
 
+  /** Get the last successful sync timestamp for a table (for Delta mode). */
+  @Get('datasets/:table/last-sync')
+  async lastSync(@Param('table') table: string) {
+    const lastSyncAt = await this.uploads.getLastSyncAt(table);
+    return { lastSyncAt };
+  }
+
   /** Email a dynamic dataset */
   @Post('datasets/:table/email')
   emailDataset(@Param('table') table: string, @Body() body: { recipients: string[], subject: string }) {
     return this.uploads.emailDataset(table, body.recipients, body.subject);
+  }
+
+  /** Email delivery logs history */
+  @Get('email-history')
+  emailHistory() {
+    return this.uploads.getEmailHistory();
+  }
+
+  /** Get current SMTP config status */
+  @Get('smtp-config')
+  smtpConfig() {
+    return this.uploads.getSmtpConfig();
+  }
+
+  /** Save and test SMTP config */
+  @Post('smtp-config')
+  saveSmtpConfig(@Body() body: any) {
+    return this.uploads.saveSmtpConfig(body);
+  }
+
+  /** Directly email an Excel report of given rows to recipients */
+  @Post('send-email-report')
+  sendEmailReport(@Body() body: { reportName: string; rows: any[]; recipients: string[]; subject?: string }) {
+    return this.uploads.sendEmailReport(body);
   }
 
   /** Download a dynamic dataset as CSV (opens in Excel). */

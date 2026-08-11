@@ -1,6 +1,7 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { Pool } from 'pg';
 import { PG_POOL } from './database.module';
+import { DatabasesService } from '../databases/databases.service';
 
 /**
  * Dynamic, schema-on-write storage.
@@ -23,7 +24,7 @@ export type InferredType =
 const TYPE_SQL: Record<InferredType, string> = {
   text: 'text',
   numeric: 'numeric',
-  integer: 'integer',
+  integer: 'bigint',
   boolean: 'boolean',
   timestamptz: 'timestamptz',
 };
@@ -66,9 +67,24 @@ function inferColumnType(values: any[]): InferredType {
 
   const isBool = (v: any) =>
     typeof v === 'boolean' || /^(true|false)$/i.test(String(v));
-  const isInt = (v: any) => /^-?\d+$/.test(String(v).trim());
-  const isNum = (v: any) =>
-    String(v).trim() !== '' && !isNaN(Number(v));
+
+  // Any code string with leading zeros (e.g. "0026902900000023", "0123") MUST be text to preserve 0s
+  const hasLeadingZero = (s: string) => /^0\d+/.test(s);
+
+  const isInt = (v: any) => {
+    const s = String(v).trim();
+    if (hasLeadingZero(s)) return false;
+    if (!/^-?\d+$/.test(s)) return false;
+    const n = Number(s);
+    return n >= -2147483648 && n <= 2147483647;
+  };
+
+  const isNum = (v: any) => {
+    const s = String(v).trim();
+    if (hasLeadingZero(s)) return false;
+    return s !== '' && !isNaN(Number(s));
+  };
+
   const isDate = (v: any) =>
     /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2})?/.test(String(v).trim()) &&
     !isNaN(Date.parse(String(v)));
@@ -127,7 +143,16 @@ export interface UploadResult {
 export class DynamicTableService {
   private readonly logger = new Logger(DynamicTableService.name);
 
-  constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
+  constructor(
+    @Inject(PG_POOL) private readonly primaryPool: Pool,
+    @Optional() private readonly dbs?: DatabasesService,
+  ) {}
+
+  /** Returns the pool that should receive writes (active external DB or primary). */
+  private async pool(): Promise<Pool> {
+    if (this.dbs) return this.dbs.getActivePool();
+    return this.primaryPool;
+  }
 
   /** Build a safe, prefixed table name from a free-text label. */
   tableNameFor(prefix: string, label: string): string {
@@ -182,7 +207,8 @@ export class DynamicTableService {
   }
 
   private async ensureRegistry(): Promise<void> {
-    await this.pool.query(`
+    const pool = await this.pool();
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS dynamic_datasets (
         id bigserial PRIMARY KEY,
         kind text NOT NULL,
@@ -195,7 +221,7 @@ export class DynamicTableService {
         updated_at timestamptz NOT NULL DEFAULT now()
       );
     `);
-    await this.pool.query(
+    await pool.query(
       `ALTER TABLE dynamic_datasets ADD COLUMN IF NOT EXISTS locked boolean NOT NULL DEFAULT false`,
     );
   }
@@ -203,7 +229,8 @@ export class DynamicTableService {
   /** A table is locked once created with primary keys — no more frontend edits. */
   async isLocked(table: string): Promise<boolean> {
     await this.ensureRegistry();
-    const { rows } = await this.pool.query(
+    const pool = await this.pool();
+    const { rows } = await pool.query(
       `SELECT locked FROM dynamic_datasets WHERE table_name = $1`,
       [table],
     );
@@ -211,14 +238,16 @@ export class DynamicTableService {
   }
 
   private async tableExists(table: string): Promise<boolean> {
-    const { rows } = await this.pool.query(`SELECT to_regclass($1) AS r`, [
+    const pool = await this.pool();
+    const { rows } = await pool.query(`SELECT to_regclass($1) AS r`, [
       `public.${table}`,
     ]);
     return rows[0]?.r != null;
   }
 
   private async columnExists(table: string, col: string): Promise<boolean> {
-    const { rows } = await this.pool.query(
+    const pool = await this.pool();
+    const { rows } = await pool.query(
       `SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
       [table, col],
@@ -238,6 +267,7 @@ export class DynamicTableService {
     keyCols: string[] = [],
   ): Promise<void> {
     const t = ident(table);
+    const pool = await this.pool();
     if (keyCols.length > 0) {
       const colDefs = columns
         .map(
@@ -247,7 +277,7 @@ export class DynamicTableService {
             }`,
         )
         .join(',\n        ');
-      await this.pool.query(`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS ${t} (
         _owner text,
         _source text,
@@ -257,7 +287,7 @@ export class DynamicTableService {
         );
       `);
     } else {
-      await this.pool.query(`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS ${t} (
           _id bigserial PRIMARY KEY,
           _owner text,
@@ -268,14 +298,24 @@ export class DynamicTableService {
     }
     // Add any newly-seen columns. IF NOT EXISTS makes this safe to repeat.
     for (const c of columns) {
-      await this.pool.query(
+      await pool.query(
         `ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS ${ident(c.name)} ${TYPE_SQL[c.type]};`,
       );
+      if (c.type === 'text') {
+        try {
+          await pool.query(
+            `ALTER TABLE ${t} ALTER COLUMN ${ident(c.name)} TYPE text USING ${ident(c.name)}::text;`,
+          );
+        } catch (e) {
+          // Ignore if column cannot be altered or is already text
+        }
+      }
     }
   }
 
   private async rowCount(table: string): Promise<number> {
-    const { rows } = await this.pool.query(
+    const pool = await this.pool();
+    const { rows } = await pool.query(
       `SELECT count(*)::int AS n FROM ${ident(table)}`,
     );
     return rows[0]?.n ?? 0;
@@ -320,7 +360,8 @@ export class DynamicTableService {
     }
 
     if (input.replaceSource) {
-      await this.pool.query(
+      const pool = await this.pool();
+      await pool.query(
         `DELETE FROM ${ident(input.table)} WHERE _source = $1`,
         [input.source],
       );
@@ -373,10 +414,31 @@ export class DynamicTableService {
           }
           tuples.push(`(${ph.join(', ')})`);
         }
-        await this.pool.query(
-          `INSERT INTO ${ident(input.table)} (${colSql}) VALUES ${tuples.join(', ')}${conflict}`,
-          values,
-        );
+        const pool = await this.pool();
+        try {
+          await pool.query(
+            `INSERT INTO ${ident(input.table)} (${colSql}) VALUES ${tuples.join(', ')}${conflict}`,
+            values,
+          );
+        } catch (insertErr: any) {
+          if (
+            insertErr.message &&
+            (/out of range for type/i.test(insertErr.message) ||
+              /invalid input syntax for type/i.test(insertErr.message) ||
+              /numeric field overflow/i.test(insertErr.message))
+          ) {
+            this.logger.warn(
+              `Data type mismatch/overflow on ${input.table}: ${insertErr.message}. Automatically widening table columns to text...`,
+            );
+            await this.widenTableColumnsToText(input.table, columns);
+            await pool.query(
+              `INSERT INTO ${ident(input.table)} (${colSql}) VALUES ${tuples.join(', ')}${conflict}`,
+              values,
+            );
+          } else {
+            throw insertErr;
+          }
+        }
       }
       written = workRows.length;
     }
@@ -385,7 +447,8 @@ export class DynamicTableService {
     // edits. Once locked it stays locked.
     const lockedNow = !existed && keyCols.length > 0;
     const total = await this.rowCount(input.table);
-    await this.pool.query(
+    const pool = await this.pool();
+    await pool.query(
       `INSERT INTO dynamic_datasets (kind, label, table_name, owner, columns, last_rows, locked, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7, now())
        ON CONFLICT (table_name) DO UPDATE SET
@@ -421,12 +484,30 @@ export class DynamicTableService {
   }
 
   /** Ensure a unique index on the key columns so ON CONFLICT can target them. */
+  private async widenTableColumnsToText(
+    table: string,
+    columns: DynamicColumn[],
+  ): Promise<void> {
+    const pool = await this.pool();
+    const t = ident(table);
+    for (const c of columns) {
+      try {
+        await pool.query(
+          `ALTER TABLE ${t} ALTER COLUMN ${ident(c.name)} TYPE text USING ${ident(c.name)}::text;`,
+        );
+      } catch (e) {
+        // Ignore if column cannot be altered
+      }
+    }
+  }
+
   private async ensureUniqueIndex(
     table: string,
     keyCols: string[],
   ): Promise<void> {
     const idxName = `ux_${table}`.slice(0, 60);
-    await this.pool.query(
+    const pool = await this.pool();
+    await pool.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS ${ident(idxName)} ON ${ident(table)} (${keyCols
         .map(ident)
         .join(', ')})`,
@@ -453,14 +534,15 @@ export class DynamicTableService {
   /** Export a dynamic table as CSV text (only tables we created). */
   async exportCsv(table: string): Promise<string> {
     await this.ensureRegistry();
-    const { rows: known } = await this.pool.query(
+    const pool = await this.pool();
+    const { rows: known } = await pool.query(
       `SELECT 1 FROM dynamic_datasets WHERE table_name = $1`,
       [table],
     );
     if (known.length === 0) {
       throw new Error(`Unknown dynamic table: ${table}`);
     }
-    const { rows } = await this.pool.query(
+    const { rows } = await pool.query(
       `SELECT * FROM ${ident(table)} ORDER BY _uploaded_at`,
     );
     if (rows.length === 0) return '';
@@ -478,7 +560,8 @@ export class DynamicTableService {
   /** List every dynamically-created dataset for the UI. */
   async listDatasets(): Promise<any[]> {
     await this.ensureRegistry();
-    const { rows } = await this.pool.query(
+    const pool = await this.pool();
+    const { rows } = await pool.query(
       `SELECT kind, label, table_name, owner, columns, last_rows, locked, updated_at
          FROM dynamic_datasets
         ORDER BY updated_at DESC`,
@@ -489,7 +572,8 @@ export class DynamicTableService {
   /** Preview rows from a dynamic table (only tables we created). */
   async previewRows(table: string, limit = 100): Promise<any[]> {
     await this.ensureRegistry();
-    const { rows: known } = await this.pool.query(
+    const pool = await this.pool();
+    const { rows: known } = await pool.query(
       `SELECT 1 FROM dynamic_datasets WHERE table_name = $1`,
       [table],
     );
@@ -497,10 +581,23 @@ export class DynamicTableService {
       throw new Error(`Unknown dynamic table: ${table}`);
     }
     const lim = Math.min(Math.max(parseInt(String(limit), 10) || 100, 1), 1000);
-    const { rows } = await this.pool.query(
+    const { rows } = await pool.query(
       `SELECT * FROM ${ident(table)} ORDER BY _uploaded_at DESC LIMIT $1`,
       [lim],
     );
     return rows;
+  }
+
+  /** Get the timestamp of the last successful write to a table. */
+  async getLastSyncAt(table: string): Promise<string | null> {
+    const pool = await this.pool();
+    try {
+      const { rows } = await pool.query(
+        `SELECT MAX(_uploaded_at) AS last_at FROM ${ident(table)}`,
+      );
+      return rows[0]?.last_at ?? null;
+    } catch {
+      return null;
+    }
   }
 }

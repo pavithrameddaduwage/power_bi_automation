@@ -20,6 +20,17 @@ export interface SyncRun {
   error: string | null;
   started_at: string;
 }
+export interface EmailLog {
+  id: number;
+  recipients: string;
+  subject: string;
+  file_name?: string;
+  file_size_bytes?: number;
+  status: string;
+  preview_url?: string;
+  error?: string;
+  sent_at: string;
+}
 
 export interface AccessEntry {
   name: string;
@@ -114,6 +125,27 @@ export interface CreateJob {
   emailSubject?: string;
 }
 
+/** A saved external database connection (password never returned). */
+export interface DbConnection {
+  id: number;
+  label: string;
+  host: string;
+  port: number;
+  dbname: string;
+  username: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface NewDbDto {
+  label?: string;
+  host: string;
+  port?: number;
+  dbname: string;
+  username: string;
+  password: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SyncApiService {
   constructor(private http: HttpClient) {}
@@ -163,20 +195,27 @@ export class SyncApiService {
   }
   reportData(
     datasetId: string,
-    table: string,
+    /** Single table (legacy) or multiple tables. */
+    tables: string | string[],
     columns: string[],
     limit = 500,
     filter?: { dateColumn?: string; dateFrom?: string; dateTo?: string },
     measures: string[] = [],
   ): Observable<any[]> {
-    return this.http.post<any[]>(`${API}/catalog/data`, {
+    const tableList = Array.isArray(tables) ? tables : [tables];
+    const body: any = {
       datasetId,
-      table,
       columns,
       measures,
       limit,
       ...filter,
-    });
+    };
+    if (tableList.length === 1) {
+      body['table'] = tableList[0];
+    } else {
+      body['tables'] = tableList;
+    }
+    return this.http.post<any[]>(`${API}/catalog/data`, body);
   }
 
   // ── Dynamic uploads + principals ────────────────────────────────
@@ -197,6 +236,24 @@ export class SyncApiService {
   }
   emailDataset(table: string, recipients: string[], subject: string): Observable<any> {
     return this.http.post(`${API}/uploads/datasets/${table}/email`, { recipients, subject });
+  }
+  emailHistory(): Observable<EmailLog[]> {
+    return this.http.get<EmailLog[]>(`${API}/uploads/email-history`);
+  }
+  sendEmailReport(input: {
+    reportName: string;
+    rows: any[];
+    recipients: string[];
+    subject?: string;
+  }): Observable<{ ok: boolean; count: number }> {
+    console.log(input);
+    return this.http.post<{ ok: boolean; count: number }>(`${API}/uploads/send-email-report`, input);
+  }
+  getSmtpConfig(): Observable<{ host: string; port: number; username: string; fromAddress: string; isConfigured: boolean }> {
+    return this.http.get<any>(`${API}/uploads/smtp-config`);
+  }
+  saveSmtpConfig(dto: { host: string; port: number; username: string; password?: string; fromAddress?: string }): Observable<{ ok: boolean; message: string }> {
+    return this.http.post<any>(`${API}/uploads/smtp-config`, dto);
   }
 
   // ── Jobs ────────────────────────────────────────────────────────
@@ -234,5 +291,32 @@ export class SyncApiService {
   // ── Auth / AD ───────────────────────────────────────────────────
   searchUsers(query: string): Observable<any[]> {
     return this.http.post<any[]>(`${API}/auth/searchUsers`, { searchkey: query });
+  }
+
+  // ── Last-sync ────────────────────────────────────────────────────
+  getLastSync(table: string): Observable<{ lastSyncAt: string | null }> {
+    return this.http.get<{ lastSyncAt: string | null }>(
+      `${API}/uploads/datasets/${encodeURIComponent(table)}/last-sync`,
+    );
+  }
+
+  // ── Database connections ─────────────────────────────────────────
+  getDatabases(): Observable<DbConnection[]> {
+    return this.http.get<DbConnection[]>(`${API}/databases`);
+  }
+  addDatabase(dto: NewDbDto): Observable<DbConnection> {
+    return this.http.post<DbConnection>(`${API}/databases`, dto);
+  }
+  testDatabase(dto: NewDbDto): Observable<{ ok: boolean; error?: string }> {
+    return this.http.post<{ ok: boolean; error?: string }>(`${API}/databases/test`, dto);
+  }
+  activateDatabase(id: number): Observable<{ ok: boolean }> {
+    return this.http.put<{ ok: boolean }>(`${API}/databases/${id}/activate`, {});
+  }
+  deactivateDatabase(id: number): Observable<{ ok: boolean }> {
+    return this.http.put<{ ok: boolean }>(`${API}/databases/${id}/deactivate`, {});
+  }
+  deleteDatabase(id: number): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`${API}/databases/${id}`);
   }
 }
