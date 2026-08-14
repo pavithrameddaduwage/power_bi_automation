@@ -21,7 +21,7 @@ import {
     .page-header p  { font-size: 13px; color: #6b7280; margin: 0; }
 
     .controls-row {
-      display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px;
+      display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 20px; width: 100%;
     }
     .controls-row select {
       flex: 0 0 auto;
@@ -159,27 +159,52 @@ import {
   </div>
 
   <div class="controls-row">
-    <!-- Workspace dropdown -->
-    <select [ngModel]="selectedGroupId()" (ngModelChange)="onWorkspaceChange($event)">
-      <option value="">— Select Workspace —</option>
-      <option *ngFor="let ws of workspaces()" [value]="ws.groupId">{{ ws.groupName }}</option>
-    </select>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <!-- Workspace dropdown -->
+      <select [ngModel]="selectedGroupId()" (ngModelChange)="onWorkspaceChange($event)">
+        <option value="">— Select Workspace —</option>
+        <option *ngFor="let ws of workspaces()" [value]="ws.groupId">{{ ws.groupName }}</option>
+      </select>
 
-    <!-- Report dropdown (filtered to selected workspace) -->
-    <select [ngModel]="selectedReportId()" (ngModelChange)="onReportChange($event)"
-            [disabled]="!selectedGroupId()">
-      <option value="">— Select Report —</option>
-      <option *ngFor="let r of reportsForWorkspace()" [value]="r.reportId">{{ r.reportName }}</option>
-    </select>
+      <!-- Report dropdown (filtered to selected workspace) -->
+      <select [ngModel]="selectedReportId()" (ngModelChange)="onReportChange($event)"
+              [disabled]="!selectedGroupId()">
+        <option value="">— Select Report —</option>
+        <option *ngFor="let r of reportsForWorkspace()" [value]="r.reportId">{{ r.reportName }}</option>
+      </select>
 
-    <!-- Day range toggle -->
-    <div class="day-btns" *ngIf="analytics()">
-      <button class="day-btn" [class.active]="selectedDays() === 30" (click)="selectedDays.set(30)">1 Month</button>
-      <button class="day-btn" [class.active]="selectedDays() === 60" (click)="selectedDays.set(60)">2 Months</button>
-      <button class="day-btn" [class.active]="selectedDays() === 90" (click)="selectedDays.set(90)">3 Months</button>
+      <!-- Day range toggle -->
+      <div class="day-btns" *ngIf="analytics()">
+        <button class="day-btn" [class.active]="selectedDays() === 30" (click)="selectedDays.set(30)">1 Month</button>
+        <button class="day-btn" [class.active]="selectedDays() === 60" (click)="selectedDays.set(60)">2 Months</button>
+        <button class="day-btn" [class.active]="selectedDays() === 90" (click)="selectedDays.set(90)">3 Months</button>
+      </div>
+
+      <span *ngIf="loadingAnalytics()"><span class="spinner"></span></span>
     </div>
 
-    <span *ngIf="loadingAnalytics()"><span class="spinner"></span></span>
+    <!-- Workspace Members dropdown (Right Aligned) -->
+    <div style="position:relative;" *ngIf="selectedGroupId() && wsUsers().length">
+      <button class="day-btn" style="display:flex;align-items:center;gap:6px;" (click)="showWorkspaceMembers.set(!showWorkspaceMembers())">
+        <span>Show Workspace Members ({{ wsUsers().length }})</span>
+        <span>{{ showWorkspaceMembers() ? '▲' : '▼' }}</span>
+      </button>
+
+      <div *ngIf="showWorkspaceMembers()" 
+           style="position:absolute; right:0; top:36px; z-index:100; border:1.5px solid #dbeafe; border-radius:8px; background:#fff; padding:12px; width:280px; max-height:220px; overflow-y:auto; box-shadow:var(--shadow-lg);">
+        <div *ngFor="let u of wsUsers()" 
+             style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6; font-size:12px;">
+          <span style="color:#111827; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:160px;" [title]="u.displayName">{{ u.displayName }}</span>
+          <span class="badge"
+                [class.badge-admin]="u.role==='Admin'"
+                [class.badge-member]="u.role==='Member'"
+                [class.badge-contributor]="u.role==='Contributor'"
+                [class.badge-viewer]="u.role==='Viewer'">
+            {{ u.role }}
+          </span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Loading reports -->
@@ -210,14 +235,14 @@ import {
     </div>
 
     <div class="two-col">
-      <!-- Views per day chart -->
+      <!-- Views per day/month chart -->
       <div class="card">
-        <h3>Views per Day</h3>
+        <h3>{{ selectedDays() === 30 ? 'Views per Day' : 'Views per Month' }}</h3>
         <div class="bar-chart-wrap" *ngIf="filteredViewsByDay().length; else noData">
           <div class="bar-chart">
             <div class="bar-col" *ngFor="let d of filteredViewsByDay()">
               <div class="bar" [style.height.px]="barHeight(d.views)" [title]="d.date + ': ' + d.views + ' views'"></div>
-              <div class="bar-label">{{ d.date.slice(5) }}</div>
+              <div class="bar-label">{{ selectedDays() === 30 ? d.date.slice(5) : d.date }}</div>
             </div>
           </div>
         </div>
@@ -276,7 +301,12 @@ import {
     <!-- Clicked User breakdown details container -->
     <div *ngIf="selectedUserDetails() as details" style="margin-top:24px;border: 1px solid #f59e0b;border-radius:12px;background:#fffdfa;padding:20px;box-shadow:var(--shadow-sm);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1.5px solid #fef3c7;padding-bottom:12px;">
-        <h3 style="margin:0;color:#b45309;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.5px;">Detailed Breakdown: {{ details.givenName }} {{ details.familyName }}</h3>
+        <h3 style="margin:0;color:#b45309;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.5px;">
+          Detailed Breakdown: {{ details.givenName }} {{ details.familyName }} 
+          <span *ngIf="details.lastAccessed" style="font-size:11px;font-weight:600;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:99px;margin-left:8px;text-transform:none;">
+            Last accessed: {{ details.lastAccessed | date:'mediumDate' }}
+          </span>
+        </h3>
         <button class="day-btn" style="border-color:#f59e0b;color:#d97706;" (click)="selectedUserEmail.set('')">Close Breakdown</button>
       </div>
 
@@ -376,38 +406,161 @@ import {
 
   </ng-container>
 
-  <!-- Workspace Users section (shown as a dropdown action list) -->
-  <div style="margin-top:20px;margin-bottom:20px;" *ngIf="selectedGroupId() && wsUsers().length">
-    <button class="day-btn" style="display:flex;align-items:center;gap:6px;" (click)="showWorkspaceMembers.set(!showWorkspaceMembers())">
-      <span>Show Workspace Members ({{ wsUsers().length }})</span>
-      <span>{{ showWorkspaceMembers() ? '▲' : '▼' }}</span>
-    </button>
 
-    <div *ngIf="showWorkspaceMembers()" 
-         style="margin-top:8px; border:1.5px solid #dbeafe; border-radius:8px; background:#fff; padding:12px; max-height:220px; overflow-y:auto; box-shadow:var(--shadow-sm); max-width:420px;">
-      <div *ngFor="let u of wsUsers()" 
-           style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid #f3f4f6; font-size:13px;">
-        <span style="color:#111827; font-weight:600;">{{ u.displayName }}</span>
-        <span class="badge"
-              [class.badge-admin]="u.role==='Admin'"
-              [class.badge-member]="u.role==='Member'"
-              [class.badge-contributor]="u.role==='Contributor'"
-              [class.badge-viewer]="u.role==='Viewer'">
-          {{ u.role }}
-        </span>
+
+  <!-- Global / Workspace-Filtered Aggregated Metrics Dashboard -->
+  <ng-container *ngIf="!selectedReportId() && globalStats() as stats">
+    <div style="margin-top:20px;">
+      <h2 style="font-size:16px;color:#1e3a8a;margin-bottom:16px;border-bottom:2px solid #dbeafe;padding-bottom:8px;">
+        {{ selectedGroupId() ? 'Workspace Analytics Summary' : 'Global Workspace Analytics Overview' }}
+      </h2>
+
+      <!-- Top statistics grids -->
+      <div class="two-col">
+        <!-- Top 10 Workspaces (Only shown globally) -->
+        <div class="card" *ngIf="!selectedGroupId()">
+          <h3 style="color:#1d4ed8;">Top 10 Workspaces</h3>
+          <div class="tbl-wrap" style="scrollbar-color:#3b82f6 #dbeafe;">
+            <table>
+              <thead><tr><th>Workspace Name</th><th>Views</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let w of stats.topWorkspaces" [title]="w.name + ': ' + w.views + ' views'">
+                  <td><strong>{{ w.name }}</strong></td>
+                  <td>{{ w.views | number }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Top 10 Users -->
+        <div class="card">
+          <h3 style="color:#10b981;">Top 10 Users</h3>
+          <div class="tbl-wrap" style="scrollbar-color:#10b981 #d1fae5; border-color:#10b981;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="background:#10b981;border-bottom-color:#10b981;">Name</th>
+                  <th style="background:#10b981;border-bottom-color:#10b981;">Views</th>
+                  <th style="background:#10b981;border-bottom-color:#10b981;">Last Accessed</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let u of stats.topUsers" [title]="u.name + ' (' + u.email + '): ' + u.views + ' views. Last access: ' + (u.lastAccessed | date:'shortDate')">
+                  <td><strong>{{ u.name }}</strong></td>
+                  <td>{{ u.views | number }}</td>
+                  <td style="font-size:12px;color:#4b5563;">{{ u.lastAccessed | date:'mediumDate' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Empty state -->
-  <div *ngIf="!loadingReports() && !selectedGroupId() && !errorMsg()" class="card empty">
-    Select a workspace and report above to view usage metrics.
-  </div>
+      <div class="two-col">
+        <!-- Top Reports -->
+        <div class="card">
+          <h3 style="color:#f59e0b;">Top Reports / Dashboards</h3>
+          <div class="tbl-wrap" style="scrollbar-color:#f59e0b #fef3c7; border-color:#f59e0b;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="background:#f59e0b;border-bottom-color:#f59e0b;">Report / Dashboard Name</th>
+                  <th style="background:#f59e0b;border-bottom-color:#f59e0b;">Views</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of stats.topReports" [title]="r.name + ': ' + r.views + ' views'">
+                  <td><strong>{{ r.name }}</strong></td>
+                  <td>{{ r.views | number }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Top Pages -->
+        <div class="card">
+          <h3 style="color:#8b5cf6;">Top Pages / Tabs</h3>
+          <div class="tbl-wrap" style="scrollbar-color:#8b5cf6 #ede9fe; border-color:#8b5cf6;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="background:#8b5cf6;border-bottom-color:#8b5cf6;">Tab Name</th>
+                  <th style="background:#8b5cf6;border-bottom-color:#8b5cf6;">Parent Report</th>
+                  <th style="background:#8b5cf6;border-bottom-color:#8b5cf6;">Views</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let p of stats.topPages" [title]="p.pageName + ' > ' + p.reportName + ': ' + p.views + ' views'">
+                  <td><strong>{{ p.pageName }}</strong></td>
+                  <td style="font-size:12px;color:#4b5563;">{{ p.reportName }}</td>
+                  <td>{{ p.views | number }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="font-size:14px;color:#b91c1c;margin-top:24px;margin-bottom:16px;border-bottom:2px solid #fee2e2;padding-bottom:8px;">
+        Least Used Components (Idle Watchlist)
+      </h2>
+
+      <div class="two-col">
+        <!-- Least Used Reports -->
+        <div class="card" style="border-color:#fca5a5;">
+          <h3 style="color:#ef4444;">Least Used Reports</h3>
+          <div class="tbl-wrap" style="scrollbar-color:#ef4444 #fee2e2; border-color:#ef4444;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Report Name</th>
+                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Views</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let r of stats.leastReports" [title]="r.name + ': ' + r.views + ' views'">
+                  <td><strong>{{ r.name }}</strong></td>
+                  <td>{{ r.views | number }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Least Used Pages -->
+        <div class="card" style="border-color:#fca5a5;">
+          <h3 style="color:#ef4444;">Least Used Pages</h3>
+          <div class="tbl-wrap" style="scrollbar-color:#ef4444 #fee2e2; border-color:#ef4444;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Tab Name</th>
+                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Parent Report</th>
+                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Views</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let p of stats.leastPages" [title]="p.pageName + ' > ' + p.reportName + ': ' + p.views + ' views'">
+                  <td><strong>{{ p.pageName }}</strong></td>
+                  <td style="font-size:12px;color:#4b5563;">{{ p.reportName }}</td>
+                  <td>{{ p.views | number }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </ng-container>
   `,
 })
 export class UsageComponent implements OnInit {
   allReports = signal<UsageReportItem[]>([]);
   analytics = signal<UsageAnalytics | null>(null);
+  globalStats = signal<any | null>(null);
   wsUsers = signal<WorkspaceUser[]>([]);
   loadingReports = signal(false);
   loadingAnalytics = signal(false);
@@ -468,12 +621,44 @@ export class UsageComponent implements OnInit {
     this.workspaces().find(w => w.groupId === this.selectedGroupId())?.groupName ?? '',
   );
 
-  // Filter viewsByDay to show only the last N days (30, 60, or 90)
+  // Filter viewsByDay to show only the last N days (30, 60, or 90).
+  // If 60 or 90 days range (2 or 3 months) is selected, aggregate into Month-level buckets.
   filteredViewsByDay = computed(() => {
     const data = this.analytics()?.viewsByDay ?? [];
     const limit = this.selectedDays();
-    if (data.length <= limit) return data;
-    return data.slice(-limit);
+    
+    // Slice data to requested day range first
+    let sliced = data;
+    if (data.length > limit) {
+      sliced = data.slice(-limit);
+    }
+    
+    if (limit === 30) {
+      // Return raw days
+      return sliced;
+    } else {
+      // Group by Month (YYYY-MM)
+      const monthMap = new Map<string, number>();
+      for (const d of sliced) {
+        const monthKey = d.date.slice(0, 7); // e.g. "2026-08"
+        monthMap.set(monthKey, (monthMap.get(monthKey) ?? 0) + d.views);
+      }
+      
+      const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      return Array.from(monthMap.entries()).map(([month, views]) => {
+        const parts = month.split('-');
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const name = monthNames[monthIdx] || month;
+        return {
+          date: name, // label will be month name
+          views
+        };
+      });
+    }
   });
 
   // Calculate total views for selected day range
@@ -488,19 +673,23 @@ export class UsageComponent implements OnInit {
     const query = this.userSearch().trim().toLowerCase();
     
     // Group and aggregate views by user email/details for the active dates
-    const userMap = new Map<string, { givenName: string; familyName: string; email: string; views: number }>();
+    const userMap = new Map<string, { givenName: string; familyName: string; email: string; views: number; lastAccessed?: string }>();
     
     for (const u of rawUsers) {
       if (activeDates.has(u.date)) {
         const existing = userMap.get(u.email);
         if (existing) {
           existing.views += u.views;
+          if (u.date && (!existing.lastAccessed || u.date > existing.lastAccessed)) {
+            existing.lastAccessed = u.date;
+          }
         } else {
           userMap.set(u.email, {
             givenName: u.givenName,
             familyName: u.familyName,
             email: u.email,
-            views: u.views
+            views: u.views,
+            lastAccessed: u.date
           });
         }
       }
@@ -650,6 +839,15 @@ export class UsageComponent implements OnInit {
         this.loadingReports.set(false);
       },
     });
+
+    this.loadGlobalStats();
+  }
+
+  loadGlobalStats(groupId?: string) {
+    this.api.getGlobalDashboardStats(groupId).subscribe({
+      next: (stats) => this.globalStats.set(stats),
+      error: () => this.globalStats.set(null)
+    });
   }
 
   onWorkspaceChange(groupId: string) {
@@ -659,6 +857,10 @@ export class UsageComponent implements OnInit {
     this.showWorkspaceMembers.set(false);
     this.analytics.set(null);
     this.wsUsers.set([]);
+    
+    // Refresh stats filtered to workspace
+    this.loadGlobalStats(groupId || undefined);
+
     if (!groupId) return;
 
     // Load workspace users

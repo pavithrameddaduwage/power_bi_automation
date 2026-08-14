@@ -129,6 +129,148 @@ export class UsageService {
     }));
   }
 
+  /** Fetch global dashboard metrics and stats from PG database */
+  async getGlobalDashboardStats(filterGroupId?: string) {
+    // Helper to extract workspace display names mapping from listUsageReports
+    let workspaceMap = new Map<string, string>();
+    try {
+      const reports = await this.listUsageReports();
+      for (const r of reports) {
+        workspaceMap.set(r.groupId, r.groupName);
+      }
+    } catch {}
+
+    const filterClause = filterGroupId ? `WHERE group_id = '${filterGroupId}'` : '';
+    const filterAndClause = filterGroupId ? `AND group_id = '${filterGroupId}'` : '';
+
+    // 1. Top 10 Workspaces
+    const topWorkspacesQuery = await this.pool.query(`
+      SELECT group_id, SUM(views) as views
+      FROM usage_views_by_day
+      GROUP BY group_id
+      ORDER BY views DESC
+      LIMIT 10
+    `);
+    const topWorkspaces = topWorkspacesQuery.rows.map(r => ({
+      name: workspaceMap.get(r.group_id) || r.group_id,
+      views: Number(r.views)
+    }));
+
+    // 2. Top 10 Users
+    const topUsersQuery = await this.pool.query(`
+      SELECT email, given_name, family_name, SUM(views) as views, MAX(date) as last_accessed
+      FROM usage_views_by_user
+      ${filterClause}
+      GROUP BY email, given_name, family_name
+      ORDER BY views DESC
+      LIMIT 10
+    `);
+    const topUsers = topUsersQuery.rows.map(r => ({
+      email: r.email,
+      name: r.given_name ? `${r.given_name} ${r.family_name || ''}`.trim() : r.email,
+      views: Number(r.views),
+      lastAccessed: r.last_accessed
+    }));
+
+    // 3. Top Reports / Dashboards
+    const topReportsQuery = await this.pool.query(`
+      SELECT report_name, SUM(views) as views
+      FROM usage_views_by_report
+      ${filterClause}
+      GROUP BY report_name
+      ORDER BY views DESC
+      LIMIT 10
+    `);
+    const topReports = topReportsQuery.rows.map(r => ({
+      name: r.report_name,
+      views: Number(r.views)
+    }));
+
+    // 4. Top Pages
+    const topPagesQuery = await this.pool.query(`
+      SELECT page_name, report_name, SUM(views) as views
+      FROM usage_views_by_page
+      ${filterClause}
+      GROUP BY page_name, report_name
+      ORDER BY views DESC
+      LIMIT 10
+    `);
+    const topPages = topPagesQuery.rows.map(r => ({
+      pageName: r.page_name,
+      reportName: r.report_name,
+      views: Number(r.views)
+    }));
+
+    // 5. Least Used Workspace
+    const leastWorkspacesQuery = await this.pool.query(`
+      SELECT group_id, SUM(views) as views
+      FROM usage_views_by_day
+      GROUP BY group_id
+      ORDER BY views ASC
+      LIMIT 5
+    `);
+    const leastWorkspaces = leastWorkspacesQuery.rows.map(r => ({
+      name: workspaceMap.get(r.group_id) || r.group_id,
+      views: Number(r.views)
+    }));
+
+    // 6. Least Used Reports
+    const leastReportsQuery = await this.pool.query(`
+      SELECT report_name, SUM(views) as views
+      FROM usage_views_by_report
+      ${filterClause}
+      GROUP BY report_name
+      ORDER BY views ASC
+      LIMIT 5
+    `);
+    const leastReports = leastReportsQuery.rows.map(r => ({
+      name: r.report_name,
+      views: Number(r.views)
+    }));
+
+    // 7. Least Used Pages
+    const leastPagesQuery = await this.pool.query(`
+      SELECT page_name, report_name, SUM(views) as views
+      FROM usage_views_by_page
+      ${filterClause}
+      GROUP BY page_name, report_name
+      ORDER BY views ASC
+      LIMIT 5
+    `);
+    const leastPages = leastPagesQuery.rows.map(r => ({
+      pageName: r.page_name,
+      reportName: r.report_name,
+      views: Number(r.views)
+    }));
+
+    // 8. Least Accessed Users (Inactive Watchlist)
+    const leastUsersQuery = await this.pool.query(`
+      SELECT email, given_name, family_name, SUM(views) as views, MAX(date) as last_accessed
+      FROM usage_views_by_user
+      ${filterClause}
+      GROUP BY email, given_name, family_name
+      ORDER BY last_accessed ASC
+      LIMIT 5
+    `);
+    const leastUsers = leastUsersQuery.rows.map(r => ({
+      email: r.email,
+      name: r.given_name ? `${r.given_name} ${r.family_name || ''}`.trim() : r.email,
+      views: Number(r.views),
+      lastAccessed: r.last_accessed
+    }));
+
+    return {
+      topWorkspaces,
+      topUsers,
+      topReports,
+      topPages,
+      leastWorkspaces,
+      leastReports,
+      leastPages,
+      leastUsers
+    };
+  }
+
   /** Query usage analytics from the dataset behind a usage metric report (works with upgraded and classic formats) */
   async getUsageAnalytics(groupId: string, datasetId: string): Promise<UsageAnalytics> {
     const http = await this.client();

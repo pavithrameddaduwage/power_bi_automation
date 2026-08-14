@@ -333,6 +333,10 @@ export class SyncApiService {
   getUsageAnalytics(groupId: string, datasetId: string): Observable<UsageAnalytics> {
     return this.http.get<UsageAnalytics>(`${API}/usage/analytics/${groupId}/${datasetId}`);
   }
+  getGlobalDashboardStats(filterGroupId?: string): Observable<GlobalDashboardStats> {
+    const url = filterGroupId ? `${API}/usage/global-stats?filterGroupId=${filterGroupId}` : `${API}/usage/global-stats`;
+    return this.http.get<GlobalDashboardStats>(url);
+  }
 }
 
 // ── Usage Report interfaces ──────────────────────────────────────
@@ -360,5 +364,25 @@ export interface UsageAnalytics {
   pageViews: { pageName: string; reportName: string; date: string; views: number }[];
   userReportAccess: { givenName: string; familyName: string; email: string; reportName: string; date: string; views: number }[];
   userPageAccess: { givenName: string; familyName: string; email: string; reportName: string; pageName: string; date: string; views: number }[];
+}
+
+export interface StatItem {
+  name?: string;
+  pageName?: string;
+  reportName?: string;
+  email?: string;
+  views: number;
+  lastAccessed?: string;
+}
+
+export interface GlobalDashboardStats {
+  topWorkspaces: StatItem[];
+  topUsers: StatItem[];
+  topReports: StatItem[];
+  topPages: StatItem[];
+  leastWorkspaces: StatItem[];
+  leastReports: StatItem[];
+  leastPages: StatItem[];
+  leastUsers: StatItem[];
 }
 

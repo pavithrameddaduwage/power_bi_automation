@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { UsageService } from './usage.service';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -28,5 +28,12 @@ export class UsageController {
     @Param('datasetId') datasetId: string,
   ) {
     return this.usage.getUsageAnalytics(groupId, datasetId);
+  }
+
+  /** Global aggregated dashboard stats */
+  @Public()
+  @Get('global-stats')
+  getGlobalStats(@Query('filterGroupId') filterGroupId?: string) {
+    return this.usage.getGlobalDashboardStats(filterGroupId);
   }
 }
