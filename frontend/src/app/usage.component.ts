@@ -24,9 +24,10 @@ import {
       display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px;
     }
     .controls-row select {
-      flex: 1; min-width: 220px; max-width: 380px;
+      flex: 0 0 auto;
+      width: 200px;
       border: 1.5px solid #93c5fd; border-radius: 8px;
-      padding: 8px 12px; font-size: 13px; background: #fff;
+      padding: 6px 12px; font-size: 13px; background: #fff;
       color: #111827; outline: none; cursor: pointer;
     }
     .controls-row select:focus { border-color: #1d6ef5; }
@@ -131,7 +132,7 @@ import {
     .btn-link { background:none; border:none; color:#1d6ef5; font-size:12px; cursor:pointer; text-decoration:underline; padding:0; }
     .day-btns { display: flex; gap: 4px; }
     .day-btn {
-      padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer;
+      padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
       border: 1.5px solid #93c5fd; background: #fff; color: #1d4ed8; transition: all .15s;
     }
     .day-btn.active { background: #1d6ef5; color: #fff; border-color: #1d6ef5; }
