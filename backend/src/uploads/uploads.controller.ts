@@ -89,6 +89,18 @@ export class UploadsController {
     return this.uploads.sendEmailReport(body);
   }
 
+  /** Export given rows directly as a downloadable Excel (.xlsx) file */
+  @Public()
+  @Post('export-excel')
+  async exportExcel(@Body() body: { reportName?: string; rows: any[] }, @Res() res: Response) {
+    const buffer = await this.uploads.exportExcelBuffer(body.reportName, body.rows);
+    const safeName = (body.reportName || 'report').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const fileName = `${safeName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(buffer);
+  }
+
   /** Download a dynamic dataset as CSV (opens in Excel). */
   @Public()
   @Get('datasets/:table/export')

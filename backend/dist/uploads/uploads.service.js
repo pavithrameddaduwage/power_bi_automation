@@ -64,6 +64,13 @@ let UploadsService = class UploadsService {
         await this.emailService.sendReport(dto.recipients, subject, excelBuffer, fileName);
         return { ok: true, count: dto.rows.length };
     }
+    async exportExcelBuffer(reportName, rows = []) {
+        if (!rows || rows.length === 0) {
+            throw new common_1.BadRequestException('No rows available to export.');
+        }
+        const name = reportName?.trim() || 'Report';
+        return this.excelService.generateExcelBuffer(rows, name);
+    }
     async uploadReport(dto) {
         if (!dto?.reportName?.trim()) {
             throw new common_1.BadRequestException('reportName is required.');

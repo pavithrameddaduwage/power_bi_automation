@@ -48,6 +48,7 @@ export declare class UploadsService {
         ok: boolean;
         count: number;
     }>;
+    exportExcelBuffer(reportName?: string, rows?: any[]): Promise<Buffer>;
     uploadReport(dto: UploadReportDto): Promise<UploadResult>;
     exportCsv(table: string): Promise<string>;
     uploadPrincipals(dto: UploadPrincipalsDto): Promise<UploadResult>;

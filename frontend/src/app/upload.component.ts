@@ -33,11 +33,7 @@ import { PagerComponent } from './pager.component';
       </div>
       <div class="step" [class.active]="currentStep() === 4" [class.disabled]="!loadedRows().length && !loadedCols().length" (click)="(loadedRows().length || loadedCols().length) && setStep(4)">
         <div class="step-num">4</div>
-        <div class="step-label">Database</div>
-      </div>
-      <div class="step" [class.active]="currentStep() === 5" [class.disabled]="!loadedRows().length && !loadedCols().length" (click)="(loadedRows().length || loadedCols().length) && setStep(5)">
-        <div class="step-num">5</div>
-        <div class="step-label">Schedule</div>
+        <div class="step-label">Schedule & Database</div>
       </div>
     </div>
 
@@ -75,40 +71,6 @@ import { PagerComponent } from './pager.component';
             </div>
           </div>
         </ng-container>
-
-        <div class="row-between" style="margin-top: 30px;">
-          <h2>Stored datasets</h2>
-          <button class="btn-secondary" (click)="loadDatasets()" [disabled]="busy()">Refresh</button>
-        </div>
-        <div class="card" *ngFor="let d of pagedDatasets()">
-          <div class="row-between">
-            <div>
-              <strong>{{ d.label }}</strong>
-              <span class="badge badge-ok">{{ d.kind }}</span>
-              <span class="badge badge-no" *ngIf="d.locked">locked</span>
-              <div class="tag">table: {{ d.table_name }} · {{ d.last_rows }} rows</div>
-            </div>
-            <div style="display:flex;gap:6px;">
-              <a class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center;" [href]="api.exportUrl(d.table_name)">Export CSV</a>
-              <button class="btn-secondary" (click)="preview(d.table_name)" [disabled]="busy()">Preview</button>
-            </div>
-          </div>
-          <div style="margin-top:12px; display:flex; gap:6px; align-items:center;">
-            <input style="flex:1" placeholder="Email recipients (comma separated)" [(ngModel)]="datasetEmails[d.table_name]" />
-            <button class="btn-secondary" (click)="sendEmail(d.table_name)" [disabled]="busy() || !datasetEmails[d.table_name]">Send Excel via Email</button>
-          </div>
-          <div *ngIf="previewTable() === d.table_name" class="table-container" style="overflow:auto;margin-top:10px;">
-            <table>
-              <thead><tr><th *ngFor="let c of previewCols()">{{ c }}</th></tr></thead>
-              <tbody>
-                <tr *ngFor="let row of previewRows()"><td *ngFor="let c of previewCols()">{{ row[c] }}</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <app-pager [page]="dsPage()" [total]="datasets().length" [pageSize]="pageSize"
-                   (go)="dsPage.set($event)"></app-pager>
-        <div class="card" *ngIf="datasets().length === 0"><span class="muted">Nothing stored yet.</span></div>
       </ng-container>
 
       <!-- STEP 2 -->
@@ -186,8 +148,7 @@ import { PagerComponent } from './pager.component';
               </table>
             </div>
             <p class="tag" style="margin-top:6px;">
-              Tick <strong>Key</strong> on the column(s) that uniquely identify a row — those become the
-              upsert keys so re-syncs update instead of duplicate.
+              Check <strong>Key</strong> on unique column(s) to update existing rows instead of creating duplicates.
             </p>
 
             <div *ngIf="measures().length" class="measures-block">
@@ -195,10 +156,6 @@ import { PagerComponent } from './pager.component';
                 <strong>Measures — viewed separately ({{ measures().length }})</strong>
                 <span class="tag">{{ selectedMeasureNames().length }} selected</span>
               </div>
-              <p class="muted" style="margin:4px 0;">
-                DAX calculations (totals, ratios, %). When ticked, the data is grouped by the
-                columns above and these are computed per group.
-              </p>
               <input class="search" placeholder="Search measures…" [ngModel]="measureFilter()" (ngModelChange)="measureFilter.set($event)" />
               <div class="scroll-list">
                 <table>
@@ -214,16 +171,6 @@ import { PagerComponent } from './pager.component';
               </div>
             </div>
 
-
-            <div class="grid2" style="margin-top:16px; border-top:1px solid var(--border); padding-top:14px;">
-              <label>Email recipients (comma-separated, optional)
-                <input [(ngModel)]="recipients" placeholder="user@company.com, team@company.com" />
-              </label>
-              <label>Email subject (optional)
-                <input [(ngModel)]="emailSubject" placeholder="Excel Report Export" />
-              </label>
-            </div>
-
             <div class="row-between" style="margin-top:16px; flex-wrap:wrap; gap:10px;">
               <div style="display:flex;gap:16px;align-items:center;">
                 <label class="pick" style="margin:0;">
@@ -233,16 +180,10 @@ import { PagerComponent } from './pager.component';
                   <input type="number" min="1" [(ngModel)]="limit" style="width:90px;" />
                 </label>
               </div>
-              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <button class="btn-secondary" (click)="syncAndEmailFromStep2()" [disabled]="busy() || selectedTables().length === 0 || !recipients.trim()">
-                  <span *ngIf="busy()" class="spinner"></span>
-                  📧 Send Report via Email
-                </button>
-                <button class="btn-primary" (click)="sync()" [disabled]="busy() || selectedTables().length === 0 || (selectedNames().length === 0 && selectedMeasureNames().length === 0)">
-                  <span *ngIf="busy()" class="spinner-white"></span>
-                  {{ busy() ? 'Syncing…' : '🔄 Sync & Preview Data' }}
-                </button>
-              </div>
+              <button class="btn-primary" (click)="sync()" [disabled]="busy() || selectedTables().length === 0 || (selectedNames().length === 0 && selectedMeasureNames().length === 0)">
+                <span *ngIf="busy()" class="spinner-white"></span>
+                {{ busy() ? 'Syncing…' : 'Sync & Preview Data' }}
+              </button>
             </div>
           </ng-container>
         </div>
@@ -261,7 +202,9 @@ import { PagerComponent } from './pager.component';
               <ng-container *ngIf="hasActiveColFilters()"> (filtered)</ng-container>
             </span>
           </h2>
-          <button class="btn-secondary" (click)="clearColFilters()" *ngIf="hasActiveColFilters()">✕ Clear Filters</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn-secondary" (click)="clearColFilters()" *ngIf="hasActiveColFilters()">Clear Filters</button>
+          </div>
         </div>
         <div class="card">
           <div class="table-container" style="overflow:auto;">
@@ -271,15 +214,9 @@ import { PagerComponent } from './pager.component';
                   <th *ngFor="let c of loadedCols()" style="cursor: pointer;" (click)="toggleHeaderFilter(c, $event)">
                     <div class="th-header-cell">
                       <span class="th-title">{{ c }}</span>
-
-                      <ng-container *ngIf="colFilters()[c] || colFilterFrom()[c] || colFilterTo()[c]; else normalArrow">
-                        <span class="active-filter-badge" (click)="clearSingleFilter(c, $event)" title="Clear filter">
-                          {{ colFilters()[c] || 'Filtered' }} ✕
-                        </span>
-                      </ng-container>
-                      <ng-template #normalArrow>
-                        <span class="th-arrow-btn" [class.open]="activeFilterCol() === c">▾</span>
-                      </ng-template>
+                      <span class="th-arrow-btn"
+                            [class.open]="activeFilterCol() === c"
+                            [class.filtered]="isColFiltered(c)">▾</span>
                     </div>
                   </th>
                 </tr>
@@ -290,7 +227,7 @@ import { PagerComponent } from './pager.component';
             </table>
           </div>
 
-          <!-- Floating Popover Filter Menu (fixed positioning prevents container overflow clipping) -->
+          <!-- Floating Popover Filter Menu -->
           <div *ngIf="activeFilterCol() as c"
                class="filter-popover"
                [style.top.px]="popoverPos().top"
@@ -319,15 +256,23 @@ import { PagerComponent } from './pager.component';
                      (ngModelChange)="popoverSearch[c] = $event"
                      (click)="$event.stopPropagation()" />
               <div class="popover-options-list">
-                <div class="popover-option" [class.active]="!colFilters()[c]" (click)="setColFilter(c, ''); activeFilterCol.set(null)">
-                  <span>— All —</span>
-                </div>
-                <div *ngFor="let v of filteredUniqueValues(c)"
-                     class="popover-option"
-                     [class.active]="colFilters()[c] === v"
-                     (click)="setColFilter(c, v); activeFilterCol.set(null)">
+                <label class="popover-option">
+                  <input type="checkbox"
+                         [checked]="(colFilters()[c] || []).length === 0"
+                         (change)="clearSingleColValues(c)" />
+                  <span>All</span>
+                </label>
+                <label *ngFor="let v of filteredUniqueValues(c)"
+                       class="popover-option">
+                  <input type="checkbox"
+                         [checked]="isValueSelected(c, v)"
+                         (change)="toggleColFilterValue(c, v)" />
                   <span>{{ v }}</span>
-                </div>
+                </label>
+              </div>
+              <div class="popover-actions">
+                <button class="btn-popover-sub" (click)="clearSingleFilter(c, $event)">Clear</button>
+                <button class="btn-popover-main" (click)="activeFilterCol.set(null)">Apply</button>
               </div>
             </ng-template>
           </div>
@@ -341,18 +286,74 @@ import { PagerComponent } from './pager.component';
         </div>
         <div class="wizard-footer row-between">
           <button class="btn-secondary" (click)="setStep(2)">‹ Back</button>
-          <button class="btn-primary" (click)="setStep(4)">Next ›</button>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn-secondary" (click)="downloadExcelSheet()" [disabled]="busy()">
+              <span *ngIf="busy()" class="spinner"></span>
+              Download Excel Sheet
+            </button>
+            <button class="btn-primary" (click)="setStep(4)">Next: Schedule &amp; Database (Optional) ›</button>
+          </div>
         </div>
       </ng-container>
 
-      <!-- STEP 4 — Database + Write Mode -->
+      <!-- STEP 4 — Schedule & Database (Optional) -->
       <ng-container *ngIf="currentStep() === 4 && (loadedRows().length || loadedCols().length)">
-        <h2>4 Write to database</h2>
+        <h2>4 Schedule &amp; Database options (optional)</h2>
+        <div class="card" style="margin-bottom:20px; background: #f8fafc; border: 1px solid #cbd5e1;">
+          <p class="muted" style="margin:0; font-size:13px; color:#334155;">
+            Note: Target database upload and job scheduling are optional. You can download the sheet as an Excel file directly or send it via email without storing it in a database.
+          </p>
+        </div>
+
+        <!-- Job Schedule Panel -->
+        <div class="card" style="margin-bottom:20px;">
+          <strong>Job &amp; Schedule Settings</strong>
+          <p class="muted" style="margin-top:4px;">
+            Saves this exact setup so it can be re-run or scheduled on a timer.
+          </p>
+          <div class="grid2">
+            <label>Job name
+              <input [(ngModel)]="jobName" placeholder="e.g. Inventory bins nightly" />
+            </label>
+            <label>Cron schedule (optional, UTC)
+              <input [(ngModel)]="cron" placeholder="0 6 * * 3  (Wed 06:00)" />
+            </label>
+          </div>
+          <div class="warn" *ngIf="targetLocked()">
+            The table has been created and cannot be edited.
+          </div>
+          <div class="row-between" style="margin-top:12px;">
+            <span class="tag">examples: <code>0 6 * * *</code> daily 06:00 · <code>0 */4 * * *</code> every 4h</span>
+            <button class="btn-primary" (click)="saveJob()" [disabled]="busy() || targetLocked()">Save Job &amp; Schedule</button>
+          </div>
+        </div>
+
+        <!-- Email & Notification Settings Panel -->
+        <div class="card" style="margin-bottom:20px;">
+          <strong>Email &amp; Notification Settings</strong>
+          <p class="muted" style="margin-top:4px;">
+            Select email recipients to send this specific report via email now or when run automatically by a scheduled job.
+          </p>
+          <div class="grid2" style="margin-top:12px;">
+            <label>Email recipients (comma-separated)
+              <input [(ngModel)]="recipients" placeholder="user@company.com, team@company.com" />
+            </label>
+            <label>Email subject (optional)
+              <input [(ngModel)]="emailSubject" placeholder="Excel Report Export" />
+            </label>
+          </div>
+          <div class="row-between" style="margin-top:12px;">
+            <span class="tag">recipients receive an Excel report attachment</span>
+            <button class="btn-secondary" (click)="sendReportEmail()" [disabled]="busy() || writeRows().length === 0 || !recipients.trim()">
+              Send Report via Email
+            </button>
+          </div>
+        </div>
 
         <!-- Target Database Panel -->
         <div class="card" style="margin-bottom:20px;">
           <div class="row-between" style="margin-bottom:12px;">
-            <strong>🗄 Target Database</strong>
+            <strong>Target Database Connection</strong>
             <button class="btn-secondary" (click)="loadDatabases()" [disabled]="busy()">Refresh</button>
           </div>
 
@@ -377,7 +378,7 @@ import { PagerComponent } from './pager.component';
           <!-- Add new database form -->
           <div>
             <button class="btn-secondary" (click)="showDbForm.set(!showDbForm())" style="margin-bottom:12px;">
-              {{ showDbForm() ? '▲ Hide' : '+ Add New Database' }}
+              {{ showDbForm() ? 'Hide' : '+ Add New Database' }}
             </button>
             <div *ngIf="showDbForm()" class="db-form">
               <div class="grid3">
@@ -408,8 +409,8 @@ import { PagerComponent } from './pager.component';
                     <span *ngIf="dbTestState() === 'testing'" class="spinner"></span>
                     Test Connection
                   </button>
-                  <span *ngIf="dbTestState() === 'ok'" style="color:#16a34a;font-weight:600;">✅ Connected</span>
-                  <span *ngIf="dbTestState() === 'fail'" style="color:#dc2626;font-weight:600;">❌ {{ dbTestError() }}</span>
+                  <span *ngIf="dbTestState() === 'ok'" style="color:#16a34a;font-weight:600;">Connected</span>
+                  <span *ngIf="dbTestState() === 'fail'" style="color:#dc2626;font-weight:600;">{{ dbTestError() }}</span>
                 </div>
                 <button class="btn-primary" (click)="createDatabase()" [disabled]="busy() || !newDb.host || !newDb.dbname || !newDb.username || !newDb.password">
                   <span *ngIf="busy()" class="spinner-white"></span>
@@ -441,8 +442,8 @@ import { PagerComponent } from './pager.component';
           </div>
 
           <div class="warn" *ngIf="writeMode === 'append'">
-            ⚠ Append inserts every row on each run — re-running or scheduling this
-            <strong>duplicates</strong> the data. Pick Upsert + a business key to update in place.
+            Note: Append inserts every row on each run — re-running or scheduling this
+            duplicates the data. Pick Upsert + a business key to update in place.
           </div>
           <div *ngIf="writeMode === 'delta'" style="margin-top:10px;">
             <label>Date column for delta
@@ -512,59 +513,16 @@ import { PagerComponent } from './pager.component';
             The table has been created and cannot be edited.
           </div>
 
-          <div class="grid2" style="margin-top:14px;">
-            <label>Email recipients (comma-separated, optional)
-              <input [(ngModel)]="recipients" placeholder="user@company.com, team@company.com" />
-            </label>
-            <label>Email subject (optional)
-              <input [(ngModel)]="emailSubject" placeholder="Scheduled Report Export" />
-            </label>
-          </div>
-
           <div class="row-between" style="margin-top:16px; flex-wrap:wrap; gap:10px;">
             <span class="tag" style="font-size:13px;">{{ writeRows().length }} rows ready</span>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-              <button class="btn-secondary" (click)="sendReportEmail()" [disabled]="busy() || writeRows().length === 0 || !recipients.trim()">
-                📧 Send Report via Email
-              </button>
-              <button class="btn-primary" (click)="upload()" [disabled]="busy() || writeRows().length === 0 || targetLocked()">
-                💾 Upload to Database
-              </button>
-            </div>
+            <button class="btn-primary" (click)="upload()" [disabled]="busy() || writeRows().length === 0 || targetLocked()">
+              Upload to Database
+            </button>
           </div>
         </div>
+
         <div class="wizard-footer row-between">
           <button class="btn-secondary" (click)="setStep(3)">‹ Back</button>
-          <button class="btn-primary" (click)="setStep(5)">Next ›</button>
-        </div>
-      </ng-container>
-
-      <!-- STEP 5 -->
-      <ng-container *ngIf="currentStep() === 5 && (loadedRows().length || loadedCols().length)">
-        <h2>5 Save as a scheduled job (optional)</h2>
-        <div class="card">
-          <p class="muted">
-            Saves this exact setup (report · tables · columns · mode) so it can be
-            re-run or scheduled. Leave cron blank to just save it for one-click runs.
-          </p>
-          <div class="grid2">
-            <label>Job name
-              <input [(ngModel)]="jobName" placeholder="e.g. Inventory bins nightly" />
-            </label>
-            <label>Cron schedule (optional, UTC)
-              <input [(ngModel)]="cron" placeholder="0 6 * * 3  (Wed 06:00)" />
-            </label>
-          </div>
-          <div class="warn" *ngIf="targetLocked()">
-            The table has been created and cannot be edited.
-          </div>
-          <div class="row-between">
-            <span class="tag">examples: <code>0 6 * * *</code> daily 06:00 · <code>0 */4 * * *</code> every 4h</span>
-            <button class="btn-primary" (click)="saveJob()" [disabled]="busy() || targetLocked()">Save job</button>
-          </div>
-        </div>
-        <div class="wizard-footer row-between">
-          <button class="btn-secondary" (click)="setStep(4)">‹ Back</button>
           <button class="btn-primary" (click)="setStep(1)">Finish</button>
         </div>
       </ng-container>
@@ -587,45 +545,48 @@ import { PagerComponent } from './pager.component';
       display: flex; align-items: center; justify-content: space-between; gap: 8px; user-select: none;
     }
     .th-title {
-      font-size: 13px; font-weight: 700; color: #000000; white-space: nowrap;
+      font-size: 13px; font-weight: 700; color: #1d4ed8; white-space: nowrap;
     }
     .th-arrow-btn {
-      font-size: 11px; color: #111827; transition: transform 0.15s; display: inline-block;
+      font-size: 12px; color: #93c5fd; transition: transform 0.15s, color 0.15s; display: inline-block;
+      opacity: 0.7;
     }
-    .th-arrow-btn.open { transform: rotate(180deg); }
-    .active-filter-badge {
-      display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px;
-      border-radius: 99px; background: #1d6ef5; color: #ffffff;
-      font-size: 11px; font-weight: 600; cursor: pointer;
-    }
+    .th-arrow-btn.open { transform: rotate(180deg); color: #1d6ef5; opacity: 1; }
+    .th-arrow-btn.filtered { color: #1d6ef5; opacity: 1; font-weight: 900; }
 
     .filter-popover {
       position: fixed; margin-top: 0;
-      min-width: 220px; max-width: 280px; background: #ffffff;
-      border: 1px solid #bce0fd; border-radius: 10px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 12px;
+      min-width: 230px; max-width: 290px; background: #ffffff;
+      border: 1.5px solid #93c5fd; border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(29,110,245,0.14); padding: 14px;
       z-index: 9999; cursor: default; text-transform: none; font-weight: normal;
     }
-    .popover-header { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 8px; text-align: left; }
+    .popover-header { font-size: 12px; font-weight: 700; color: #1d4ed8; margin-bottom: 8px; text-align: left; }
     .popover-search-input {
-      font-size: 12px; padding: 6px 10px; border: 1px solid #c2ccd9;
-      border-radius: 6px; width: 100%; margin-bottom: 8px; outline: none;
+      font-size: 12px; padding: 6px 10px; border: 1.5px solid #93c5fd;
+      border-radius: 7px; width: 100%; margin-bottom: 8px; outline: none;
     }
     .popover-search-input:focus { border-color: #1d6ef5; }
-    .popover-options-list { max-height: 180px; overflow-y: auto; border: 1px solid #edf2f7; border-radius: 6px; text-align: left; }
+    .popover-options-list {
+      max-height: 200px; overflow-y: auto; border: 1.5px solid #dbeafe;
+      border-radius: 8px; text-align: left;
+      scrollbar-width: thin; scrollbar-color: #93c5fd #f0f7ff;
+    }
     .popover-option {
-      padding: 7px 10px; font-size: 12px; color: #1e293b; cursor: pointer;
-      border-bottom: 1px solid #f1f5f9; transition: background 0.1s;
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; font-size: 12px; color: #1e293b;
+      cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.1s;
     }
     .popover-option:last-child { border-bottom: none; }
-    .popover-option:hover { background: #eff5ff; color: #1d6ef5; }
-    .popover-option.active { background: #eff5ff; color: #1d6ef5; font-weight: 700; }
+    .popover-option:hover { background: #eff6ff; }
+    .popover-option input[type="checkbox"] { accent-color: #1d6ef5; cursor: pointer; flex-shrink: 0; }
+    .popover-option span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .popover-field { margin-bottom: 8px; text-align: left; }
     .popover-field label { display: block; font-size: 11px; font-weight: 600; color: #374151; margin-bottom: 2px; }
-    .popover-field input { font-size: 12px; padding: 5px 8px; border: 1px solid #c2ccd9; border-radius: 6px; width: 100%; }
-    .popover-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
-    .btn-popover-main { background: #1d6ef5; color: #fff; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .btn-popover-sub { background: #ffffff; color: #374151; border: 1px solid #c2ccd9; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .popover-field input { font-size: 12px; padding: 5px 8px; border: 1.5px solid #93c5fd; border-radius: 6px; width: 100%; }
+    .popover-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; border-top: 1px solid #dbeafe; padding-top: 10px; }
+    .btn-popover-main { background: #1d6ef5; color: #fff; border: none; padding: 5px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-popover-sub { background: #ffffff; color: #374151; border: 1.5px solid #93c5fd; padding: 5px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; }
 
     /* Table cell values */
     td { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -710,7 +671,7 @@ export class UploadComponent implements OnInit {
   previewRows = signal<any[]>([]);
 
   // ── Column filters (Step 3) ───────────────────────────────────────
-  colFilters = signal<Record<string, string>>({});
+  colFilters = signal<Record<string, string[]>>({});
   colFilterFrom = signal<Record<string, string>>({});
   colFilterTo = signal<Record<string, string>>({});
   activeFilterCol = signal<string | null>(null);
@@ -790,8 +751,11 @@ export class UploadComponent implements OnInit {
     const cfFrom = this.colFilterFrom();
     const cfTo = this.colFilterTo();
     for (const col of Object.keys(cf)) {
-      const v = cf[col];
-      if (v) rows = rows.filter((r) => String(r[col] ?? '') === v);
+      const vals = cf[col];
+      if (vals && vals.length > 0) {
+        const set = new Set(vals);
+        rows = rows.filter((r) => set.has(String(r[col] ?? '')));
+      }
     }
     for (const col of Object.keys(cfFrom)) {
       const from = cfFrom[col];
@@ -814,7 +778,7 @@ export class UploadComponent implements OnInit {
     const cfFrom = this.colFilterFrom();
     const cfTo = this.colFilterTo();
     return (
-      Object.values(cf).some((v) => !!v) ||
+      Object.values(cf).some((vs) => vs && vs.length > 0) ||
       Object.values(cfFrom).some((v) => !!v) ||
       Object.values(cfTo).some((v) => !!v)
     );
@@ -1042,8 +1006,31 @@ export class UploadComponent implements OnInit {
   }
 
   setColFilter(col: string, val: string) {
-    this.colFilters.update((f) => ({ ...f, [col]: val }));
+    this.colFilters.update((f) => ({ ...f, [col]: val ? [val] : [] }));
     this.page.set(0);
+  }
+  toggleColFilterValue(col: string, val: string) {
+    this.colFilters.update((f) => {
+      const cur = f[col] ?? [];
+      const idx = cur.indexOf(val);
+      const next = idx >= 0 ? cur.filter((v) => v !== val) : [...cur, val];
+      return { ...f, [col]: next };
+    });
+    this.page.set(0);
+  }
+  clearSingleColValues(col: string) {
+    this.colFilters.update((f) => ({ ...f, [col]: [] }));
+    this.page.set(0);
+  }
+  isValueSelected(col: string, val: string): boolean {
+    return (this.colFilters()[col] ?? []).includes(val);
+  }
+  isColFiltered(col: string): boolean {
+    return (
+      ((this.colFilters()[col] ?? []).length > 0) ||
+      !!this.colFilterFrom()[col] ||
+      !!this.colFilterTo()[col]
+    );
   }
   setColFilterFrom(col: string, val: string) {
     this.colFilterFrom.update((f) => ({ ...f, [col]: val }));
@@ -1088,9 +1075,9 @@ export class UploadComponent implements OnInit {
     this.popoverPos.set({ top, left });
     this.activeFilterCol.set(col);
   }
-  clearSingleFilter(col: string, ev: MouseEvent) {
-    ev.stopPropagation();
-    this.colFilters.update((f) => ({ ...f, [col]: '' }));
+  clearSingleFilter(col: string, ev?: MouseEvent) {
+    if (ev) ev.stopPropagation();
+    this.colFilters.update((f) => ({ ...f, [col]: [] }));
     this.colFilterFrom.update((f) => ({ ...f, [col]: '' }));
     this.colFilterTo.update((f) => ({ ...f, [col]: '' }));
     this.page.set(0);
@@ -1306,6 +1293,57 @@ export class UploadComponent implements OnInit {
         },
         error: (e) => this.fail(e),
       });
+  }
+
+  downloadExcelSheet() {
+    const rows = this.writeRows().length ? this.writeRows() : this.filteredLoadedRows();
+    if (rows.length === 0) {
+      this.toast.error('No rows available to export.');
+      return;
+    }
+    const rep = this.selectedReport();
+    const reportName = rep ? rep.name : (this.tableName || 'Power_BI_Report');
+    this.busy.set(true);
+    this.api.exportExcel(reportName, rows).subscribe({
+      next: (blob) => {
+        this.busy.set(false);
+        this.triggerBlobDownload(blob, `${this.safeSlug(reportName)}.xlsx`);
+        this.toast.success(`Downloaded ${rows.length} row(s) as Excel sheet.`);
+      },
+      error: () => {
+        // Fallback to client-side sheet download if backend endpoint is offline or 404
+        this.busy.set(false);
+        this.downloadCsvClientSide(reportName, rows);
+      },
+    });
+  }
+
+  private downloadCsvClientSide(reportName: string, rows: any[]) {
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const csvLines: string[] = [headers.map((h) => JSON.stringify(h)).join(',')];
+    for (const r of rows) {
+      csvLines.push(headers.map((h) => JSON.stringify(r[h] ?? '')).join(','));
+    }
+    const csvContent = csvLines.join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    this.triggerBlobDownload(blob, `${this.safeSlug(reportName)}.csv`);
+    this.toast.success(`Downloaded ${rows.length} row(s) as sheet.`);
+  }
+
+  private triggerBlobDownload(blob: Blob, filename: string) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }
+
+  private safeSlug(name: string): string {
+    return (name || 'report').replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + new Date().toISOString().split('T')[0];
   }
 
   sendReportEmail() {

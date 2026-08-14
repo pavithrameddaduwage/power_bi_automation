@@ -54,6 +54,14 @@ let UploadsController = class UploadsController {
     sendEmailReport(body) {
         return this.uploads.sendEmailReport(body);
     }
+    async exportExcel(body, res) {
+        const buffer = await this.uploads.exportExcelBuffer(body.reportName, body.rows);
+        const safeName = (body.reportName || 'report').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const fileName = `${safeName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.send(buffer);
+    }
     async export(table, res) {
         const csv = await this.uploads.exportCsv(table);
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -137,6 +145,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], UploadsController.prototype, "sendEmailReport", null);
+__decorate([
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Post)('export-excel'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], UploadsController.prototype, "exportExcel", null);
 __decorate([
     (0, public_decorator_1.Public)(),
     (0, common_1.Get)('datasets/:table/export'),

@@ -98,6 +98,15 @@ export class UploadsService {
     return { ok: true, count: dto.rows.length };
   }
 
+  /** Generate Excel buffer for direct download */
+  async exportExcelBuffer(reportName?: string, rows: any[] = []): Promise<Buffer> {
+    if (!rows || rows.length === 0) {
+      throw new BadRequestException('No rows available to export.');
+    }
+    const name = reportName?.trim() || 'Report';
+    return this.excelService.generateExcelBuffer(rows, name);
+  }
+
   /**
    * A person uploads (or appends to) a custom report. The destination table is
    * derived from the report name and created on first use; later uploads —

@@ -249,6 +249,9 @@ export class SyncApiService {
     console.log(input);
     return this.http.post<{ ok: boolean; count: number }>(`${API}/uploads/send-email-report`, input);
   }
+  exportExcel(reportName: string, rows: any[]): Observable<Blob> {
+    return this.http.post(`${API}/uploads/export-excel`, { reportName, rows }, { responseType: 'blob' });
+  }
   getSmtpConfig(): Observable<{ host: string; port: number; username: string; fromAddress: string; isConfigured: boolean }> {
     return this.http.get<any>(`${API}/uploads/smtp-config`);
   }

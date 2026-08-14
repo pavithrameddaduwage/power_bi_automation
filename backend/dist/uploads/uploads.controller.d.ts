@@ -36,5 +36,9 @@ export declare class UploadsController {
         ok: boolean;
         count: number;
     }>;
+    exportExcel(body: {
+        reportName?: string;
+        rows: any[];
+    }, res: Response): Promise<void>;
     export(table: string, res: Response): Promise<void>;
 }
