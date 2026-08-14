@@ -30,38 +30,38 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
           </div>
 
           <nav class="sidebar-nav">
+            <!-- Usage Reports Group -->
+            <div class="nav-group">
+              <div class="nav-subitem" [class.active]="tab() === 'usage'" (click)="tab.set('usage')">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                Usage Reports
+              </div>
+            </div>
+
             <!-- Reports Group -->
-          <div class="nav-group">
-            <div class="nav-subitem" [class.active]="tab() === 'final'" (click)="tab.set('final')">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-              Reports
+            <div class="nav-group" style="margin-top:8px;">
+              <div class="nav-subitem" [class.active]="tab() === 'final'" (click)="tab.set('final')">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                Reports
+              </div>
+              <div class="nav-subitem" [class.active]="tab() === 'datasets'" (click)="tab.set('datasets')" style="margin-top:4px;">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M21 19c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14"></path><path d="M21 5v14"></path></svg>
+                Stored Datasets
+              </div>
             </div>
-            <div class="nav-subitem" [class.active]="tab() === 'datasets'" (click)="tab.set('datasets')" style="margin-top:4px;">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M21 19c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14"></path><path d="M21 5v14"></path></svg>
-              Stored Datasets
-            </div>
-          </div>
 
-          <!-- Usage Reports -->
-          <div class="nav-group" style="margin-top:8px;">
-            <div class="nav-subitem" [class.active]="tab() === 'usage'" (click)="tab.set('usage')">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-              Usage Reports
+            <!-- Jobs Group -->
+            <div class="nav-group" style="margin-top:8px;">
+              <div class="nav-subitem" [class.active]="tab() === 'jobs'" (click)="tab.set('jobs')">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                Jobs &amp; Schedules
+              </div>
+              <div class="nav-subitem" [class.active]="tab() === 'email-history'" (click)="setTab('email-history')">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                Email History
+              </div>
             </div>
-          </div>
-
-          <!-- Jobs Group -->
-          <div class="nav-group" style="margin-top:8px;">
-            <div class="nav-subitem" [class.active]="tab() === 'jobs'" (click)="tab.set('jobs')">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-              Jobs &amp; Schedules
-            </div>
-            <div class="nav-subitem" [class.active]="tab() === 'email-history'" (click)="setTab('email-history')">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-              Email History
-            </div>
-          </div>
-        </nav>
+          </nav>
 
           <!-- Sidebar footer -->
           <div class="sidebar-footer">
@@ -340,7 +340,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
   `]
 })
 export class AppComponent {
-  tab = signal<Tab>('final');
+  tab = signal<Tab>('usage');
   reportsExpanded = signal(true);
   jobsExpanded = signal(true);
   toast = inject(ToastService);
