@@ -52,15 +52,16 @@ import {
     }
     .card h3 { font-size: 13px; font-weight: 700; color: #1d4ed8; margin: 0 0 14px 0; text-transform: uppercase; letter-spacing: .4px; }
 
-    /* Bar chart */
-    .bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 120px; overflow-x: auto; padding-bottom: 4px; }
-    .bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
+    /* Bar chart — fills width, no overflow */
+    .bar-chart-wrap { overflow: hidden; width: 100%; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px; width: 100%; }
+    .bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 0; }
     .bar {
-      width: 14px; background: linear-gradient(180deg, #1d6ef5 0%, #60a5fa 100%);
+      width: 100%; background: linear-gradient(180deg, #1d6ef5 0%, #60a5fa 100%);
       border-radius: 3px 3px 0 0; transition: opacity .15s; min-height: 2px;
     }
     .bar:hover { opacity: .75; }
-    .bar-label { font-size: 8px; color: #9ca3af; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+    .bar-label { font-size: 8px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
 
     /* Tables */
     .tbl-wrap { border: 1.5px solid #93c5fd; border-radius: 10px; overflow: auto; max-height: 320px; scrollbar-width: thin; scrollbar-color: #93c5fd #f0f7ff; }
@@ -101,11 +102,13 @@ import {
     .report-item-name    { font-size: 13px; font-weight: 600; color: #1e3a5f; }
     .report-item-ws      { font-size: 11px; color: #6b7280; margin-top: 1px; }
     .btn-link { background:none; border:none; color:#1d6ef5; font-size:12px; cursor:pointer; text-decoration:underline; padding:0; }
-    .open-btn {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
-      background: #1d6ef5; color: #fff; text-decoration: none; white-space: nowrap;
+    .day-btns { display: flex; gap: 4px; }
+    .day-btn {
+      padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer;
+      border: 1.5px solid #93c5fd; background: #fff; color: #1d4ed8; transition: all .15s;
     }
+    .day-btn.active { background: #1d6ef5; color: #fff; border-color: #1d6ef5; }
+    .day-btn:hover:not(.active) { background: #eff6ff; }
   `],
   template: `
   <div class="page-header">
@@ -127,9 +130,12 @@ import {
       <option *ngFor="let r of reportsForWorkspace()" [value]="r.reportId">{{ r.reportName }}</option>
     </select>
 
-    <a *ngIf="selectedReport()?.webUrl" [href]="selectedReport()!.webUrl" target="_blank" class="open-btn">
-      Open in Power BI ↗
-    </a>
+    <!-- Day range toggle -->
+    <div class="day-btns" *ngIf="analytics()">
+      <button class="day-btn" [class.active]="selectedDays() === 30" (click)="selectedDays.set(30)">30 Days</button>
+      <button class="day-btn" [class.active]="selectedDays() === 60" (click)="selectedDays.set(60)">60 Days</button>
+      <button class="day-btn" [class.active]="selectedDays() === 90" (click)="selectedDays.set(90)">90 Days</button>
+    </div>
 
     <span *ngIf="loadingAnalytics()"><span class="spinner"></span></span>
   </div>
@@ -165,10 +171,12 @@ import {
       <!-- Views per day chart -->
       <div class="card">
         <h3>Views per Day</h3>
-        <div class="bar-chart" *ngIf="analytics()!.viewsByDay.length; else noData">
-          <div class="bar-col" *ngFor="let d of analytics()!.viewsByDay">
-            <div class="bar" [style.height.px]="barHeight(d.views)" [title]="d.date + ': ' + d.views + ' views'"></div>
-            <div class="bar-label">{{ d.date.slice(5) }}</div>
+        <div class="bar-chart-wrap" *ngIf="filteredViewsByDay().length; else noData">
+          <div class="bar-chart">
+            <div class="bar-col" *ngFor="let d of filteredViewsByDay()">
+              <div class="bar" [style.height.px]="barHeight(d.views)" [title]="d.date + ': ' + d.views + ' views'"></div>
+              <div class="bar-label">{{ d.date.slice(5) }}</div>
+            </div>
           </div>
         </div>
         <ng-template #noData><p class="empty">No view data available.</p></ng-template>
@@ -279,6 +287,7 @@ export class UsageComponent implements OnInit {
 
   selectedGroupId = signal('');
   selectedReportId = signal('');
+  selectedDays = signal<number>(30);
 
   // Unique workspaces from all reports
   workspaces = computed(() => {
@@ -303,8 +312,16 @@ export class UsageComponent implements OnInit {
     this.workspaces().find(w => w.groupId === this.selectedGroupId())?.groupName ?? '',
   );
 
+  // Filter viewsByDay to show only the last N days (30, 60, or 90)
+  filteredViewsByDay = computed(() => {
+    const data = this.analytics()?.viewsByDay ?? [];
+    const limit = this.selectedDays();
+    if (data.length <= limit) return data;
+    return data.slice(-limit);
+  });
+
   // Bar chart helpers
-  maxViews = computed(() => Math.max(...(this.analytics()?.viewsByDay.map(d => d.views) ?? [0]), 1));
+  maxViews = computed(() => Math.max(...(this.filteredViewsByDay().map(d => d.views) ?? [0]), 1));
   barHeight(views: number): number {
     return Math.max(4, Math.round((views / this.maxViews()) * 110));
   }
