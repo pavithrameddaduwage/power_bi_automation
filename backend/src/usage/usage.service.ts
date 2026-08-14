@@ -409,8 +409,8 @@ export class UsageService {
     const totalViews = viewsByDay.reduce((s, r) => s + r.views, 0);
     const totalViewers = new Set(viewsByUser.map((u) => u.email)).size;
 
-    // Trigger asynchronous historical data persistence
-    this.saveHistoricalUsageData(groupId, datasetId, {
+    // Trigger historical data persistence
+    await this.saveHistoricalUsageData(groupId, datasetId, {
       viewsByDay,
       viewsByUser,
       reportViews,
