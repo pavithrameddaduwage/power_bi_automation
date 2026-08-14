@@ -19,6 +19,8 @@ import { AuthModule } from './auth/auth.module';
 import { DatabasesModule } from './databases/databases.module';
 import { ExcelService } from './exports/excel.service';
 import { EmailService } from './notifications/email.service';
+import { UsageController } from './usage/usage.controller';
+import { UsageService } from './usage/usage.service';
 
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { EmailService } from './notifications/email.service';
     CatalogController,
     UploadsController,
     JobsController,
+    UsageController,
   ],
   providers: [
     PowerBiAuthService,
@@ -45,6 +48,7 @@ import { EmailService } from './notifications/email.service';
     JobsService,
     ExcelService,
     EmailService,
+    UsageService,
   ],
 })
 export class AppModule {}

@@ -322,4 +322,40 @@ export class SyncApiService {
   deleteDatabase(id: number): Observable<{ ok: boolean }> {
     return this.http.delete<{ ok: boolean }>(`${API}/databases/${id}`);
   }
+
+  // ── Usage Reports ────────────────────────────────────────────────
+  listUsageReports(): Observable<UsageReportItem[]> {
+    return this.http.get<UsageReportItem[]>(`${API}/usage/reports`);
+  }
+  getWorkspaceUsers(groupId: string): Observable<WorkspaceUser[]> {
+    return this.http.get<WorkspaceUser[]>(`${API}/usage/workspace/${groupId}/users`);
+  }
+  getUsageAnalytics(groupId: string, datasetId: string): Observable<UsageAnalytics> {
+    return this.http.get<UsageAnalytics>(`${API}/usage/analytics/${groupId}/${datasetId}`);
+  }
 }
+
+// ── Usage Report interfaces ──────────────────────────────────────
+export interface UsageReportItem {
+  reportId: string;
+  reportName: string;
+  datasetId: string;
+  groupId: string;
+  groupName: string;
+  webUrl?: string;
+}
+export interface WorkspaceUser {
+  displayName: string;
+  email: string;
+  role: string;
+  principalType: string;
+}
+export interface UsageAnalytics {
+  totalViews: number;
+  totalViewers: number;
+  viewsByDay: { date: string; views: number }[];
+  viewsByUser: { givenName: string; familyName: string; email: string; views: number }[];
+  viewsByPlatform: { platform: string; views: number }[];
+  viewsByPage: { page: string; views: number }[];
+}
+

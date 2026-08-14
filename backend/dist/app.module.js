@@ -31,6 +31,8 @@ const auth_module_1 = require("./auth/auth.module");
 const databases_module_1 = require("./databases/databases.module");
 const excel_service_1 = require("./exports/excel.service");
 const email_service_1 = require("./notifications/email.service");
+const usage_controller_1 = require("./usage/usage.controller");
+const usage_service_1 = require("./usage/usage.service");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -48,6 +50,7 @@ exports.AppModule = AppModule = __decorate([
             catalog_controller_1.CatalogController,
             uploads_controller_1.UploadsController,
             jobs_controller_1.JobsController,
+            usage_controller_1.UsageController,
         ],
         providers: [
             powerbi_auth_service_1.PowerBiAuthService,
@@ -60,6 +63,7 @@ exports.AppModule = AppModule = __decorate([
             jobs_service_1.JobsService,
             excel_service_1.ExcelService,
             email_service_1.EmailService,
+            usage_service_1.UsageService,
         ],
     })
 ], AppModule);
