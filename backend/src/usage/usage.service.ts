@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { PowerBiAuthService } from '../auth/powerbi-auth.service';
 import axios, { AxiosInstance } from 'axios';
+import { PG_POOL } from '../db/database.module';
+import { Pool } from 'pg';
 
 const API_BASE = 'https://api.powerbi.com/v1.0/myorg';
 
@@ -68,7 +70,10 @@ export interface UsageAnalytics {
 export class UsageService {
   private readonly logger = new Logger(UsageService.name);
 
-  constructor(private readonly auth: PowerBiAuthService) {}
+  constructor(
+    @Inject(PG_POOL) private readonly pool: Pool,
+    private readonly auth: PowerBiAuthService
+  ) {}
 
   private async client(): Promise<AxiosInstance> {
     const token = await this.auth.getAccessToken();
@@ -404,6 +409,16 @@ export class UsageService {
     const totalViews = viewsByDay.reduce((s, r) => s + r.views, 0);
     const totalViewers = new Set(viewsByUser.map((u) => u.email)).size;
 
+    // Trigger asynchronous historical data persistence
+    this.saveHistoricalUsageData(groupId, datasetId, {
+      viewsByDay,
+      viewsByUser,
+      reportViews,
+      pageViews,
+      userReportAccess,
+      userPageAccess
+    }).catch(err => this.logger.error('Failed to save historical usage data', err));
+
     return {
       totalViews,
       totalViewers,
@@ -415,5 +430,146 @@ export class UsageService {
       userReportAccess,
       userPageAccess,
     };
+  }
+
+  private async saveHistoricalUsageData(
+    groupId: string,
+    datasetId: string,
+    data: {
+      viewsByDay: ViewsByDay[];
+      viewsByUser: ViewsByUser[];
+      reportViews: { reportName: string; date: string; views: number }[];
+      pageViews: { pageName: string; reportName: string; date: string; views: number }[];
+      userReportAccess: UserReportAccess[];
+      userPageAccess: UserPageAccess[];
+    }
+  ) {
+    // 1. Ensure historical storage tables exist in Postgres
+    await this.pool.query(`
+      CREATE TABLE IF NOT EXISTS usage_views_by_day (
+        group_id text NOT NULL,
+        dataset_id text NOT NULL,
+        date date NOT NULL,
+        views integer NOT NULL,
+        PRIMARY KEY (group_id, dataset_id, date)
+      );
+
+      CREATE TABLE IF NOT EXISTS usage_views_by_user (
+        group_id text NOT NULL,
+        dataset_id text NOT NULL,
+        email text NOT NULL,
+        given_name text,
+        family_name text,
+        date date NOT NULL,
+        views integer NOT NULL,
+        PRIMARY KEY (group_id, dataset_id, email, date)
+      );
+
+      CREATE TABLE IF NOT EXISTS usage_views_by_report (
+        group_id text NOT NULL,
+        dataset_id text NOT NULL,
+        report_name text NOT NULL,
+        date date NOT NULL,
+        views integer NOT NULL,
+        PRIMARY KEY (group_id, dataset_id, report_name, date)
+      );
+
+      CREATE TABLE IF NOT EXISTS usage_views_by_page (
+        group_id text NOT NULL,
+        dataset_id text NOT NULL,
+        page_name text NOT NULL,
+        report_name text NOT NULL,
+        date date NOT NULL,
+        views integer NOT NULL,
+        PRIMARY KEY (group_id, dataset_id, page_name, report_name, date)
+      );
+
+      CREATE TABLE IF NOT EXISTS usage_user_report_access (
+        group_id text NOT NULL,
+        dataset_id text NOT NULL,
+        email text NOT NULL,
+        given_name text,
+        family_name text,
+        report_name text NOT NULL,
+        date date NOT NULL,
+        views integer NOT NULL,
+        PRIMARY KEY (group_id, dataset_id, email, report_name, date)
+      );
+
+      CREATE TABLE IF NOT EXISTS usage_user_page_access (
+        group_id text NOT NULL,
+        dataset_id text NOT NULL,
+        email text NOT NULL,
+        given_name text,
+        family_name text,
+        report_name text NOT NULL,
+        page_name text NOT NULL,
+        date date NOT NULL,
+        views integer NOT NULL,
+        PRIMARY KEY (group_id, dataset_id, email, report_name, page_name, date)
+      );
+    `);
+
+    // 2. Perform Batch Upserts for viewsByDay
+    for (const d of data.viewsByDay) {
+      await this.pool.query(`
+        INSERT INTO usage_views_by_day (group_id, dataset_id, date, views)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (group_id, dataset_id, date)
+        DO UPDATE SET views = EXCLUDED.views;
+      `, [groupId, datasetId, d.date, d.views]);
+    }
+
+    // 3. Perform Batch Upserts for viewsByUser
+    for (const u of data.viewsByUser) {
+      await this.pool.query(`
+        INSERT INTO usage_views_by_user (group_id, dataset_id, email, given_name, family_name, date, views)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (group_id, dataset_id, email, date)
+        DO UPDATE SET views = EXCLUDED.views, given_name = EXCLUDED.given_name, family_name = EXCLUDED.family_name;
+      `, [groupId, datasetId, u.email, u.givenName, u.familyName, u.date, u.views]);
+    }
+
+    // 4. Perform Batch Upserts for reportViews
+    for (const r of data.reportViews) {
+      await this.pool.query(`
+        INSERT INTO usage_views_by_report (group_id, dataset_id, report_name, date, views)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (group_id, dataset_id, report_name, date)
+        DO UPDATE SET views = EXCLUDED.views;
+      `, [groupId, datasetId, r.reportName, r.date, r.views]);
+    }
+
+    // 5. Perform Batch Upserts for pageViews
+    for (const p of data.pageViews) {
+      await this.pool.query(`
+        INSERT INTO usage_views_by_page (group_id, dataset_id, page_name, report_name, date, views)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (group_id, dataset_id, page_name, report_name, date)
+        DO UPDATE SET views = EXCLUDED.views;
+      `, [groupId, datasetId, p.pageName, p.reportName, p.date, p.views]);
+    }
+
+    // 6. Perform Batch Upserts for userReportAccess
+    for (const a of data.userReportAccess) {
+      await this.pool.query(`
+        INSERT INTO usage_user_report_access (group_id, dataset_id, email, given_name, family_name, report_name, date, views)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (group_id, dataset_id, email, report_name, date)
+        DO UPDATE SET views = EXCLUDED.views, given_name = EXCLUDED.given_name, family_name = EXCLUDED.family_name;
+      `, [groupId, datasetId, a.email, a.givenName, a.familyName, a.reportName, a.date, a.views]);
+    }
+
+    // 7. Perform Batch Upserts for userPageAccess
+    for (const a of data.userPageAccess) {
+      await this.pool.query(`
+        INSERT INTO usage_user_page_access (group_id, dataset_id, email, given_name, family_name, report_name, page_name, date, views)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (group_id, dataset_id, email, report_name, page_name, date)
+        DO UPDATE SET views = EXCLUDED.views, given_name = EXCLUDED.given_name, family_name = EXCLUDED.family_name;
+      `, [groupId, datasetId, a.email, a.givenName, a.familyName, a.reportName, a.pageName, a.date, a.views]);
+    }
+
+    this.logger.log(`Successfully persisted historical usage dataset ${datasetId} to Postgres.`);
   }
 }
