@@ -453,7 +453,9 @@ export class UsageService {
         views integer NOT NULL,
         PRIMARY KEY (group_id, dataset_id, date)
       );
+    `);
 
+    await this.pool.query(`
       CREATE TABLE IF NOT EXISTS usage_views_by_user (
         group_id text NOT NULL,
         dataset_id text NOT NULL,
@@ -464,7 +466,9 @@ export class UsageService {
         views integer NOT NULL,
         PRIMARY KEY (group_id, dataset_id, email, date)
       );
+    `);
 
+    await this.pool.query(`
       CREATE TABLE IF NOT EXISTS usage_views_by_report (
         group_id text NOT NULL,
         dataset_id text NOT NULL,
@@ -473,7 +477,9 @@ export class UsageService {
         views integer NOT NULL,
         PRIMARY KEY (group_id, dataset_id, report_name, date)
       );
+    `);
 
+    await this.pool.query(`
       CREATE TABLE IF NOT EXISTS usage_views_by_page (
         group_id text NOT NULL,
         dataset_id text NOT NULL,
@@ -483,7 +489,9 @@ export class UsageService {
         views integer NOT NULL,
         PRIMARY KEY (group_id, dataset_id, page_name, report_name, date)
       );
+    `);
 
+    await this.pool.query(`
       CREATE TABLE IF NOT EXISTS usage_user_report_access (
         group_id text NOT NULL,
         dataset_id text NOT NULL,
@@ -495,7 +503,9 @@ export class UsageService {
         views integer NOT NULL,
         PRIMARY KEY (group_id, dataset_id, email, report_name, date)
       );
+    `);
 
+    await this.pool.query(`
       CREATE TABLE IF NOT EXISTS usage_user_page_access (
         group_id text NOT NULL,
         dataset_id text NOT NULL,
