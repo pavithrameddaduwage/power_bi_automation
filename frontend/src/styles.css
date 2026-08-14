@@ -371,7 +371,7 @@ th {
   background: #dbeafe;
   color: #1d4ed8;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
   border-bottom: 2px solid #93c5fd;
   position: sticky;         /* header stays fixed while body scrolls */
@@ -400,11 +400,11 @@ table + div,
 .table-container + div,
 table + button,
 .table-container + button {
-  margin-top: 14px;
+  margin-top: 24px;
 }
 div + table,
 div + .table-container {
-  margin-top: 14px;
+  margin-top: 24px;
 }
 
 /* ── Wizard Header ───────────────────────────────────────── */

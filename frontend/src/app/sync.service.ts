@@ -354,8 +354,11 @@ export interface UsageAnalytics {
   totalViews: number;
   totalViewers: number;
   viewsByDay: { date: string; views: number }[];
-  viewsByUser: { givenName: string; familyName: string; email: string; views: number }[];
+  viewsByUser: { givenName: string; familyName: string; email: string; date: string; views: number }[];
   viewsByPlatform: { platform: string; views: number }[];
-  viewsByPage: { page: string; views: number }[];
+  reportViews: { reportName: string; date: string; views: number }[];
+  pageViews: { pageName: string; reportName: string; date: string; views: number }[];
+  userReportAccess: { givenName: string; familyName: string; email: string; reportName: string; date: string; views: number }[];
+  userPageAccess: { givenName: string; familyName: string; email: string; reportName: string; pageName: string; date: string; views: number }[];
 }
 

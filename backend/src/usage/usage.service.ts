@@ -29,6 +29,26 @@ export interface ViewsByUser {
   givenName: string;
   familyName: string;
   email: string;
+  date: string;
+  views: number;
+}
+
+export interface UserReportAccess {
+  givenName: string;
+  familyName: string;
+  email: string;
+  reportName: string;
+  date: string;
+  views: number;
+}
+
+export interface UserPageAccess {
+  givenName: string;
+  familyName: string;
+  email: string;
+  reportName: string;
+  pageName: string;
+  date: string;
   views: number;
 }
 
@@ -38,7 +58,10 @@ export interface UsageAnalytics {
   viewsByDay: ViewsByDay[];
   viewsByUser: ViewsByUser[];
   viewsByPlatform: { platform: string; views: number }[];
-  viewsByPage: { page: string; views: number }[];
+  reportViews: { reportName: string; date: string; views: number }[];
+  pageViews: { pageName: string; reportName: string; date: string; views: number }[];
+  userReportAccess: UserReportAccess[];
+  userPageAccess: UserPageAccess[];
 }
 
 @Injectable()
@@ -101,7 +124,7 @@ export class UsageService {
     }));
   }
 
-  /** Query usage analytics from the dataset behind a usage metric report */
+  /** Query usage analytics from the dataset behind a usage metric report (works with upgraded and classic formats) */
   async getUsageAnalytics(groupId: string, datasetId: string): Promise<UsageAnalytics> {
     const http = await this.client();
 
@@ -113,77 +136,284 @@ export class UsageService {
         );
         return data?.results?.[0]?.tables?.[0]?.rows ?? [];
       } catch (e) {
-        this.logger.warn(`DAX query failed: ${dax.slice(0, 60)}`);
         return [];
       }
     };
 
-    // Views per day
-    const viewsByDayRows = await runQuery(
-      `EVALUATE SUMMARIZECOLUMNS(
-        Views[Date],
-        "TotalViews", SUM(Views[GranularViewsCount])
-      )
-      ORDER BY Views[Date] ASC`,
-    );
+    // 1. Detect if it's the classic model by trying to query 'Report views'
+    const classicCheck = await runQuery('EVALUATE TOPN(1, \'Report views\')');
+    const isClassic = classicCheck.length > 0;
 
-    // Views by user (join Users table)
-    const viewsByUserRows = await runQuery(
-      `EVALUATE
-      SUMMARIZECOLUMNS(
-        Users[GivenName],
-        Users[FamilyName],
-        Users[UserPrincipalName],
-        "TotalViews", CALCULATE(SUM(Views[GranularViewsCount]))
-      )
-      ORDER BY [TotalViews] DESC`,
-    );
+    let viewsByDayRows: any[] = [];
+    let viewsByUserRows: any[] = [];
+    let viewsByPlatformRows: any[] = [];
+    let reportViewsRows: any[] = [];
+    let pageViewsRows: any[] = [];
+    let userReportAccessRows: any[] = [];
+    let userPageAccessRows: any[] = [];
 
-    // Views by platform
-    const viewsByPlatformRows = await runQuery(
-      `EVALUATE SUMMARIZECOLUMNS(
-        Views[Platform],
-        "TotalViews", SUM(Views[GranularViewsCount])
-      )
-      ORDER BY [TotalViews] DESC`,
-    );
+    if (isClassic) {
+      this.logger.log(`Querying classic usage metrics dataset: ${datasetId}`);
+      // Classic queries
+      viewsByDayRows = await runQuery(
+        `EVALUATE SUMMARIZECOLUMNS(
+          'Report views'[Date],
+          "TotalViews", COUNT('Report views'[Date])
+        )
+        ORDER BY 'Report views'[Date] ASC`,
+      );
 
-    // Views by page
-    const viewsByPageRows = await runQuery(
-      `EVALUATE TOPN(10,
+      // In classic models, summarize directly by Date and UserId
+      viewsByUserRows = await runQuery(
+        `EVALUATE
         SUMMARIZECOLUMNS(
+          'Report views'[Date],
+          'Report views'[UserId],
+          "TotalViews", COUNT('Report views'[UserId])
+        )`,
+      );
+
+      viewsByPlatformRows = await runQuery(
+        `EVALUATE SUMMARIZECOLUMNS(
+          'Report views'[UserAgent],
+          "TotalViews", COUNT('Report views'[UserAgent])
+        )
+        ORDER BY [TotalViews] DESC`,
+      );
+
+      // Classic query: group by Report views Date and ReportName (Report views)
+      reportViewsRows = await runQuery(
+        `EVALUATE
+        SUMMARIZECOLUMNS(
+          'Report views'[Date],
+          'Report views'[ReportName],
+          "TotalViews", COUNT('Report views'[ReportName])
+        )`,
+      );
+      // Classic models do not have sub-pages tracked separately usually, so we default page views to match report views
+      pageViewsRows = reportViewsRows;
+
+      // Classic UserReportAccess: group by Date, ReportName, UserId
+      userReportAccessRows = await runQuery(
+        `EVALUATE
+        SUMMARIZECOLUMNS(
+          'Report views'[Date],
+          'Report views'[ReportName],
+          'Report views'[UserId],
+          "TotalViews", COUNT('Report views'[UserId])
+        )`
+      );
+      // Classic models do not have pages separate from Reports, default userPageAccess to match report access
+      userPageAccessRows = userReportAccessRows;
+    } else {
+      this.logger.log(`Querying upgraded usage metrics dataset: ${datasetId}`);
+      // Upgraded queries
+      viewsByDayRows = await runQuery(
+        `EVALUATE SUMMARIZECOLUMNS(
+          Views[Date],
+          "TotalViews", SUM(Views[GranularViewsCount])
+        )
+        ORDER BY Views[Date] ASC`,
+      );
+
+      viewsByUserRows = await runQuery(
+        `EVALUATE
+        SUMMARIZECOLUMNS(
+          Views[Date],
+          Users[GivenName],
+          Users[FamilyName],
+          Users[UserPrincipalName],
+          "TotalViews", SUM(Views[GranularViewsCount])
+        )`,
+      );
+
+      viewsByPlatformRows = await runQuery(
+        `EVALUATE SUMMARIZECOLUMNS(
+          Views[Platform],
+          "TotalViews", SUM(Views[GranularViewsCount])
+        )
+        ORDER BY [TotalViews] DESC`,
+      );
+
+      // Upgraded query: group by Date and Reports DisplayName
+      reportViewsRows = await runQuery(
+        `EVALUATE
+        SUMMARIZECOLUMNS(
+          Views[Date],
+          Reports[DisplayName],
+          "TotalViews", SUM(Views[GranularViewsCount])
+        )`,
+      );
+
+      // Upgraded query: group by Date, Reports DisplayName, and Views ReportPage
+      pageViewsRows = await runQuery(
+        `EVALUATE
+        SUMMARIZECOLUMNS(
+          Views[Date],
+          Reports[DisplayName],
           Views[ReportPage],
           "TotalViews", SUM(Views[GranularViewsCount])
-        ),
-        [TotalViews], DESC
-      )`,
-    );
+        )`,
+      );
+
+      // Upgraded UserReportAccess: group by Date, DisplayName, UserPrincipalName
+      userReportAccessRows = await runQuery(
+        `EVALUATE
+        SUMMARIZECOLUMNS(
+          Views[Date],
+          Reports[DisplayName],
+          Users[UserPrincipalName],
+          Users[GivenName],
+          Users[FamilyName],
+          "TotalViews", SUM(Views[GranularViewsCount])
+        )`
+      );
+
+      // Upgraded UserPageAccess: group by Date, Reports DisplayName, ReportPage, UserPrincipalName
+      userPageAccessRows = await runQuery(
+        `EVALUATE
+        SUMMARIZECOLUMNS(
+          Views[Date],
+          Reports[DisplayName],
+          Views[ReportPage],
+          Users[UserPrincipalName],
+          Users[GivenName],
+          Users[FamilyName],
+          "TotalViews", SUM(Views[GranularViewsCount])
+        )`
+      );
+    }
 
     const viewsByDay: ViewsByDay[] = viewsByDayRows.map((r) => ({
-      date: String(r['Views[Date]'] ?? '').slice(0, 10),
+      date: String(r[isClassic ? 'Report views[Date]' : 'Views[Date]'] ?? '').slice(0, 10),
       views: Number(r['[TotalViews]'] ?? 0),
     })).filter(r => r.date);
 
-    const viewsByUser: ViewsByUser[] = viewsByUserRows.map((r) => ({
-      givenName: String(r['Users[GivenName]'] ?? ''),
-      familyName: String(r['Users[FamilyName]'] ?? ''),
-      email: String(r['Users[UserPrincipalName]'] ?? ''),
-      views: Number(r['[TotalViews]'] ?? 0),
-    })).filter(r => r.email);
+    const viewsByUser: ViewsByUser[] = viewsByUserRows.map((r) => {
+      if (isClassic) {
+        const email = String(r['Report views[UserId]'] ?? '');
+        const namePart = email.split('@')[0] || 'User';
+        return {
+          givenName: namePart.charAt(0).toUpperCase() + namePart.slice(1),
+          familyName: '',
+          email,
+          date: String(r['Report views[Date]'] ?? '').slice(0, 10),
+          views: Number(r['[TotalViews]'] ?? 0),
+        };
+      } else {
+        return {
+          givenName: String(r['Users[GivenName]'] ?? ''),
+          familyName: String(r['Users[FamilyName]'] ?? ''),
+          email: String(r['Users[UserPrincipalName]'] ?? ''),
+          date: String(r['Views[Date]'] ?? '').slice(0, 10),
+          views: Number(r['[TotalViews]'] ?? 0),
+        };
+      }
+    }).filter(r => r.email && r.date);
 
-    const viewsByPlatform = viewsByPlatformRows.map((r) => ({
-      platform: String(r['Views[Platform]'] ?? 'Unknown'),
-      views: Number(r['[TotalViews]'] ?? 0),
-    }));
+    const viewsByPlatform = viewsByPlatformRows.map((r) => {
+      const label = String(r[isClassic ? 'Report views[UserAgent]' : 'Views[Platform]'] ?? 'Unknown');
+      // Normalize user agents to simpler platform names for classic view
+      let platform = label;
+      if (isClassic) {
+        if (/windows/i.test(label)) platform = 'Windows';
+        else if (/macintosh|mac os/i.test(label)) platform = 'Mac';
+        else if (/iphone|ipad/i.test(label)) platform = 'iOS Mobile';
+        else if (/android/i.test(label)) platform = 'Android Mobile';
+        else platform = 'Web Browser';
+      }
+      return {
+        platform,
+        views: Number(r['[TotalViews]'] ?? 0),
+      };
+    });
 
-    const viewsByPage = viewsByPageRows.map((r) => ({
-      page: String(r['Views[ReportPage]'] ?? 'Unknown'),
+    // Aggregate platforms to avoid duplicate entries after normalization
+    const platformMap = new Map<string, number>();
+    for (const p of viewsByPlatform) {
+      platformMap.set(p.platform, (platformMap.get(p.platform) ?? 0) + p.views);
+    }
+    const aggregatedPlatforms = Array.from(platformMap.entries()).map(([platform, views]) => ({
+      platform,
+      views,
+    })).sort((a, b) => b.views - a.views);
+
+    const reportViews = reportViewsRows.map((r) => ({
+      reportName: String(r[isClassic ? 'Report views[ReportName]' : 'Reports[DisplayName]'] ?? 'Unknown'),
+      date: String(r[isClassic ? 'Report views[Date]' : 'Views[Date]'] ?? '').slice(0, 10),
       views: Number(r['[TotalViews]'] ?? 0),
-    }));
+    })).filter(r => r.reportName && r.date);
+
+    const pageViews = pageViewsRows.map((r) => ({
+      pageName: String(r[isClassic ? 'Report views[ReportName]' : 'Views[ReportPage]'] ?? 'Unknown'),
+      reportName: String(r[isClassic ? 'Report views[ReportName]' : 'Reports[DisplayName]'] ?? 'Unknown'),
+      date: String(r[isClassic ? 'Report views[Date]' : 'Views[Date]'] ?? '').slice(0, 10),
+      views: Number(r['[TotalViews]'] ?? 0),
+    })).filter(r => r.pageName && r.date);
+
+    const userReportAccess = userReportAccessRows.map((r) => {
+      if (isClassic) {
+        const email = String(r['Report views[UserId]'] ?? '');
+        const namePart = email.split('@')[0] || 'User';
+        return {
+          givenName: namePart.charAt(0).toUpperCase() + namePart.slice(1),
+          familyName: '',
+          email,
+          reportName: String(r['Report views[ReportName]'] ?? 'Unknown'),
+          date: String(r['Report views[Date]'] ?? '').slice(0, 10),
+          views: Number(r['[TotalViews]'] ?? 0),
+        };
+      } else {
+        return {
+          givenName: String(r['Users[GivenName]'] ?? ''),
+          familyName: String(r['Users[FamilyName]'] ?? ''),
+          email: String(r['Users[UserPrincipalName]'] ?? ''),
+          reportName: String(r['Reports[DisplayName]'] ?? 'Unknown'),
+          date: String(r['Views[Date]'] ?? '').slice(0, 10),
+          views: Number(r['[TotalViews]'] ?? 0),
+        };
+      }
+    }).filter(r => r.email && r.reportName && r.date);
+
+    const userPageAccess = userPageAccessRows.map((r) => {
+      if (isClassic) {
+        const email = String(r['Report views[UserId]'] ?? '');
+        const namePart = email.split('@')[0] || 'User';
+        return {
+          givenName: namePart.charAt(0).toUpperCase() + namePart.slice(1),
+          familyName: '',
+          email,
+          reportName: String(r['Report views[ReportName]'] ?? 'Unknown'),
+          pageName: String(r['Report views[ReportName]'] ?? 'Unknown'),
+          date: String(r['Report views[Date]'] ?? '').slice(0, 10),
+          views: Number(r['[TotalViews]'] ?? 0),
+        };
+      } else {
+        return {
+          givenName: String(r['Users[GivenName]'] ?? ''),
+          familyName: String(r['Users[FamilyName]'] ?? ''),
+          email: String(r['Users[UserPrincipalName]'] ?? ''),
+          reportName: String(r['Reports[DisplayName]'] ?? 'Unknown'),
+          pageName: String(r['Views[ReportPage]'] ?? 'Unknown'),
+          date: String(r['Views[Date]'] ?? '').slice(0, 10),
+          views: Number(r['[TotalViews]'] ?? 0),
+        };
+      }
+    }).filter(r => r.email && r.pageName && r.date);
 
     const totalViews = viewsByDay.reduce((s, r) => s + r.views, 0);
     const totalViewers = new Set(viewsByUser.map((u) => u.email)).size;
 
-    return { totalViews, totalViewers, viewsByDay, viewsByUser, viewsByPlatform, viewsByPage };
+    return {
+      totalViews,
+      totalViewers,
+      viewsByDay,
+      viewsByUser,
+      viewsByPlatform: aggregatedPlatforms,
+      reportViews,
+      pageViews,
+      userReportAccess,
+      userPageAccess,
+    };
   }
 }
