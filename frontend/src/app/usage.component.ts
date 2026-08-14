@@ -245,7 +245,7 @@ import {
       <p style="font-size:12px;color:#4b5563;margin-top:-6px;margin-bottom:12px;">Click a user's row below to view their detailed report and tab views breakdown.</p>
       
       <!-- Search input for Users -->
-      <input type="text" class="table-search-input" placeholder="🔍 Search users by name or email..."
+      <input type="text" class="table-search-input" placeholder="Search users by name or email..."
              [ngModel]="userSearch()" (ngModelChange)="userSearch.set($event)" />
 
       <div class="tbl-wrap">
@@ -328,7 +328,7 @@ import {
         <h3>Views by Report / Dashboard</h3>
         
         <!-- Search input for Reports -->
-        <input type="text" class="table-search-input" placeholder="🔍 Search reports/dashboards..."
+        <input type="text" class="table-search-input" placeholder="Search reports/dashboards..."
                [ngModel]="reportSearch()" (ngModelChange)="reportSearch.set($event)" />
 
         <div class="tbl-wrap">
@@ -352,7 +352,7 @@ import {
         <h3>Views by Page Tab</h3>
         
         <!-- Search input for Page Tabs -->
-        <input type="text" class="table-search-input" placeholder="🔍 Search page tabs..."
+        <input type="text" class="table-search-input" placeholder="Search page tabs..."
                [ngModel]="pageSearch()" (ngModelChange)="pageSearch.set($event)" />
 
         <div class="tbl-wrap">
@@ -378,7 +378,7 @@ import {
   <!-- Workspace Users section (shown as a dropdown action list) -->
   <div style="margin-top:20px;margin-bottom:20px;" *ngIf="selectedGroupId() && wsUsers().length">
     <button class="day-btn" style="display:flex;align-items:center;gap:6px;" (click)="showWorkspaceMembers.set(!showWorkspaceMembers())">
-      <span>👥 Show Workspace Members ({{ wsUsers().length }})</span>
+      <span>Show Workspace Members ({{ wsUsers().length }})</span>
       <span>{{ showWorkspaceMembers() ? '▲' : '▼' }}</span>
     </button>
 
