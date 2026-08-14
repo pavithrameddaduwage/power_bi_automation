@@ -28,6 +28,10 @@ export class SyncScheduler implements OnModuleInit {
     this.registry.addCronJob('hourly-usage-sync', usageJob as any);
     usageJob.start();
     this.logger.log('Hourly usage metrics sync scheduled with cron "0 * * * *" (UTC).');
+
+    // Execute immediately on startup to build tables and load data
+    this.logger.log('Executing initial usage metrics synchronization on startup...');
+    this.runUsageSync().catch(err => this.logger.error('Startup usage metrics sync failed', err));
   }
 
   private async run() {
