@@ -9,8 +9,7 @@ import { PagerComponent } from './pager.component';
   standalone: true,
   imports: [CommonModule, PagerComponent],
   template: `
-    <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
-      <h3 style="margin: 0;">Saved jobs</h3>
+    <div class="card" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: flex-end;">
       <button class="btn-secondary" (click)="load()" [disabled]="busy()">Refresh</button>
     </div>
 

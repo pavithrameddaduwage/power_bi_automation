@@ -350,10 +350,6 @@ import {
 
   `],
   template: `
-  <div class="page-header">
-    <h1>Usage Reports</h1>
-  </div>
-
   <div class="controls-row">
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
       <!-- Workspace dropdown -->
@@ -585,7 +581,7 @@ import {
         <h3>Views by Page Tab</h3>
         
         <!-- Search input for Page Tabs -->
-        <input type="text" class="table-search-input" placeholder="Search page tabs..."
+        <input type="text" class="table-search-input" placeholder="Search tab or dashboard/report..."
                [ngModel]="pageSearch()" (ngModelChange)="pageSearch.set($event)" />
 
         <div class="table-container">

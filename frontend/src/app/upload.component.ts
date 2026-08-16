@@ -137,8 +137,8 @@ import { PagerComponent } from './pager.component';
                   <tr *ngFor="let c of filteredColumns()">
                     <td><input type="checkbox" [checked]="selected()[c.name]" (change)="toggle(c.name)" /></td>
                     <td>{{ c.name }} <span class="badge badge-ok" *ngIf="c.isKey">model key</span></td>
-                    <td class="tag" style="font-size:11px;">{{ c.table }}</td>
-                    <td class="tag">{{ c.dataType }}</td>
+                    <td>{{ c.table }}</td>
+                    <td>{{ c.dataType }}</td>
                     <td style="text-align:center;">
                       <input type="checkbox" [checked]="keySelected()[c.name]"
                              (change)="toggleKeyCol(c.name)" title="use as upsert/primary key" />
@@ -164,7 +164,7 @@ import { PagerComponent } from './pager.component';
                     <tr *ngFor="let m of filteredMeasures()">
                       <td><input type="checkbox" [checked]="measureSelected()[m.name]" (change)="toggleMeasure(m.name)" /></td>
                       <td>{{ m.name }}</td>
-                      <td class="tag">{{ m.dataType }}</td>
+                      <td>{{ m.dataType }}</td>
                     </tr>
                   </tbody>
                 </table>

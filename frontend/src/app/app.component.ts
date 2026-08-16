@@ -328,9 +328,10 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
       box-shadow: var(--shadow-xs);
     }
     .top-bar-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
     }
     .top-bar-right { display: flex; align-items: center; gap: 12px; }
     .user-chip {

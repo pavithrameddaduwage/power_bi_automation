@@ -70,8 +70,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
     /* SVG Line Chart */
     .line-chart-svg { width: 100%; height: 180px; overflow: visible; }
     .chart-line { fill: none; stroke: #3b82f6; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .chart-area { fill: url(#blueGradient); opacity: 0.2; }
-    .chart-bar { fill: #10b981; opacity: 0.5; width: 6px; rx: 3; transition: height 0.3s ease, y 0.3s ease; }
+    .chart-bar { fill: #eab308; opacity: 0.5; width: 6px; rx: 3; transition: height 0.3s ease, y 0.3s ease; }
     .chart-bar:hover { opacity: 1; cursor: pointer; }
     
     .chart-grid-line { stroke: #e2e8f0; stroke-width: 1; }
@@ -199,11 +198,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
   template: `
   <ng-container *ngIf="selectedUser() === null">
-    <div style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
-      <div>
-        <h2 style="font-size: 18px; font-weight: 700; color: #1e3a8a; margin: 0 0 4px 0;">User Details</h2>
-        <div style="color: #000000; font-size: 11px;"></div>
-      </div>
+    <div style="margin-bottom: 24px; display: flex; align-items: center; justify-content: flex-end;">
       <input type="text" class="table-search-input" style="width: 280px; margin: 0;" placeholder="Search user by name or email..."
              [ngModel]="userSearch()" (ngModelChange)="userSearch.set($event); userListPage.set(0)" />
     </div>
@@ -292,7 +287,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
         </h3>
         <div style="display:flex; justify-content:flex-end; gap:16px; margin-bottom:16px; font-size:11px; font-weight:600; color:#000000;">
           <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#3b82f6;"></span> 4-week trend</div>
-          <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#10b981; opacity:0.5;"></span> Weekly views</div>
+          <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#eab308; opacity:0.5;"></span> Weekly views</div>
         </div>
         
         <div style="position:relative; height: 180px; width: 100%;">
@@ -320,8 +315,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
               <rect class="chart-bar animate-chart-bar" [attr.x]="p.x - 8" [attr.y]="p.y" width="16" [attr.height]="180 - p.y" (mouseenter)="showTooltip($event, p.date + '\n' + p.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()"></rect>
             </ng-container>
 
-            <!-- Data Line & Area -->
-            <path class="chart-area animate-chart-area" style="pointer-events: none;" [attr.d]="chartAreaPath()" />
+            <!-- Data Line -->
             <path class="chart-line animate-chart-line" style="pointer-events: none;" [attr.d]="chartLinePath()" />
           </svg>
         </div>
@@ -372,7 +366,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       <div class="premium-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
           <h3 style="margin:0;">Page Tabs Accessed </h3>
-          <input type="text" class="table-search-input" style="width:200px; margin:0;" placeholder="Search tabs..."
+          <input type="text" class="table-search-input" style="width:280px; margin:0;" placeholder="Search tab or dashboard/report..."
                  [ngModel]="pageSearch()" (ngModelChange)="pageSearch.set($event)" />
         </div>
         <div class="table-container"><table class="clean-table">

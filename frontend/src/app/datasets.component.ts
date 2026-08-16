@@ -10,11 +10,7 @@ import { PagerComponent } from './pager.component';
   standalone: true,
   imports: [CommonModule, FormsModule, PagerComponent],
   template: `
-    <div class="row-between" style="margin-bottom: 16px;">
-      <div>
-        <h2>Stored Datasets</h2>
-        <div class="muted">All dynamically created datasets from custom reports and Power BI syncs.</div>
-      </div>
+    <div style="display:flex; justify-content:flex-end; margin-bottom: 16px;">
       <button class="btn-secondary" (click)="loadDatasets()" [disabled]="busy()">Refresh</button>
     </div>
 
