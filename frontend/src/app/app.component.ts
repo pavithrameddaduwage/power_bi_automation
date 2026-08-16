@@ -10,6 +10,7 @@ import { LoginComponent } from './auth/login/login.component';
 import { SyncApiService, EmailLog } from './sync.service';
 import { UsageComponent } from './usage.component';
 import { UserDetailsComponent } from './user-details.component';
+import { NavigationStateService } from './navigation-state.service';
 
 type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' | 'usage' | 'user-details';
 
@@ -113,8 +114,8 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
             <app-upload *ngIf="tab() === 'final'" [finalOnly]="true"></app-upload>
             <app-datasets *ngIf="tab() === 'datasets'"></app-datasets>
             <app-jobs *ngIf="tab() === 'jobs'"></app-jobs>
-            <app-usage *ngIf="tab() === 'usage'"></app-usage>
-            <app-user-details *ngIf="tab() === 'user-details'"></app-user-details>
+            <app-usage *ngIf="tab() === 'usage'" (navigateToUser)="navigateToUser($event)"></app-usage>
+            <app-user-details *ngIf="tab() === 'user-details'" [preSelectEmail]="navState.pendingUserEmail()"></app-user-details>
             <div *ngIf="tab() === 'email-history'">
               <!-- SMTP Settings Card -->
               <div class="card" style="margin-bottom: 24px;">
@@ -360,6 +361,13 @@ export class AppComponent {
   toast = inject(ToastService);
   auth = inject(AuthService);
   api = inject(SyncApiService);
+  navState = inject(NavigationStateService);
+
+  navigateToUser(email: string) {
+    this.navState.pendingUserEmail.set(email);
+    this.tab.set('user-details');
+    this.usageExpanded.set(true);
+  }
 
   emailLogs = signal<EmailLog[]>([]);
   loadingEmailLogs = signal(false);

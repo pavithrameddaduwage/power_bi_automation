@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -90,7 +90,7 @@ import {
     .hbar-row-c { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
     .hbar-label-c { width: 180px; font-size: 11px; font-weight: 600; color: #000000; text-align: right; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: none; line-height: 1.3; }
     .hbar-track-c { flex: 1; display: flex; align-items: center; gap: 8px; }
-    .hbar-fill-c { height: 16px; background: #d97706; border-radius: 4px; transition: width 0.4s; min-width: 4px; }
+    .hbar-fill-c { height: 16px; background: #d97706; border-radius: 4px; transition: width 0.4s; min-width: 4px; transform-origin: left; animation: scaleInX 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
     .hbar-val-c { font-size: 11px; font-weight: 600; color: #000000; }
 
     /* Role badges */
@@ -105,7 +105,7 @@ import {
     .platform-row  { display: flex; align-items: center; gap: 10px; }
     .platform-name { font-size: 12px; color: #000000; width: 90px; flex-shrink: 0; }
     .platform-bar-wrap { flex: 1; background: #eff6ff; border-radius: 99px; height: 8px; overflow: hidden; }
-    .platform-bar-fill { height: 100%; background: linear-gradient(90deg, #1d6ef5, #60a5fa); border-radius: 99px; transition: width .4s; }
+    .platform-bar-fill { height: 100%; background: linear-gradient(90deg, #1d6ef5, #60a5fa); border-radius: 99px; transition: width .4s; transform-origin: left; animation: scaleInX 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
     .platform-count { font-size: 11px; color: #000000; width: 40px; text-align: right; }
 
     /* Unified Table Styles */
@@ -140,6 +140,37 @@ import {
     }
     .clean-table tbody tr:last-child td { border-bottom: none; }
     .clean-table tbody tr:hover td { background: #f0f9ff; cursor: pointer; }
+
+    /* Animations */
+    @keyframes scaleInX {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+    .animate-bar {
+      transform-origin: left;
+      animation: scaleInX 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+    
+    @keyframes scaleInY {
+      from { transform: scaleY(0); }
+      to { transform: scaleY(1); }
+    }
+    .animate-bar-y {
+      transform-origin: bottom;
+      animation: scaleInY 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    @keyframes fadeInSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-donut {
+      animation: fadeInSlide 0.6s ease-out forwards;
+    }
+    
+    @keyframes drawLine {
+      to { stroke-dashoffset: 0; }
+    }
 
     /* Empty / loading */
     
@@ -321,7 +352,6 @@ import {
   template: `
   <div class="page-header">
     <h1>Usage Reports</h1>
-    <p>View Power BI usage metrics across all workspaces — views, viewers, and user access.</p>
   </div>
 
   <div class="controls-row">
@@ -408,8 +438,7 @@ import {
         <div class="bar-chart-wrap" *ngIf="filteredViewsByDay().length; else noData">
           <div class="bar-chart">
             <div class="bar-col" *ngFor="let d of filteredViewsByDay()">
-              
-              <div class="bar" [style.height.px]="barHeight(d.views)"></div>
+              <div class="bar animate-bar-y" [style.height.px]="barHeight(d.views)"></div>
               <div class="bar-label">{{ d.date | date:'M/d/yy' }}</div>
             </div>
           </div>
@@ -586,153 +615,155 @@ import {
 
     <!-- Global / Workspace-Filtered Aggregated Metrics Dashboard -->
   <ng-container *ngIf="!selectedReportId() && globalStats() as stats">
-    <div style="margin-top:20px;">
+    <div style="margin-top:24px;">
       
-      <div class="section-header">
-        {{ selectedGroupId() ? 'WORKSPACE ANALYTICS SUMMARY' : 'GLOBAL WORKSPACE ANALYTICS OVERVIEW' }}
+      <!-- Section Header -->
+      <div style="font-size:11px; font-weight:700; color:#374151; margin-bottom:20px; letter-spacing:1px; border-bottom:2px solid #e5e7eb; padding-bottom:10px; text-transform:uppercase; display:flex; align-items:center; gap:8px;">
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#3b82f6;"></span>
+        {{ selectedGroupId() ? 'Workspace Analytics Summary' : 'Global Workspace Analytics Overview' }}
       </div>
 
-      <div class="premium-grid">
-        
-        <!-- Card 1: Top Workspaces (Donut) -->
-        <div class="card premium-card" *ngIf="!selectedGroupId()">
-          <h3>Top Workspaces by Views</h3>
-          <div class="donut-container" *ngIf="workspaceDonutSegments().length">
-            <svg class="donut-chart" viewBox="0 0 200 200" style="background:none;">
-              <path *ngFor="let p of getDonutPaths(workspaceDonutSegments())" [attr.d]="p.d" [attr.fill]="p.color" (mouseenter)="showTooltip($event, p.name + '\n' + p.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()" style="transition: opacity 0.2s; cursor: pointer;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1"></path>
-              <circle cx="100" cy="100" r="55" fill="#ffffff"></circle>
+      <!-- ROW 1: Top Workspaces | Top Reports | Top Users -->
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:16px;">
+
+        <!-- Card 1: Top Workspaces (Donut) — hidden when workspace selected -->
+        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #10b981;" *ngIf="!selectedGroupId()">
+          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1e293b;">Top Workspaces by Views</h3>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            <svg class="animate-donut" viewBox="0 0 200 200" style="width:100px; height:100px; background:none; flex-shrink:0;">
+              <path *ngFor="let p of getDonutPaths(workspaceDonutSegments())" [attr.d]="p.d" [attr.fill]="p.color"
+                (mouseenter)="showTooltip($event, p.name + '\n' + p.views + ' views')"
+                (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()"
+                style="transition:opacity 0.2s; cursor:pointer;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1"></path>
+              <circle cx="100" cy="100" r="60" fill="#ffffff"></circle>
             </svg>
-            <div class="donut-legend">
-              <div class="legend-item" *ngFor="let s of workspaceDonutSegments()">
-                <div class="legend-dot" [style.background]="s.color"></div>
-                <div class="legend-name" [title]="s.name">{{ s.name }}</div>
-                <div class="legend-value">{{ s.views | number }} &middot; {{ s.percent | number:'1.0-0' }}%</div>
+            <div style="width:100%;">
+              <div *ngFor="let s of workspaceDonutSegments()" style="display:flex; align-items:center; gap:6px; padding:4px 0; border-bottom:1px solid #f8fafc;">
+                <div style="width:7px; height:7px; border-radius:50%; flex-shrink:0;" [style.background]="s.color"></div>
+                <span style="font-size:11px; font-weight:600; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="s.name">{{ s.name }}</span>
+                <span style="font-size:11px; color:#64748b; margin-left:auto; white-space:nowrap;">{{ s.views | number }}</span>
               </div>
             </div>
-          </div>
-          <div class="donut-footer" *ngIf="workspaceDonutSegments().length">
-            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981; margin-right:6px; margin-bottom:1px;"></span>
-            {{ workspaceDonutSegments()[0].name }} leads with {{ workspaceDonutSegments()[0].views | number }} views &mdash; {{ workspaceDonutSegments()[0].percent | number:'1.0-0' }}% of top-5 volume
           </div>
         </div>
 
-        <!-- Card 2: Top Users (Horizontal Bars) -->
-        <div class="card premium-card">
-          <h3>Top Users by Views <span class="badge-light">Top 10</span></h3>
-          <div style="margin-bottom:12px;" *ngIf="topUsersHbars().length">
-            <div class="hbar-row" *ngFor="let u of topUsersHbars().slice(0,5)" (mouseenter)="showTooltip($event, u.name + '\n' + u.views + ' views\nLast Access: ' + u.lastAccessed)" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
-              <div class="hbar-header">
-                <span style="font-weight:600; color:#1e293b;">{{ u.name }}</span>
+        <!-- Card 2: Top Reports Horizontal Bars -->
+        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #3b82f6;">
+          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+            Top Reports / Dashboards
+            <span style="background:#eff6ff; color:#3b82f6; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Top 5</span>
+          </h3>
+          <div style="display:flex; flex-direction:column; gap:9px;">
+            <div *ngFor="let r of stats.topReports.slice(0, 5)"
+              (mouseenter)="showTooltip($event, r.name + '\n' + r.views + ' views')"
+              (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
+                <span style="font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78%;" [title]="r.name">{{ r.name }}</span>
+                <span style="color:#3b82f6; font-weight:700; white-space:nowrap;">{{ r.views | number }}</span>
               </div>
-              <div class="hbar-bg">
-                <div class="hbar-fill" style="background:#60a5fa;" [style.width.%]="u.percent"></div>
+              <div style="width:100%; height:5px; background:#f1f5f9; border-radius:3px; overflow:hidden;">
+                <div class="animate-bar" style="height:100%; background:#3b82f6; border-radius:3px;"
+                  [style.width.%]="Math.max(1, (r.views / (stats.topReports[0]?.views || 1)) * 100)"></div>
               </div>
             </div>
-          </div>
-          <div class="table-container"><table class="clean-table">
-              <thead><tr><th>Name</th><th style="text-align:right;">Views</th><th style="text-align:right;">Last Accessed</th></tr></thead>
-              <tbody>
-                <tr *ngFor="let u of stats.topUsers | slice: pageTopUsers()*10 : (pageTopUsers()+1)*10">
-                  <td><strong>{{ u.name }}</strong></td>
-                  <td style="text-align:right;">{{ u.views | number }}</td>
-                  <td style="text-align:right; color:#000000;">{{ u.lastAccessed | date:'mediumDate' }}</td>
-                </tr>
-              </tbody>
-            </table></div>
-          <div class="pagination" *ngIf="stats.topUsers.length > 10">
-            <button [disabled]="pageTopUsers() === 0" (click)="pageTopUsers.set(pageTopUsers() - 1)">Previous</button>
-            <span>Page {{ pageTopUsers() + 1 }} of {{ Math.ceil(stats.topUsers.length / 10) }}</span>
-            <button [disabled]="(pageTopUsers() + 1) * 10 >= stats.topUsers.length" (click)="pageTopUsers.set(pageTopUsers() + 1)">Next</button>
           </div>
         </div>
 
-        <!-- Card 3: Top Reports (Vertical Bar) -->
-        <div class="card premium-card">
-          <h3>Top Reports / Dashboards <span class="badge-light" style="background:#eff6ff;color:#3b82f6;">Views</span></h3>
-                    <div style="margin-top:20px;">
-            <div class="hbar-row-c" *ngFor="let r of stats.topReports.slice(0, 5)" (mouseenter)="showTooltip($event, r.name + '\n' + r.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
-              <div class="hbar-label-c" [title]="r.name">{{ r.name }}</div>
-              <div class="hbar-track-c">
-                <div class="hbar-fill-c" style="background: #3b82f6;" [style.width.%]="Math.max(2, (r.views / (stats.topReports[0]?.views || 1)) * 100)"></div>
-                <div class="hbar-val-c">{{ r.views | number }}</div>
+        <!-- Card 3: Top Users -->
+        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #8b5cf6;">
+          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+            Top Users
+            <span style="background:#f3f0ff; color:#8b5cf6; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Click → details</span>
+          </h3>
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <div *ngFor="let u of stats.topUsers.slice(0, 6); let i = index"
+              (click)="navigateToUser.emit(u.email)"
+              style="display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:6px; cursor:pointer; transition:background 0.15s;"
+              onmouseover="this.style.background='#f5f3ff'" onmouseout="this.style.background=''">
+              <div style="width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#8b5cf6,#6d28d9); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; flex-shrink:0;">
+                {{ u.name.charAt(0).toUpperCase() }}
+              </div>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:11px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="u.name">{{ u.name }}</div>
+                <div style="font-size:10px; color:#94a3b8;">{{ u.lastAccessed | date:'MMM d' }}</div>
+              </div>
+              <div style="font-size:12px; font-weight:800; color:#7c3aed; white-space:nowrap;">{{ u.views | number }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 2: Top Pages | Least Used Reports (red) | Least Used Pages (red) -->
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+
+        <!-- Card 4: Top Pages -->
+        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #06b6d4;">
+          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+            Top Pages / Tabs
+            <span style="background:#ecfeff; color:#0891b2; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Top 5</span>
+          </h3>
+          <div style="display:flex; flex-direction:column; gap:9px;">
+            <div *ngFor="let p of stats.topPages.slice(0, 5)"
+              (mouseenter)="showTooltip($event, p.pageName + '\n' + p.reportName + '\n' + p.views + ' views')"
+              (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+                <span style="font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75%;" [title]="p.pageName">{{ p.pageName }}</span>
+                <span style="color:#0891b2; font-weight:700; white-space:nowrap;">{{ p.views | number }}</span>
+              </div>
+              <div style="font-size:10px; color:#94a3b8; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="p.reportName">{{ p.reportName }}</div>
+              <div style="width:100%; height:4px; background:#ecfeff; border-radius:3px; overflow:hidden;">
+                <div class="animate-bar" style="height:100%; background:#06b6d4; border-radius:3px;"
+                  [style.width.%]="Math.max(1, (p.views / (stats.topPages[0]?.views || 1)) * 100)"></div>
               </div>
             </div>
           </div>
         </div>
-        
-        <!-- Card 4: Top Pages (Table) -->
-        <div class="card premium-card" style="grid-column: span 3;">
-          <h3>Top Pages / Tabs <span class="badge-light">Views</span></h3>
-          <table class="clean-table">
-            <thead><tr><th>Tab</th><th>Parent Report</th><th style="text-align:right;">Views</th></tr></thead>
-            <tbody>
-              <tr *ngFor="let p of stats.topPages | slice: pageTopPages()*10 : (pageTopPages()+1)*10">
-                <td><strong>{{ p.pageName }}</strong></td>
-                <td>{{ p.reportName }}</td>
-                <td style="text-align:right;">{{ p.views | number }}</td>
-              </tr>
-              <tr *ngIf="!stats.topPages.length"><td colspan="3" class="empty">No pages.</td></tr>
-            </tbody>
-          </table>
-          <div class="pagination" *ngIf="stats.topPages.length > 10">
-            <button [disabled]="pageTopPages() === 0" (click)="pageTopPages.set(pageTopPages() - 1)">Previous</button>
-            <span>Page {{ pageTopPages() + 1 }} of {{ Math.ceil(stats.topPages.length / 10) }}</span>
-            <button [disabled]="(pageTopPages() + 1) * 10 >= stats.topPages.length" (click)="pageTopPages.set(pageTopPages() + 1)">Next</button>
+
+        <!-- Card 5: Least Used Reports (RED) -->
+        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #ef4444;">
+          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#dc2626; display:flex; justify-content:space-between; align-items:center;">
+            Least Used Reports
+            <span style="background:#fef2f2; color:#ef4444; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Idle</span>
+          </h3>
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <div *ngFor="let r of stats.leastReports"
+              style="display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:6px; border:1px solid #fef2f2; background:#fff5f5;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:11px; font-weight:600; color:#dc2626; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="r.reportName || r.name">{{ r.reportName || r.name }}</div>
+              </div>
+              <div style="font-size:12px; font-weight:800; color:#ef4444; white-space:nowrap;">{{ r.views | number }}</div>
+            </div>
+            <div *ngIf="!stats.leastReports?.length" style="color:#94a3b8; font-size:12px; text-align:center; padding:10px;">No idle reports.</div>
+          </div>
+        </div>
+
+        <!-- Card 6: Least Used Pages (RED) -->
+        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #f97316;">
+          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#ea580c; display:flex; justify-content:space-between; align-items:center;">
+            Least Used Pages
+            <span style="background:#fff7ed; color:#f97316; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Idle</span>
+          </h3>
+          <div style="display:flex; flex-direction:column; gap:5px;">
+            <div *ngFor="let p of stats.leastPages"
+              style="display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:6px; border:1px solid #fff7ed; background:#fffbf5;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:11px; font-weight:600; color:#ea580c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="p.pageName">{{ p.pageName }}</div>
+                <div style="font-size:10px; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="p.reportName">{{ p.reportName }}</div>
+              </div>
+              <div style="font-size:12px; font-weight:800; color:#f97316; white-space:nowrap;">{{ p.views | number }}</div>
+            </div>
+            <div *ngIf="!stats.leastPages?.length" style="color:#94a3b8; font-size:12px; text-align:center; padding:10px;">No idle pages.</div>
           </div>
         </div>
 
       </div>
-
-      <div class="section-header" style="color:#d97706;">
-        <span style="background:#f59e0b; width:6px; height:6px; border-radius:50%; display:block; margin-right:8px;"></span>
-        LEAST USED COMPONENTS &mdash; IDLE WATCHLIST
-      </div>
-
-      <div class="premium-grid" style="grid-template-columns: repeat(2, 1fr);">
-        
-        <!-- Least Used Reports -->
-        <div class="card premium-card">
-          <h3>Least Used Reports <span class="badge-light" style="background:#fef3c7; color:#d97706;">Needs review</span></h3>
-          <div style="margin-top:12px;">
-            <div style="display:flex; align-items:center; margin-bottom:12px; gap:12px;" *ngFor="let r of leastReportsHbars()" (mouseenter)="showTooltip($event, r.name + '\n' + r.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
-              <div style="width:140px; font-size:11px; font-weight:600; color:#000000; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="r.name">
-                {{ r.name }}
-              </div>
-              <div style="flex:1; display:flex; align-items:center; gap:8px;">
-                <div style="height:14px; background:#f59e0b; border-radius:3px; min-width:4px;" [style.width.%]="r.percent"></div>
-                <span style="font-size:11px; color:#000000;">{{ r.views | number }}</span>
-              </div>
-            </div>
-            <div *ngIf="!leastReportsHbars().length" class="empty">No idle reports.</div>
-          </div>
-        </div>
-
-        <!-- Least Used Pages -->
-        <div class="card premium-card">
-          <h3>Least Used Pages <span class="badge-light" style="background:#fef3c7; color:#d97706;">Needs review</span></h3>
-          <table class="clean-table">
-            <thead><tr><th>Tab</th><th>Parent Report</th><th style="text-align:right;">Views</th></tr></thead>
-            <tbody>
-              <tr *ngFor="let p of stats.leastPages">
-                <td>
-                  <span style="font-size:9px; background:#fef3c7; color:#d97706; padding:2px 6px; border-radius:4px; font-weight:700; margin-right:6px;">Idle</span>
-                  <strong>{{ p.pageName }}</strong>
-                </td>
-                <td>{{ p.reportName }}</td>
-                <td style="text-align:right;">{{ p.views | number }}</td>
-              </tr>
-              <tr *ngIf="!stats.leastPages?.length"><td colspan="3" class="empty">No idle pages.</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-      </div>
-
     </div>
   </ng-container>
   `,
 })
 export class UsageComponent implements OnInit {
+  @Output() navigateToUser = new EventEmitter<string>();
+
   // SVG Donut helpers
   getDonutPaths(segments: any[]) {
     let total = segments.reduce((sum, s) => sum + (s.views || 0), 0);

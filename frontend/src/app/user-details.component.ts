@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.service';
@@ -132,14 +132,14 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
     /* Vertical Bar Chart for Least Accessed */
     .vbar-chart { display: flex; align-items: flex-end; justify-content: space-around; height: 140px; padding-bottom: 0px; border-bottom: 2px solid #e2e8f0; margin-top: 16px; margin-bottom: 70px; }
     .vbar-col { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 50px; height: 100%; }
-    .vbar { background: #d97706; border-radius: 4px 4px 0 0; width: 36px; transition: height 0.4s ease; min-height: 4px; }
+    .vbar { background: #d97706; border-radius: 4px 4px 0 0; width: 36px; transition: height 0.4s ease; min-height: 4px; transform-origin: bottom; animation: scaleInY 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
     .vbar-label { position: absolute; top: calc(100% + 8px); right: 50%; transform: rotate(-45deg); transform-origin: top right; font-size: 10px; font-weight: 600; color: #000000; text-align: right; white-space: nowrap; width: 120px; overflow: hidden; text-overflow: ellipsis; }
 
     /* Horizontal Bar Chart */
     .hbar-row-c { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
     .hbar-label-c { width: 180px; font-size: 11px; font-weight: 600; color: #000000; text-align: right; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: none; line-height: 1.3; }
     .hbar-track-c { flex: 1; display: flex; align-items: center; gap: 8px; }
-    .hbar-fill-c { height: 14px; background: #d97706; border-radius: 3px; min-width: 4px; transition: width 0.4s ease; }
+    .hbar-fill-c { height: 14px; background: #d97706; border-radius: 3px; min-width: 4px; transition: width 0.4s ease; transform-origin: left; animation: scaleInX 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
     .hbar-val-c { font-size: 11px; color: #000000; font-weight: 600; width: 20px; }
 
     .hover-bg-slate-50:hover { background: #f8fafc; }
@@ -158,7 +158,45 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
     .empty { text-align: center; color: #000000; font-size: 11px; padding: 40px 0; }
     .spinner { display:inline-block; width:18px; height:18px; border:3px solid #dbeafe; border-top-color:#1d6ef5; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Animations */
+    @keyframes drawLine {
+      from { stroke-dashoffset: 1000; }
+      to { stroke-dashoffset: 0; }
+    }
+    @keyframes fadeInSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-chart-line {
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: drawLine 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+    .animate-chart-area {
+      animation: fadeInSlide 1s ease-out forwards;
+    }
+    @keyframes scaleInY {
+      from { transform: scaleY(0); }
+      to { transform: scaleY(1); }
+    }
+    .animate-chart-bar {
+      transform-origin: bottom;
+      animation: scaleInY 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+    @keyframes scaleInX {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+    .animate-bar-x {
+      transform-origin: left;
+      animation: scaleInX 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+    .animate-donut {
+      animation: fadeInSlide 0.6s ease-out forwards;
+    }
   `],
+
   template: `
   <ng-container *ngIf="selectedUser() === null">
     <div style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
@@ -279,12 +317,12 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
             <!-- Data Bars -->
             <ng-container *ngFor="let p of chartPoints()">
-              <rect class="chart-bar" [attr.x]="p.x - 8" [attr.y]="p.y" width="16" [attr.height]="180 - p.y" (mouseenter)="showTooltip($event, p.date + '\n' + p.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()"></rect>
+              <rect class="chart-bar animate-chart-bar" [attr.x]="p.x - 8" [attr.y]="p.y" width="16" [attr.height]="180 - p.y" (mouseenter)="showTooltip($event, p.date + '\n' + p.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()"></rect>
             </ng-container>
 
             <!-- Data Line & Area -->
-            <path class="chart-area" style="pointer-events: none;" [attr.d]="chartAreaPath()" />
-            <path class="chart-line" style="pointer-events: none;" [attr.d]="chartLinePath()" />
+            <path class="chart-area animate-chart-area" style="pointer-events: none;" [attr.d]="chartAreaPath()" />
+            <path class="chart-line animate-chart-line" style="pointer-events: none;" [attr.d]="chartLinePath()" />
           </svg>
         </div>
       </div>
@@ -296,7 +334,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
         <div class="premium-card">
           <h3>Top Dashboards & Reports</h3>
           <div class="donut-container" *ngIf="topReportDonutSegments().length">
-            <svg class="donut-chart" viewBox="0 0 200 200" style="background:none;">
+            <svg class="donut-chart animate-donut" viewBox="0 0 200 200" style="background:none;">
               <path *ngFor="let p of getDonutPaths(topReportDonutSegments())" [attr.d]="p.d" [attr.fill]="p.color" (mouseenter)="showTooltip($event, p.name + '\n' + p.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()" style="transition: opacity 0.2s; cursor: pointer;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1"></path>
               <circle cx="100" cy="100" r="55" fill="#ffffff"></circle>
             </svg>
@@ -417,6 +455,8 @@ export class UserDetailsComponent implements OnInit {
     this.tooltip.update(t => ({ ...t, show: false }));
   }
   
+  @Input() preSelectEmail: string | null = null;
+
   api = inject(SyncApiService);
 
   allUsers = signal<AllUsersStat[]>([]);
@@ -576,6 +616,11 @@ export class UserDetailsComponent implements OnInit {
       next: (users) => {
         this.allUsers.set(users);
         this.loadingAll.set(false);
+        // Auto-select user if navigated from Usage page
+        if (this.preSelectEmail) {
+          const match = users.find(u => u.email === this.preSelectEmail);
+          if (match) { this.selectUser(match); }
+        }
       },
       error: (err) => {
         this.errorMsg.set('Failed to load users.');
