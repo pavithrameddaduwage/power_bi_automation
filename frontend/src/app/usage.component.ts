@@ -40,7 +40,7 @@ import {
       background: #fff; border: 1.5px solid #93c5fd; border-radius: 12px;
       padding: 16px 20px; box-shadow: 0 1px 6px rgba(29,110,245,0.07);
     }
-    .summary-card .label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; }
+    .summary-card .label { font-size: 11px; font-weight: 600; color: #6b7280; letter-spacing: .5px; }
     .summary-card .value { font-size: 28px; font-weight: 800; color: #1d4ed8; margin-top: 4px; line-height: 1.1; }
 
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
@@ -51,12 +51,25 @@ import {
       padding: 18px 20px; box-shadow: 0 1px 6px rgba(29,110,245,0.07);
       margin-bottom: 16px;
     }
-    .card h3 { font-size: 13px; font-weight: 700; color: #1d4ed8; margin: 0 0 14px 0; text-transform: uppercase; letter-spacing: .4px; }
+    .card h3 { font-size: 13px; font-weight: 700; color: #1d4ed8; margin: 0 0 14px 0; letter-spacing: .4px; }
 
-    /* Bar chart — fills width, no overflow */
-    .bar-chart-wrap { overflow: hidden; width: 100%; }
+    /* Bar chart */
+    .bar-chart-wrap { overflow: visible; width: 100%; padding-top: 35px; margin-top: -15px; }
     .bar-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px; width: 100%; }
-    .bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 0; }
+    .bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 0; position: relative; }
+    
+    .chart-tooltip {
+      visibility: hidden; background-color: #1f2937; color: #fff; text-align: center;
+      border-radius: 6px; padding: 6px 10px; position: absolute; z-index: 10;
+      bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 8px;
+      white-space: nowrap; font-size: 11px; opacity: 0; transition: opacity 0.15s, visibility 0.15s;
+      pointer-events: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    .chart-tooltip::after {
+      content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+      border-width: 5px; border-style: solid; border-color: #1f2937 transparent transparent transparent;
+    }
+    .bar-col:hover .chart-tooltip { visibility: visible; opacity: 1; }
     .bar {
       width: 100%; background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
       border-radius: 3px 3px 0 0; transition: opacity .15s; min-height: 2px;
@@ -237,12 +250,16 @@ import {
     <div class="two-col">
       <!-- Views per day/month chart -->
       <div class="card">
-        <h3>{{ selectedDays() === 30 ? 'Views per Day' : 'Views per Month' }}</h3>
+        <h3>Views per Day</h3>
         <div class="bar-chart-wrap" *ngIf="filteredViewsByDay().length; else noData">
           <div class="bar-chart">
             <div class="bar-col" *ngFor="let d of filteredViewsByDay()">
-              <div class="bar" [style.height.px]="barHeight(d.views)" [title]="d.date + ': ' + d.views + ' views'"></div>
-              <div class="bar-label">{{ selectedDays() === 30 ? d.date.slice(5) : d.date }}</div>
+              <div class="chart-tooltip">
+                <strong>{{ d.date | date:'mediumDate' }}</strong><br>
+                {{ d.views | number }} views
+              </div>
+              <div class="bar" [style.height.px]="barHeight(d.views)"></div>
+              <div class="bar-label">{{ d.date | date:'M/d/yy' }}</div>
             </div>
           </div>
         </div>
@@ -301,7 +318,7 @@ import {
     <!-- Clicked User breakdown details container -->
     <div *ngIf="selectedUserDetails() as details" style="margin-top:24px;border: 1px solid #f59e0b;border-radius:12px;background:#fffdfa;padding:20px;box-shadow:var(--shadow-sm);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1.5px solid #fef3c7;padding-bottom:12px;">
-        <h3 style="margin:0;color:#b45309;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.5px;">
+        <h3 style="margin:0;color:#b45309;font-weight:700;font-size:14px;letter-spacing:.5px;">
           Detailed Breakdown: {{ details.givenName }} {{ details.familyName }} 
           <span *ngIf="details.lastAccessed" style="font-size:11px;font-weight:600;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:99px;margin-left:8px;text-transform:none;">
             Last accessed: {{ details.lastAccessed | date:'mediumDate' }}
@@ -622,43 +639,17 @@ export class UsageComponent implements OnInit {
   );
 
   // Filter viewsByDay to show only the last N days (30, 60, or 90).
-  // If 60 or 90 days range (2 or 3 months) is selected, aggregate into Month-level buckets.
   filteredViewsByDay = computed(() => {
     const data = this.analytics()?.viewsByDay ?? [];
     const limit = this.selectedDays();
     
-    // Slice data to requested day range first
+    // Slice data to requested day range
     let sliced = data;
     if (data.length > limit) {
       sliced = data.slice(-limit);
     }
     
-    if (limit === 30) {
-      // Return raw days
-      return sliced;
-    } else {
-      // Group by Month (YYYY-MM)
-      const monthMap = new Map<string, number>();
-      for (const d of sliced) {
-        const monthKey = d.date.slice(0, 7); // e.g. "2026-08"
-        monthMap.set(monthKey, (monthMap.get(monthKey) ?? 0) + d.views);
-      }
-      
-      const monthNames = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-      ];
-
-      return Array.from(monthMap.entries()).map(([month, views]) => {
-        const parts = month.split('-');
-        const monthIdx = parseInt(parts[1], 10) - 1;
-        const name = monthNames[monthIdx] || month;
-        return {
-          date: name, // label will be month name
-          views
-        };
-      });
-    }
+    return sliced;
   });
 
   // Calculate total views for selected day range

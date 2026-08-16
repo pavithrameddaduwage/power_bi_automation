@@ -9,13 +9,14 @@ import { AuthService } from './auth/auth.service';
 import { LoginComponent } from './auth/login/login.component';
 import { SyncApiService, EmailLog } from './sync.service';
 import { UsageComponent } from './usage.component';
+import { UserDetailsComponent } from './user-details.component';
 
-type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' | 'usage';
+type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' | 'usage' | 'user-details';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadComponent, JobsComponent, DatasetsComponent, LoginComponent, UsageComponent],
+  imports: [CommonModule, FormsModule, UploadComponent, JobsComponent, DatasetsComponent, LoginComponent, UsageComponent, UserDetailsComponent],
   template: `
     <app-login *ngIf="!(auth.isAuthenticated$() | async)"></app-login>
 
@@ -32,9 +33,19 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
           <nav class="sidebar-nav">
             <!-- Usage Reports Group -->
             <div class="nav-group">
-              <div class="nav-subitem" [class.active]="tab() === 'usage'" (click)="tab.set('usage')">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                Usage Reports
+              <div class="nav-subitem" [class.active]="tab() === 'usage'" (click)="tab.set('usage'); usageExpanded.set(!usageExpanded())" style="justify-content: space-between;">
+                <div style="display:flex; align-items:center; gap:9px;">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                  Usage Reports
+                </div>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     [style.transform]="usageExpanded() ? 'rotate(180deg)' : 'rotate(0)'" style="transition: transform 0.2s; flex-shrink:0; opacity:0.6;">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <div *ngIf="usageExpanded()" class="nav-subitem" [class.active]="tab() === 'user-details'" (click)="tab.set('user-details')" style="margin-top:2px; margin-left: 18px; padding-left: 12px; border-left: 1.5px solid var(--border); border-radius: 0 8px 8px 0; font-size: 12.5px;">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; opacity: 0.8;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                User Details
               </div>
             </div>
 
@@ -88,6 +99,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
               <span *ngIf="tab() === 'jobs'">Jobs &amp; Schedules</span>
               <span *ngIf="tab() === 'email-history'">Email History</span>
               <span *ngIf="tab() === 'usage'">Usage Reports</span>
+              <span *ngIf="tab() === 'user-details'">User Details</span>
             </div>
             <div class="top-bar-right">
               <div class="user-chip">
@@ -102,6 +114,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
             <app-datasets *ngIf="tab() === 'datasets'"></app-datasets>
             <app-jobs *ngIf="tab() === 'jobs'"></app-jobs>
             <app-usage *ngIf="tab() === 'usage'"></app-usage>
+            <app-user-details *ngIf="tab() === 'user-details'"></app-user-details>
             <div *ngIf="tab() === 'email-history'">
               <!-- SMTP Settings Card -->
               <div class="card" style="margin-bottom: 24px;">
@@ -341,6 +354,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
 })
 export class AppComponent {
   tab = signal<Tab>('usage');
+  usageExpanded = signal(false);
   reportsExpanded = signal(true);
   jobsExpanded = signal(true);
   toast = inject(ToastService);

@@ -16,10 +16,12 @@ const config_1 = require("@nestjs/config");
 const schedule_1 = require("@nestjs/schedule");
 const cron_1 = require("cron");
 const sync_service_1 = require("./sync.service");
+const usage_service_1 = require("../usage/usage.service");
 let SyncScheduler = SyncScheduler_1 = class SyncScheduler {
-    constructor(config, sync, registry) {
+    constructor(config, sync, usage, registry) {
         this.config = config;
         this.sync = sync;
+        this.usage = usage;
         this.registry = registry;
         this.logger = new common_1.Logger(SyncScheduler_1.name);
     }
@@ -29,6 +31,12 @@ let SyncScheduler = SyncScheduler_1 = class SyncScheduler {
         this.registry.addCronJob('weekly-sync', job);
         job.start();
         this.logger.log(`Weekly sync scheduled with cron "${cron}" (UTC).`);
+        const usageJob = new cron_1.CronJob('0 * * * *', () => this.runUsageSync(), null, false, 'UTC');
+        this.registry.addCronJob('hourly-usage-sync', usageJob);
+        usageJob.start();
+        this.logger.log('Hourly usage metrics sync scheduled with cron "0 * * * *" (UTC).');
+        this.logger.log('Executing initial usage metrics synchronization on startup...');
+        this.runUsageSync().catch(err => this.logger.error('Startup usage metrics sync failed', err));
     }
     async run() {
         this.logger.log('Scheduled sync starting...');
@@ -37,12 +45,33 @@ let SyncScheduler = SyncScheduler_1 = class SyncScheduler {
         if (errors.length)
             this.logger.error(errors.join(' | '));
     }
+    async runUsageSync() {
+        this.logger.log('Scheduled hourly usage metrics collection starting...');
+        try {
+            const reports = await this.usage.listUsageReports();
+            this.logger.log(`Found ${reports.length} usage reports to process.`);
+            for (const r of reports) {
+                try {
+                    this.logger.log(`Processing usage dataset ${r.datasetId} for workspace ${r.groupName}...`);
+                    await this.usage.getUsageAnalytics(r.groupId, r.datasetId);
+                }
+                catch (err) {
+                    this.logger.error(`Failed to sync usage analytics for report ${r.reportName}: ${err.message}`);
+                }
+            }
+            this.logger.log('Scheduled hourly usage metrics collection finished.');
+        }
+        catch (err) {
+            this.logger.error(`Failed usage metrics list collection: ${err.message}`);
+        }
+    }
 };
 exports.SyncScheduler = SyncScheduler;
 exports.SyncScheduler = SyncScheduler = SyncScheduler_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [config_1.ConfigService,
         sync_service_1.SyncService,
+        usage_service_1.UsageService,
         schedule_1.SchedulerRegistry])
 ], SyncScheduler);
 //# sourceMappingURL=sync.scheduler.js.map

@@ -271,6 +271,83 @@ export class UsageService {
     };
   }
 
+  /** Get aggregated stats for all users */
+  async getAllUsersStats() {
+    const query = await this.pool.query(`
+      SELECT email, given_name, family_name, SUM(views) as views, MAX(date) as last_accessed
+      FROM usage_views_by_user
+      GROUP BY email, given_name, family_name
+      ORDER BY views DESC
+    `);
+    
+    return query.rows.map(r => ({
+      email: r.email,
+      name: r.given_name ? `${r.given_name} ${r.family_name || ''}`.trim() : r.email,
+      views: Number(r.views),
+      lastAccessed: r.last_accessed
+    }));
+  }
+
+  /** Get detailed usage breakdown for a specific user */
+  async getUserDetails(email: string) {
+    const historicalViewsQuery = await this.pool.query(`
+      SELECT date, SUM(views) as views
+      FROM usage_views_by_user
+      WHERE email = $1
+      GROUP BY date
+      ORDER BY date ASC
+    `, [email]);
+
+    const reportAccessQuery = await this.pool.query(`
+      SELECT report_name, SUM(views) as views
+      FROM usage_user_report_access
+      WHERE email = $1
+      GROUP BY report_name
+      ORDER BY views DESC
+    `, [email]);
+
+    const pageAccessQuery = await this.pool.query(`
+      SELECT page_name, report_name, SUM(views) as views
+      FROM usage_user_page_access
+      WHERE email = $1
+      GROUP BY page_name, report_name
+      ORDER BY views DESC
+    `, [email]);
+
+    const historicalViews = historicalViewsQuery.rows.map(r => {
+      const d = new Date(r.date);
+      const iso = isNaN(d.getTime()) ? String(r.date) : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      return {
+        date: iso,
+        views: Number(r.views)
+      };
+    });
+
+    const reportAccess = reportAccessQuery.rows.map(r => ({
+      reportName: r.report_name,
+      views: Number(r.views)
+    }));
+
+    const pageAccess = pageAccessQuery.rows.map(r => ({
+      pageName: r.page_name,
+      reportName: r.report_name,
+      views: Number(r.views)
+    }));
+
+    const totalDashboards = reportAccess.length;
+    const topReports = reportAccess.slice(0, 5);
+    const leastReports = [...reportAccess].sort((a, b) => a.views - b.views).slice(0, 5);
+
+    return {
+      historicalViews,
+      reportAccess,
+      pageAccess,
+      totalDashboards,
+      topReports,
+      leastReports
+    };
+  }
+
   /** Query usage analytics from the dataset behind a usage metric report (works with upgraded and classic formats) */
   async getUsageAnalytics(groupId: string, datasetId: string): Promise<UsageAnalytics> {
     const http = await this.client();

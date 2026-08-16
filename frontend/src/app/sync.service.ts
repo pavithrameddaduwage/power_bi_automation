@@ -337,6 +337,12 @@ export class SyncApiService {
     const url = filterGroupId ? `${API}/usage/global-stats?filterGroupId=${filterGroupId}` : `${API}/usage/global-stats`;
     return this.http.get<GlobalDashboardStats>(url);
   }
+  getAllUsersStats(): Observable<AllUsersStat[]> {
+    return this.http.get<AllUsersStat[]>(`${API}/usage/users`);
+  }
+  getUserDetails(email: string): Observable<UserDetailsBreakdown> {
+    return this.http.get<UserDetailsBreakdown>(`${API}/usage/users/${encodeURIComponent(email)}`);
+  }
 }
 
 // ── Usage Report interfaces ──────────────────────────────────────
@@ -385,4 +391,21 @@ export interface GlobalDashboardStats {
   leastPages: StatItem[];
   leastUsers: StatItem[];
 }
+
+export interface AllUsersStat {
+  email: string;
+  name: string;
+  views: number;
+  lastAccessed: string;
+}
+
+export interface UserDetailsBreakdown {
+  historicalViews: { date: string; views: number }[];
+  reportAccess: { reportName: string; views: number }[];
+  pageAccess: { pageName: string; reportName: string; views: number }[];
+  totalDashboards: number;
+  topReports: { reportName: string; views: number }[];
+  leastReports: { reportName: string; views: number }[];
+}
+
 

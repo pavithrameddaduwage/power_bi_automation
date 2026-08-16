@@ -36,4 +36,18 @@ export class UsageController {
   getGlobalStats(@Query('filterGroupId') filterGroupId?: string) {
     return this.usage.getGlobalDashboardStats(filterGroupId);
   }
+
+  /** Global all users stats */
+  @Public()
+  @Get('users')
+  getAllUsersStats() {
+    return this.usage.getAllUsersStats();
+  }
+
+  /** Detailed breakdown for a specific user */
+  @Public()
+  @Get('users/:email')
+  getUserDetails(@Param('email') email: string) {
+    return this.usage.getUserDetails(email);
+  }
 }
