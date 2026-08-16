@@ -13,12 +13,26 @@ import {
   standalone: true,
   imports: [CommonModule, FormsModule],
   styles: [`
+    .custom-tooltip {
+      position: fixed;
+      z-index: 10000;
+      background: rgba(15, 23, 42, 0.9);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      pointer-events: none;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      white-space: pre-wrap;
+      transform: translate(0, 0);
+    }
     :host { display: block; }
     .page-header {
       margin-bottom: 24px;
     }
     .page-header h1 { font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 4px 0; }
-    .page-header p  { font-size: 13px; color: #6b7280; margin: 0; }
+    .page-header p  { font-size: 13px; color: #000000; margin: 0; }
 
     .controls-row {
       display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 20px; width: 100%;
@@ -32,22 +46,17 @@ import {
     }
     .controls-row select:focus { border-color: #1d6ef5; }
 
-    .summary-cards {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 14px; margin-bottom: 24px;
-    }
-    .summary-card {
-      background: #fff; border: 1.5px solid #93c5fd; border-radius: 12px;
-      padding: 16px 20px; box-shadow: 0 1px 6px rgba(29,110,245,0.07);
-    }
-    .summary-card .label { font-size: 11px; font-weight: 600; color: #6b7280; letter-spacing: .5px; }
-    .summary-card .value { font-size: 28px; font-weight: 800; color: #1d4ed8; margin-top: 4px; line-height: 1.1; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .sum-card { background: #fff; padding: 20px; border-radius: 12px; border: none; border-top: 4px solid #3b82f6; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; cursor: default; }
+    .sum-card:hover { transform: translateY(-3px); box-shadow: 0 8px 12px -2px rgba(0,0,0,0.1); }
+    .sum-label { font-size: 11px; font-weight: 700; color: #000000; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .sum-val { font-size: 28px; font-weight: 800; color: #1e293b; line-height: 1.1; }
 
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
     @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
 
     .card {
-      background: #fff; border: 1.5px solid #93c5fd; border-radius: 12px;
+      background: #fff; border: none; border-radius: 12px;
       padding: 18px 20px; box-shadow: 0 1px 6px rgba(29,110,245,0.07);
       margin-bottom: 16px;
     }
@@ -75,60 +84,77 @@ import {
       border-radius: 3px 3px 0 0; transition: opacity .15s; min-height: 2px;
     }
     .bar:hover { opacity: .75; }
-    .bar-label { font-size: 8px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+    .bar-label { font-size: 8px; color: #000000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
 
-    /* Tables */
-    .tbl-wrap {
-      border: 1px solid #1d6ef5;
-      border-radius: 8px;
-      overflow: auto;
-      max-height: 280px;
-      scrollbar-width: thin;
-      scrollbar-color: #1d6ef5 #f0f7ff;
-    }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th {
-      background: #1d6ef5;
-      color: #ffffff;
-      font-weight: 700;
-      padding: 12px 16px;
-      text-align: left;
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      border-bottom: 2px solid #1d6ef5;
-      white-space: nowrap;
-      font-size: 14px;
-    }
-    td {
-      text-align: left;
-      padding: 12px 16px;
-      border-bottom: 1px solid #eff6ff;
-      color: #111827;
-      font-size: 13px;
-      background: #ffffff;
-      vertical-align: middle;
-    }
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: #f0f7ff; cursor: pointer; }
+    /* HBAR Charts Custom */
+    .hbar-row-c { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+    .hbar-label-c { width: 180px; font-size: 11px; font-weight: 600; color: #000000; text-align: right; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: none; line-height: 1.3; }
+    .hbar-track-c { flex: 1; display: flex; align-items: center; gap: 8px; }
+    .hbar-fill-c { height: 16px; background: #d97706; border-radius: 4px; transition: width 0.4s; min-width: 4px; }
+    .hbar-val-c { font-size: 11px; font-weight: 600; color: #000000; }
 
     /* Role badges */
     .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
     .badge-admin    { background: #dbeafe; color: #1d4ed8; }
     .badge-member   { background: #dcfce7; color: #15803d; }
     .badge-contributor { background: #fef9c3; color: #854d0e; }
-    .badge-viewer   { background: #f3f4f6; color: #374151; }
+    .badge-viewer   { background: #f3f4f6; color: #000000; }
 
     /* Platform pills */
     .platform-list { display: flex; flex-direction: column; gap: 8px; }
     .platform-row  { display: flex; align-items: center; gap: 10px; }
-    .platform-name { font-size: 12px; color: #374151; width: 90px; flex-shrink: 0; }
+    .platform-name { font-size: 12px; color: #000000; width: 90px; flex-shrink: 0; }
     .platform-bar-wrap { flex: 1; background: #eff6ff; border-radius: 99px; height: 8px; overflow: hidden; }
     .platform-bar-fill { height: 100%; background: linear-gradient(90deg, #1d6ef5, #60a5fa); border-radius: 99px; transition: width .4s; }
-    .platform-count { font-size: 11px; color: #6b7280; width: 40px; text-align: right; }
+    .platform-count { font-size: 11px; color: #000000; width: 40px; text-align: right; }
+
+    /* Unified Table Styles */
+    .table-container {
+      border: 1.5px solid #93c5fd;
+      border-radius: 8px;
+      overflow: hidden;
+      background: white;
+      margin-top: 8px;
+    }
+    .clean-table { width: 100%; border-collapse: collapse; font-size: 13px; text-transform: none; }
+    .clean-table th {
+      background: #e0f2fe;
+      color: #1e40af;
+      font-weight: 700;
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #93c5fd;
+      white-space: nowrap;
+      font-size: 13px;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    .clean-table td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #000000;
+      font-size: 13px;
+      background: #ffffff;
+      vertical-align: middle;
+    }
+    .clean-table tbody tr:last-child td { border-bottom: none; }
+    .clean-table tbody tr:hover td { background: #f0f9ff; cursor: pointer; }
 
     /* Empty / loading */
-    .empty { text-align: center; color: #9ca3af; font-size: 13px; padding: 40px 0; }
+    
+    .pagination {
+      display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;
+      background: #f8fafc; border-top: 1px solid #bfdbfe; font-size: 12px; font-weight: 600; color: #000000;
+    }
+    .pagination button {
+      background: white; border: 1px solid #93c5fd; border-radius: 6px; padding: 4px 10px;
+      cursor: pointer; color: #1e40af; font-weight: 600; transition: all 0.2s;
+    }
+    .pagination button:hover:not(:disabled) { background: #e0f2fe; border-color: #1d4ed8; }
+    .pagination button:disabled { opacity: 0.5; cursor: not-allowed; color: #94a3b8; border-color: #cbd5e1; }
+
+    .empty { text-align: center; color: #000000; font-size: 13px; padding: 40px 0; }
     .spinner { display:inline-block; width:18px; height:18px; border:3px solid #dbeafe; border-top-color:#1d6ef5; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -141,7 +167,7 @@ import {
     .report-item:hover   { background: #dbeafe; border-color: #93c5fd; }
     .report-item.active  { background: #dbeafe; border-color: #1d6ef5; }
     .report-item-name    { font-size: 13px; font-weight: 600; color: #1e3a5f; }
-    .report-item-ws      { font-size: 11px; color: #6b7280; margin-top: 1px; }
+    .report-item-ws      { font-size: 11px; color: #000000; margin-top: 1px; }
     .btn-link { background:none; border:none; color:#1d6ef5; font-size:12px; cursor:pointer; text-decoration:underline; padding:0; }
     .day-btns { display: flex; gap: 4px; }
     .day-btn {
@@ -164,6 +190,133 @@ import {
     .table-search-input:focus {
       border-color: #1d6ef5;
     }
+
+    /* Premium UI Grid System */
+    .premium-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .section-header {
+      font-size: 11px;
+      font-weight: 700;
+      color: #000000;
+      margin: 24px 0 12px 0;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-header::before {
+      content: '';
+      display: block;
+      width: 6px;
+      height: 6px;
+      background: #3b82f6;
+      border-radius: 50%;
+    }
+    
+    .card.premium-card {
+      padding: 20px;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .premium-card h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 0 0 16px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .badge-light {
+      background: #eff6ff;
+      color: #3b82f6;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    /* Donut Chart */
+    .donut-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .donut-chart {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .donut-hole {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 140px;
+      height: 140px;
+      background: #fff;
+      border-radius: 50%;
+    }
+    .donut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+    .legend-item { display: flex; align-items: center; font-size: 11px; color: #000000; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 12px; flex-shrink: 0; }
+    .legend-name { flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: none; line-height: 1.3; }
+    .legend-value { font-weight: 600; color: #1e293b; width: 60px; text-align: right; }
+    .donut-footer {
+      margin-top: 16px;
+      background: #ecfdf5;
+      color: #047857;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    /* Horizontal Bar Chart */
+    .hbar-row {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 12px;
+    }
+    .hbar-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 4px;
+      color: #000000;
+    }
+    .hbar-bg {
+      width: 100%;
+      height: 10px;
+      background: #f1f5f9;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .hbar-fill {
+      height: 100%;
+      border-radius: 5px;
+      transition: width 0.3s ease;
+    }
+
   `],
   template: `
   <div class="page-header">
@@ -175,14 +328,14 @@ import {
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
       <!-- Workspace dropdown -->
       <select [ngModel]="selectedGroupId()" (ngModelChange)="onWorkspaceChange($event)">
-        <option value="">— Select Workspace —</option>
+        <option value=""> Select Workspace </option>
         <option *ngFor="let ws of workspaces()" [value]="ws.groupId">{{ ws.groupName }}</option>
       </select>
 
       <!-- Report dropdown (filtered to selected workspace) -->
       <select [ngModel]="selectedReportId()" (ngModelChange)="onReportChange($event)"
               [disabled]="!selectedGroupId()">
-        <option value="">— Select Report —</option>
+        <option value=""> Select Report </option>
         <option *ngFor="let r of reportsForWorkspace()" [value]="r.reportId">{{ r.reportName }}</option>
       </select>
 
@@ -198,9 +351,10 @@ import {
 
     <!-- Workspace Members dropdown (Right Aligned) -->
     <div style="position:relative;" *ngIf="selectedGroupId() && wsUsers().length">
-      <button class="day-btn" style="display:flex;align-items:center;gap:6px;" (click)="showWorkspaceMembers.set(!showWorkspaceMembers())">
+      <button style="display:flex;align-items:center;gap:6px; border: 1.5px solid #93c5fd; border-radius: 8px; padding: 6px 12px; font-size: 13px; background: #fff; color: #111827; outline: none; cursor: pointer; transition: all 0.2s;" (click)="showWorkspaceMembers.set(!showWorkspaceMembers())" onmouseover="this.style.borderColor='#1d6ef5'" onmouseout="this.style.borderColor='#93c5fd'">
         <span>Show Workspace Members ({{ wsUsers().length }})</span>
-        <span>{{ showWorkspaceMembers() ? '▲' : '▼' }}</span>
+        <svg *ngIf="showWorkspaceMembers()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        <svg *ngIf="!showWorkspaceMembers()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
 
       <div *ngIf="showWorkspaceMembers()" 
@@ -228,22 +382,22 @@ import {
   <ng-container *ngIf="analytics() && !loadingAnalytics()">
 
     <!-- Summary cards -->
-    <div class="summary-cards">
-      <div class="summary-card">
-        <div class="label">Total Views</div>
-        <div class="value">{{ filteredTotalViews() | number }}</div>
+    <div class="summary-grid">
+      <div class="sum-card" style="border-top-color: #3b82f6;">
+        <div class="sum-label">Total Views</div>
+        <div class="sum-val">{{ filteredTotalViews() | number }}</div>
       </div>
-      <div class="summary-card">
-        <div class="label">Unique Viewers</div>
-        <div class="value">{{ filteredTotalViewers() | number }}</div>
+      <div class="sum-card" style="border-top-color: #10b981;">
+        <div class="sum-label">Unique Viewers</div>
+        <div class="sum-val">{{ filteredTotalViewers() | number }}</div>
       </div>
-      <div class="summary-card">
-        <div class="label">Days of Data</div>
-        <div class="value">{{ filteredViewsByDay().length }}</div>
+      <div class="sum-card" style="border-top-color: #f59e0b;">
+        <div class="sum-label">Days of Data</div>
+        <div class="sum-val">{{ filteredViewsByDay().length }}</div>
       </div>
-      <div class="summary-card">
-        <div class="label">Workspace Users</div>
-        <div class="value">{{ wsUsers().length }}</div>
+      <div class="sum-card" style="border-top-color: #8b5cf6;">
+        <div class="sum-label">Workspace Users</div>
+        <div class="sum-val">{{ wsUsers().length }}</div>
       </div>
     </div>
 
@@ -254,10 +408,7 @@ import {
         <div class="bar-chart-wrap" *ngIf="filteredViewsByDay().length; else noData">
           <div class="bar-chart">
             <div class="bar-col" *ngFor="let d of filteredViewsByDay()">
-              <div class="chart-tooltip">
-                <strong>{{ d.date | date:'mediumDate' }}</strong><br>
-                {{ d.views | number }} views
-              </div>
+              
               <div class="bar" [style.height.px]="barHeight(d.views)"></div>
               <div class="bar-label">{{ d.date | date:'M/d/yy' }}</div>
             </div>
@@ -291,7 +442,7 @@ import {
       <input type="text" class="table-search-input" placeholder="Search users by name or email..."
              [ngModel]="userSearch()" (ngModelChange)="userSearch.set($event)" />
 
-      <div class="tbl-wrap">
+      <div class="table-container">
         <table>
           <thead><tr>
             <th>Name</th>
@@ -316,10 +467,10 @@ import {
     </div>
 
     <!-- Clicked User breakdown details container -->
-    <div *ngIf="selectedUserDetails() as details" style="margin-top:24px;border: 1px solid #f59e0b;border-radius:12px;background:#fffdfa;padding:20px;box-shadow:var(--shadow-sm);">
+    <div *ngIf="selectedUserDetails() as details" style="margin-top:24px;border: none;border-radius:12px;background:#fffdfa;padding:20px;box-shadow:var(--shadow-sm);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1.5px solid #fef3c7;padding-bottom:12px;">
         <h3 style="margin:0;color:#b45309;font-weight:700;font-size:14px;letter-spacing:.5px;">
-          Detailed Breakdown: {{ details.givenName }} {{ details.familyName }} 
+          Detailed Breakdown- {{ details.givenName }} {{ details.familyName }} 
           <span *ngIf="details.lastAccessed" style="font-size:11px;font-weight:600;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:99px;margin-left:8px;text-transform:none;">
             Last accessed: {{ details.lastAccessed | date:'mediumDate' }}
           </span>
@@ -331,9 +482,9 @@ import {
         <!-- User views by report -->
         <div class="card" style="margin:0;border-color:#f59e0b;">
           <h3 style="color:#d97706;">Reports / Dashboards Accessed</h3>
-          <div class="tbl-wrap" style="border-color:#f59e0b;scrollbar-color:#f59e0b #fef3c7;">
+          <div class="table-container" style="border-color:#f59e0b;scrollbar-color:#f59e0b #fef3c7;">
             <table>
-              <thead><tr><th style="background:#f59e0b;border-bottom-color:#f59e0b;">Report / Dashboard Name</th><th style="background:#f59e0b;border-bottom-color:#f59e0b;">Views</th></tr></thead>
+              <thead><tr><th style="background:#f59e0b;border-bottom-color:#f59e0b;color:#ffffff;">Report / Dashboard Name</th><th style="background:#f59e0b;border-bottom-color:#f59e0b;color:#ffffff;">Views</th></tr></thead>
               <tbody>
                 <tr *ngFor="let r of selectedUserReportAccess()">
                   <td><span style="color:#b45309; font-weight:600;">{{ r.reportName }}</span></td>
@@ -350,9 +501,9 @@ import {
         <!-- User views by page tab -->
         <div class="card" style="margin:0;border-color:#10b981;">
           <h3 style="color:#059669;">Page Tabs Viewed</h3>
-          <div class="tbl-wrap" style="border-color:#10b981;scrollbar-color:#10b981 #ecfdf5;">
+          <div class="table-container" style="border-color:#10b981;scrollbar-color:#10b981 #ecfdf5;">
             <table>
-              <thead><tr><th style="background:#10b981;border-bottom-color:#10b981;">Tab Name</th><th style="background:#10b981;border-bottom-color:#10b981;">Dashboard / Report</th><th style="background:#10b981;border-bottom-color:#10b981;">Views</th></tr></thead>
+              <thead><tr><th style="background:#10b981;border-bottom-color:#10b981;color:#ffffff;">Tab Name</th><th style="background:#10b981;border-bottom-color:#10b981;color:#ffffff;">Dashboard / Report</th><th style="background:#10b981;border-bottom-color:#10b981;color:#ffffff;">Views</th></tr></thead>
               <tbody>
                 <tr *ngFor="let p of selectedUserPageAccess()">
                   <td><span style="color:#047857; font-weight:600;">{{ p.pageName }}</span></td>
@@ -379,11 +530,11 @@ import {
         <input type="text" class="table-search-input" placeholder="Search reports/dashboards..."
                [ngModel]="reportSearch()" (ngModelChange)="reportSearch.set($event)" />
 
-        <div class="tbl-wrap">
+        <div class="table-container">
           <table>
             <thead><tr><th>Name</th><th>Views</th></tr></thead>
             <tbody>
-              <tr *ngFor="let r of filteredReportViews()">
+              <tr *ngFor="let r of filteredReportViews() | slice: pageReportViews()*10 : (pageReportViews()+1)*10">
                 <td><strong>{{ r.reportName }}</strong></td>
                 <td>{{ r.views | number }}</td>
               </tr>
@@ -392,6 +543,11 @@ import {
               </tr>
             </tbody>
           </table>
+        </div>
+        <div class="pagination" *ngIf="filteredReportViews().length > 10">
+          <button [disabled]="pageReportViews() === 0" (click)="pageReportViews.set(pageReportViews() - 1)">Previous</button>
+          <span>Page {{ pageReportViews() + 1 }} of {{ Math.ceil(filteredReportViews().length / 10) }}</span>
+          <button [disabled]="(pageReportViews() + 1) * 10 >= filteredReportViews().length" (click)="pageReportViews.set(pageReportViews() + 1)">Next</button>
         </div>
       </div>
 
@@ -403,11 +559,11 @@ import {
         <input type="text" class="table-search-input" placeholder="Search page tabs..."
                [ngModel]="pageSearch()" (ngModelChange)="pageSearch.set($event)" />
 
-        <div class="tbl-wrap">
+        <div class="table-container">
           <table>
             <thead><tr><th>Tab Name</th><th>Dashboard / Report</th><th>Views</th></tr></thead>
             <tbody>
-              <tr *ngFor="let p of filteredPageViews()">
+              <tr *ngFor="let p of filteredPageViews() | slice: pagePageViews()*10 : (pagePageViews()+1)*10">
                 <td><strong>{{ p.pageName }}</strong></td>
                 <td><span style="font-size:12px;color:#4b5563;">{{ p.reportName }}</span></td>
                 <td>{{ p.views | number }}</td>
@@ -418,156 +574,158 @@ import {
             </tbody>
           </table>
         </div>
+        <div class="pagination" *ngIf="filteredPageViews().length > 10">
+          <button [disabled]="pagePageViews() === 0" (click)="pagePageViews.set(pagePageViews() - 1)">Previous</button>
+          <span>Page {{ pagePageViews() + 1 }} of {{ Math.ceil(filteredPageViews().length / 10) }}</span>
+          <button [disabled]="(pagePageViews() + 1) * 10 >= filteredPageViews().length" (click)="pagePageViews.set(pagePageViews() + 1)">Next</button>
+        </div>
       </div>
     </div>
 
   </ng-container>
 
-
-
-  <!-- Global / Workspace-Filtered Aggregated Metrics Dashboard -->
+    <!-- Global / Workspace-Filtered Aggregated Metrics Dashboard -->
   <ng-container *ngIf="!selectedReportId() && globalStats() as stats">
     <div style="margin-top:20px;">
-      <h2 style="font-size:16px;color:#1e3a8a;margin-bottom:16px;border-bottom:2px solid #dbeafe;padding-bottom:8px;">
-        {{ selectedGroupId() ? 'Workspace Analytics Summary' : 'Global Workspace Analytics Overview' }}
-      </h2>
+      
+      <div class="section-header">
+        {{ selectedGroupId() ? 'WORKSPACE ANALYTICS SUMMARY' : 'GLOBAL WORKSPACE ANALYTICS OVERVIEW' }}
+      </div>
 
-      <!-- Top statistics grids -->
-      <div class="two-col">
-        <!-- Top 10 Workspaces (Only shown globally) -->
-        <div class="card" *ngIf="!selectedGroupId()">
-          <h3 style="color:#1d4ed8;">Top 10 Workspaces</h3>
-          <div class="tbl-wrap" style="scrollbar-color:#3b82f6 #dbeafe;">
-            <table>
-              <thead><tr><th>Workspace Name</th><th>Views</th></tr></thead>
-              <tbody>
-                <tr *ngFor="let w of stats.topWorkspaces" [title]="w.name + ': ' + w.views + ' views'">
-                  <td><strong>{{ w.name }}</strong></td>
-                  <td>{{ w.views | number }}</td>
-                </tr>
-              </tbody>
-            </table>
+      <div class="premium-grid">
+        
+        <!-- Card 1: Top Workspaces (Donut) -->
+        <div class="card premium-card" *ngIf="!selectedGroupId()">
+          <h3>Top Workspaces by Views</h3>
+          <div class="donut-container" *ngIf="workspaceDonutSegments().length">
+            <svg class="donut-chart" viewBox="0 0 200 200" style="background:none;">
+              <path *ngFor="let p of getDonutPaths(workspaceDonutSegments())" [attr.d]="p.d" [attr.fill]="p.color" (mouseenter)="showTooltip($event, p.name + '\n' + p.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()" style="transition: opacity 0.2s; cursor: pointer;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1"></path>
+              <circle cx="100" cy="100" r="55" fill="#ffffff"></circle>
+            </svg>
+            <div class="donut-legend">
+              <div class="legend-item" *ngFor="let s of workspaceDonutSegments()">
+                <div class="legend-dot" [style.background]="s.color"></div>
+                <div class="legend-name" [title]="s.name">{{ s.name }}</div>
+                <div class="legend-value">{{ s.views | number }} &middot; {{ s.percent | number:'1.0-0' }}%</div>
+              </div>
+            </div>
+          </div>
+          <div class="donut-footer" *ngIf="workspaceDonutSegments().length">
+            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981; margin-right:6px; margin-bottom:1px;"></span>
+            {{ workspaceDonutSegments()[0].name }} leads with {{ workspaceDonutSegments()[0].views | number }} views &mdash; {{ workspaceDonutSegments()[0].percent | number:'1.0-0' }}% of top-5 volume
           </div>
         </div>
 
-        <!-- Top 10 Users -->
-        <div class="card">
-          <h3 style="color:#10b981;">Top 10 Users</h3>
-          <div class="tbl-wrap" style="scrollbar-color:#10b981 #d1fae5; border-color:#10b981;">
-            <table>
-              <thead>
-                <tr>
-                  <th style="background:#10b981;border-bottom-color:#10b981;">Name</th>
-                  <th style="background:#10b981;border-bottom-color:#10b981;">Views</th>
-                  <th style="background:#10b981;border-bottom-color:#10b981;">Last Accessed</th>
-                </tr>
-              </thead>
+        <!-- Card 2: Top Users (Horizontal Bars) -->
+        <div class="card premium-card">
+          <h3>Top Users by Views <span class="badge-light">Top 10</span></h3>
+          <div style="margin-bottom:12px;" *ngIf="topUsersHbars().length">
+            <div class="hbar-row" *ngFor="let u of topUsersHbars().slice(0,5)" (mouseenter)="showTooltip($event, u.name + '\n' + u.views + ' views\nLast Access: ' + u.lastAccessed)" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
+              <div class="hbar-header">
+                <span style="font-weight:600; color:#1e293b;">{{ u.name }}</span>
+              </div>
+              <div class="hbar-bg">
+                <div class="hbar-fill" style="background:#60a5fa;" [style.width.%]="u.percent"></div>
+              </div>
+            </div>
+          </div>
+          <div class="table-container"><table class="clean-table">
+              <thead><tr><th>Name</th><th style="text-align:right;">Views</th><th style="text-align:right;">Last Accessed</th></tr></thead>
               <tbody>
-                <tr *ngFor="let u of stats.topUsers" [title]="u.name + ' (' + u.email + '): ' + u.views + ' views. Last access: ' + (u.lastAccessed | date:'shortDate')">
+                <tr *ngFor="let u of stats.topUsers | slice: pageTopUsers()*10 : (pageTopUsers()+1)*10">
                   <td><strong>{{ u.name }}</strong></td>
-                  <td>{{ u.views | number }}</td>
-                  <td style="font-size:12px;color:#4b5563;">{{ u.lastAccessed | date:'mediumDate' }}</td>
+                  <td style="text-align:right;">{{ u.views | number }}</td>
+                  <td style="text-align:right; color:#000000;">{{ u.lastAccessed | date:'mediumDate' }}</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
+          <div class="pagination" *ngIf="stats.topUsers.length > 10">
+            <button [disabled]="pageTopUsers() === 0" (click)="pageTopUsers.set(pageTopUsers() - 1)">Previous</button>
+            <span>Page {{ pageTopUsers() + 1 }} of {{ Math.ceil(stats.topUsers.length / 10) }}</span>
+            <button [disabled]="(pageTopUsers() + 1) * 10 >= stats.topUsers.length" (click)="pageTopUsers.set(pageTopUsers() + 1)">Next</button>
           </div>
         </div>
+
+        <!-- Card 3: Top Reports (Vertical Bar) -->
+        <div class="card premium-card">
+          <h3>Top Reports / Dashboards <span class="badge-light" style="background:#eff6ff;color:#3b82f6;">Views</span></h3>
+                    <div style="margin-top:20px;">
+            <div class="hbar-row-c" *ngFor="let r of stats.topReports.slice(0, 5)" (mouseenter)="showTooltip($event, r.name + '\n' + r.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
+              <div class="hbar-label-c" [title]="r.name">{{ r.name }}</div>
+              <div class="hbar-track-c">
+                <div class="hbar-fill-c" style="background: #3b82f6;" [style.width.%]="Math.max(2, (r.views / (stats.topReports[0]?.views || 1)) * 100)"></div>
+                <div class="hbar-val-c">{{ r.views | number }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Card 4: Top Pages (Table) -->
+        <div class="card premium-card" style="grid-column: span 3;">
+          <h3>Top Pages / Tabs <span class="badge-light">Views</span></h3>
+          <table class="clean-table">
+            <thead><tr><th>Tab</th><th>Parent Report</th><th style="text-align:right;">Views</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let p of stats.topPages | slice: pageTopPages()*10 : (pageTopPages()+1)*10">
+                <td><strong>{{ p.pageName }}</strong></td>
+                <td>{{ p.reportName }}</td>
+                <td style="text-align:right;">{{ p.views | number }}</td>
+              </tr>
+              <tr *ngIf="!stats.topPages.length"><td colspan="3" class="empty">No pages.</td></tr>
+            </tbody>
+          </table>
+          <div class="pagination" *ngIf="stats.topPages.length > 10">
+            <button [disabled]="pageTopPages() === 0" (click)="pageTopPages.set(pageTopPages() - 1)">Previous</button>
+            <span>Page {{ pageTopPages() + 1 }} of {{ Math.ceil(stats.topPages.length / 10) }}</span>
+            <button [disabled]="(pageTopPages() + 1) * 10 >= stats.topPages.length" (click)="pageTopPages.set(pageTopPages() + 1)">Next</button>
+          </div>
+        </div>
+
       </div>
 
-      <div class="two-col">
-        <!-- Top Reports -->
-        <div class="card">
-          <h3 style="color:#f59e0b;">Top Reports / Dashboards</h3>
-          <div class="tbl-wrap" style="scrollbar-color:#f59e0b #fef3c7; border-color:#f59e0b;">
-            <table>
-              <thead>
-                <tr>
-                  <th style="background:#f59e0b;border-bottom-color:#f59e0b;">Report / Dashboard Name</th>
-                  <th style="background:#f59e0b;border-bottom-color:#f59e0b;">Views</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let r of stats.topReports" [title]="r.name + ': ' + r.views + ' views'">
-                  <td><strong>{{ r.name }}</strong></td>
-                  <td>{{ r.views | number }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Top Pages -->
-        <div class="card">
-          <h3 style="color:#8b5cf6;">Top Pages / Tabs</h3>
-          <div class="tbl-wrap" style="scrollbar-color:#8b5cf6 #ede9fe; border-color:#8b5cf6;">
-            <table>
-              <thead>
-                <tr>
-                  <th style="background:#8b5cf6;border-bottom-color:#8b5cf6;">Tab Name</th>
-                  <th style="background:#8b5cf6;border-bottom-color:#8b5cf6;">Parent Report</th>
-                  <th style="background:#8b5cf6;border-bottom-color:#8b5cf6;">Views</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let p of stats.topPages" [title]="p.pageName + ' > ' + p.reportName + ': ' + p.views + ' views'">
-                  <td><strong>{{ p.pageName }}</strong></td>
-                  <td style="font-size:12px;color:#4b5563;">{{ p.reportName }}</td>
-                  <td>{{ p.views | number }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <div class="section-header" style="color:#d97706;">
+        <span style="background:#f59e0b; width:6px; height:6px; border-radius:50%; display:block; margin-right:8px;"></span>
+        LEAST USED COMPONENTS &mdash; IDLE WATCHLIST
       </div>
 
-      <h2 style="font-size:14px;color:#b91c1c;margin-top:24px;margin-bottom:16px;border-bottom:2px solid #fee2e2;padding-bottom:8px;">
-        Least Used Components (Idle Watchlist)
-      </h2>
-
-      <div class="two-col">
+      <div class="premium-grid" style="grid-template-columns: repeat(2, 1fr);">
+        
         <!-- Least Used Reports -->
-        <div class="card" style="border-color:#fca5a5;">
-          <h3 style="color:#ef4444;">Least Used Reports</h3>
-          <div class="tbl-wrap" style="scrollbar-color:#ef4444 #fee2e2; border-color:#ef4444;">
-            <table>
-              <thead>
-                <tr>
-                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Report Name</th>
-                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Views</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let r of stats.leastReports" [title]="r.name + ': ' + r.views + ' views'">
-                  <td><strong>{{ r.name }}</strong></td>
-                  <td>{{ r.views | number }}</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="card premium-card">
+          <h3>Least Used Reports <span class="badge-light" style="background:#fef3c7; color:#d97706;">Needs review</span></h3>
+          <div style="margin-top:12px;">
+            <div style="display:flex; align-items:center; margin-bottom:12px; gap:12px;" *ngFor="let r of leastReportsHbars()" (mouseenter)="showTooltip($event, r.name + '\n' + r.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
+              <div style="width:140px; font-size:11px; font-weight:600; color:#000000; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="r.name">
+                {{ r.name }}
+              </div>
+              <div style="flex:1; display:flex; align-items:center; gap:8px;">
+                <div style="height:14px; background:#f59e0b; border-radius:3px; min-width:4px;" [style.width.%]="r.percent"></div>
+                <span style="font-size:11px; color:#000000;">{{ r.views | number }}</span>
+              </div>
+            </div>
+            <div *ngIf="!leastReportsHbars().length" class="empty">No idle reports.</div>
           </div>
         </div>
 
         <!-- Least Used Pages -->
-        <div class="card" style="border-color:#fca5a5;">
-          <h3 style="color:#ef4444;">Least Used Pages</h3>
-          <div class="tbl-wrap" style="scrollbar-color:#ef4444 #fee2e2; border-color:#ef4444;">
-            <table>
-              <thead>
-                <tr>
-                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Tab Name</th>
-                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Parent Report</th>
-                  <th style="background:#ef4444;border-bottom-color:#ef4444;">Views</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let p of stats.leastPages" [title]="p.pageName + ' > ' + p.reportName + ': ' + p.views + ' views'">
-                  <td><strong>{{ p.pageName }}</strong></td>
-                  <td style="font-size:12px;color:#4b5563;">{{ p.reportName }}</td>
-                  <td>{{ p.views | number }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="card premium-card">
+          <h3>Least Used Pages <span class="badge-light" style="background:#fef3c7; color:#d97706;">Needs review</span></h3>
+          <table class="clean-table">
+            <thead><tr><th>Tab</th><th>Parent Report</th><th style="text-align:right;">Views</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let p of stats.leastPages">
+                <td>
+                  <span style="font-size:9px; background:#fef3c7; color:#d97706; padding:2px 6px; border-radius:4px; font-weight:700; margin-right:6px;">Idle</span>
+                  <strong>{{ p.pageName }}</strong>
+                </td>
+                <td>{{ p.reportName }}</td>
+                <td style="text-align:right;">{{ p.views | number }}</td>
+              </tr>
+              <tr *ngIf="!stats.leastPages?.length"><td colspan="3" class="empty">No idle pages.</td></tr>
+            </tbody>
+          </table>
         </div>
+
       </div>
 
     </div>
@@ -575,6 +733,56 @@ import {
   `,
 })
 export class UsageComponent implements OnInit {
+  // SVG Donut helpers
+  getDonutPaths(segments: any[]) {
+    let total = segments.reduce((sum, s) => sum + (s.views || 0), 0);
+    if (total === 0) return [];
+    
+    let currentAngle = -90; // Start at top
+    const cx = 100, cy = 100, r = 80;
+    
+    return segments.map(s => {
+      const angle = ((s.views || 0) / total) * 360;
+      const endAngle = currentAngle + angle;
+      
+      const x1 = cx + r * Math.cos(currentAngle * Math.PI / 180);
+      const y1 = cy + r * Math.sin(currentAngle * Math.PI / 180);
+      const x2 = cx + r * Math.cos(endAngle * Math.PI / 180);
+      const y2 = cy + r * Math.sin(endAngle * Math.PI / 180);
+      
+      const largeArc = angle > 180 ? 1 : 0;
+      let d = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+      
+      if (angle === 360) {
+        d = `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx} ${cy + r} A ${r} ${r} 0 1 1 ${cx} ${cy - r} Z`;
+      }
+      
+      const pathData = { d, color: s.color, name: s.name, views: s.views };
+      currentAngle = endAngle;
+      return pathData;
+    });
+  }
+
+  Math = Math;
+  pageUsers = signal(0);
+  pageReportViews = signal(0);
+  pagePageViews = signal(0);
+  pageTopUsers = signal(0);
+  pageTopPages = signal(0);
+
+  tooltip = signal<{ show: boolean, text: string, x: number, y: number }>({ show: false, text: '', x: 0, y: 0 });
+  showTooltip(event: MouseEvent, text: string) {
+    this.tooltip.set({ show: true, text, x: event.clientX, y: event.clientY });
+  }
+  moveTooltip(event: MouseEvent) {
+    if (this.tooltip().show) {
+      this.tooltip.update(t => ({ ...t, x: event.clientX, y: event.clientY }));
+    }
+  }
+  hideTooltip() {
+    this.tooltip.update(t => ({ ...t, show: false }));
+  }
+  
   allReports = signal<UsageReportItem[]>([]);
   analytics = signal<UsageAnalytics | null>(null);
   globalStats = signal<any | null>(null);
@@ -638,20 +846,70 @@ export class UsageComponent implements OnInit {
     this.workspaces().find(w => w.groupId === this.selectedGroupId())?.groupName ?? '',
   );
 
-  // Filter viewsByDay to show only the last N days (30, 60, or 90).
+  // Filter viewsByDay to show only the last N days chronologically.
   filteredViewsByDay = computed(() => {
     const data = this.analytics()?.viewsByDay ?? [];
+    if (!data.length) return [];
+    
     const limit = this.selectedDays();
+    const latestDate = new Date(data[data.length - 1].date);
+    const cutoffDate = new Date(latestDate);
+    cutoffDate.setDate(cutoffDate.getDate() - limit);
     
-    // Slice data to requested day range
-    let sliced = data;
-    if (data.length > limit) {
-      sliced = data.slice(-limit);
-    }
-    
-    return sliced;
+    return data.filter(d => new Date(d.date) >= cutoffDate);
   });
 
+  // Computed properties for the redesigned UI
+  workspaceDonutSegments = computed(() => {
+    const stats = this.globalStats();
+    if (!stats || !stats.topWorkspaces || stats.topWorkspaces.length === 0) return [];
+    
+    // Take top 5
+    const top5 = stats.topWorkspaces.slice(0, 5);
+    const total = top5.reduce((acc: number, w: any) => acc + w.views, 0);
+    
+    let cumulativePercent = 0;
+    const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#93c5fd', '#bae6fd'];
+    
+    return top5.map((w: any, i: number) => {
+      const percent = total > 0 ? (w.views / total) * 100 : 0;
+      const start = cumulativePercent;
+      cumulativePercent += percent;
+      return {
+        ...w,
+        color: colors[i % colors.length],
+        percent,
+        conicString: `${colors[i % colors.length]} ${start}% ${cumulativePercent}%`
+      };
+    });
+  });
+
+  workspaceDonutStyle = computed(() => {
+    const segments = this.workspaceDonutSegments();
+    if (!segments.length) return '';
+    return `conic-gradient(${segments.map((s: any) => s.conicString).join(', ')})`;
+  });
+
+  topUsersHbars = computed(() => {
+    const stats = this.globalStats();
+    if (!stats || !stats.topUsers || stats.topUsers.length === 0) return [];
+    const max = Math.max(...stats.topUsers.map((u: any) => u.views));
+    return stats.topUsers.map((u: any) => ({
+      ...u,
+      percent: max > 0 ? (u.views / max) * 100 : 0
+    }));
+  });
+
+  leastReportsHbars = computed(() => {
+    const stats = this.globalStats();
+    if (!stats || !stats.leastReports || stats.leastReports.length === 0) return [];
+    const max = Math.max(...stats.leastReports.map((r: any) => r.views));
+    // Scale so max bar is like 80% to leave room
+    return stats.leastReports.map((r: any) => ({
+      ...r,
+      percent: max > 0 ? (r.views / max) * 80 : 0
+    }));
+  });
   // Calculate total views for selected day range
   filteredTotalViews = computed(() => {
     return this.filteredViewsByDay().reduce((sum, d) => sum + d.views, 0);
