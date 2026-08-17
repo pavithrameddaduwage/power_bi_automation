@@ -637,7 +637,7 @@ import {
               <div *ngFor="let s of workspaceDonutSegments()" style="display:flex; align-items:center; gap:6px; padding:4px 0; border-bottom:1px solid #f8fafc;">
                 <div style="width:7px; height:7px; border-radius:50%; flex-shrink:0;" [style.background]="s.color"></div>
                 <span style="font-size:11px; font-weight:600; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="s.name">{{ s.name }}</span>
-                <span style="font-size:11px; color:#64748b; margin-left:auto; white-space:nowrap;">{{ s.views | number }}</span>
+                <span style="font-size:11px; color:#64748b; margin-left:auto; white-space:nowrap; font-variant-numeric:tabular-nums;">{{ s.views | number }}</span>
               </div>
             </div>
           </div>
@@ -655,7 +655,7 @@ import {
               (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
               <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
                 <span style="font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78%;" [title]="r.name">{{ r.name }}</span>
-                <span style="color:#3b82f6; font-weight:700; white-space:nowrap;">{{ r.views | number }}</span>
+                <span style="color:#3b82f6; font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums;">{{ r.views | number }}</span>
               </div>
               <div style="width:100%; height:5px; background:#f1f5f9; border-radius:3px; overflow:hidden;">
                 <div class="animate-bar" style="height:100%; background:#3b82f6; border-radius:3px;"
@@ -980,8 +980,6 @@ export class UsageComponent implements OnInit {
   filteredTotalViewers = computed(() => {
     return this.filteredViewsByUser().length;
   });
-
-  // Dynamically calculate user views per report/dashboard for active dates
   // Dynamically calculate user views per report/dashboard for active dates
   filteredUserReportAccess = computed(() => {
     const rawAccess = this.analytics()?.userReportAccess ?? [];

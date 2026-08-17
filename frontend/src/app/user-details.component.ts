@@ -70,7 +70,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
     /* SVG Line Chart */
     .line-chart-svg { width: 100%; height: 180px; overflow: visible; }
     .chart-line { fill: none; stroke: #3b82f6; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .chart-bar { fill: #eab308; opacity: 0.5; width: 6px; rx: 3; transition: height 0.3s ease, y 0.3s ease; }
+    .chart-bar { fill: #fbbf24; opacity: 0.7; width: 6px; rx: 3; transition: height 0.3s ease, y 0.3s ease; }
     .chart-bar:hover { opacity: 1; cursor: pointer; }
     
     .chart-grid-line { stroke: #e2e8f0; stroke-width: 1; }
@@ -287,12 +287,12 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
         </h3>
         <div style="display:flex; justify-content:flex-end; gap:16px; margin-bottom:16px; font-size:11px; font-weight:600; color:#000000;">
           <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#3b82f6;"></span> 4-week trend</div>
-          <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#eab308; opacity:0.5;"></span> Weekly views</div>
+          <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#fbbf24; opacity:0.7;"></span> Weekly views</div>
         </div>
         
-        <div style="position:relative; height: 180px; width: 100%;">
+        <div style="position:relative; height: 200px; width: 100%;">
           <!-- SVG Chart -->
-          <svg class="line-chart-svg" preserveAspectRatio="none" [attr.viewBox]="'0 0 1000 180'" style="width: 100%; height: 100%;">
+          <svg class="line-chart-svg" preserveAspectRatio="none" [attr.viewBox]="'0 0 1000 200'" style="width: 100%; height: 100%;">
             <defs>
               <linearGradient id="blueGradient" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stop-color="#3b82f6" stop-opacity="1" />
@@ -307,7 +307,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
             <!-- X-Axis Labels -->
             <ng-container *ngFor="let x of xAxisLabels()">
-              <text class="chart-axis-text" [attr.x]="x.x" y="196" [attr.transform]="'rotate(-45 ' + x.x + ' 196)'">{{ x.label }}</text>
+              <text class="chart-axis-text" [attr.x]="x.x" y="196" text-anchor="middle">{{ x.label }}</text>
             </ng-container>
 
             <!-- Data Bars -->
