@@ -304,7 +304,10 @@ export class PowerBiService {
       const clean: Record<string, any> = {};
       for (const [k, v] of Object.entries(row)) {
         const m = k.match(/\[(.+)\]$/);
-        clean[m ? m[1] : k] = v;
+        const newKey = m ? m[1] : k;
+        clean[newKey] = typeof v === 'number' && !Number.isInteger(v) 
+          ? Number(v.toFixed(2)) 
+          : v;
       }
       return clean;
     });
