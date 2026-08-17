@@ -44,6 +44,13 @@ export class UsageController {
     return this.usage.getAllUsersStats();
   }
 
+  /** Raw user report access data export */
+  @Public()
+  @Get('raw-access')
+  getRawAccess(@Query('groupId') groupId?: string) {
+    return this.usage.getRawUserReportAccess(groupId);
+  }
+
   /** Detailed breakdown for a specific user */
   @Public()
   @Get('users/:email')

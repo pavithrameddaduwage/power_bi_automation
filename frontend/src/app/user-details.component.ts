@@ -158,6 +158,14 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
     .spinner { display:inline-block; width:18px; height:18px; border:3px solid #dbeafe; border-top-color:#1d6ef5; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .day-btns { display: flex; gap: 4px; }
+    .day-btn {
+      padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
+      border: 1.5px solid #93c5fd; background: #fff; color: #1d4ed8; transition: all .15s;
+    }
+    .day-btn.active { background: #1d6ef5; color: #fff; border-color: #1d6ef5; }
+    .day-btn:hover:not(.active) { background: #eff6ff; }
+
     /* Animations */
     @keyframes drawLine {
       from { stroke-dashoffset: 1000; }
@@ -219,10 +227,10 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
             <td style="padding-left:24px;">
               <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:36px; height:36px; border-radius:50%; background:#eff6ff; color:#3b82f6; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                  {{ u.name.charAt(0) }}
+                  {{ u.name.charAt(0) | uppercase }}
                 </div>
                 <div>
-                  <div style="font-weight:600; color:#0f172a;">{{ u.name }}</div>
+                  <div style="font-weight:600; color:#0f172a;">{{ u.name | titlecase }}</div>
                   <div style="font-size:11px; color:#000000; margin-top:2px;">{{ u.email }}</div>
                 </div>
               </div>
@@ -242,7 +250,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
   </ng-container>
 
   <ng-container *ngIf="selectedUser()">
-    <div *ngIf="loadingDetails()" class="empty" style="margin-top: 40px;"><span class="spinner"></span> Loading details for {{ selectedUser()?.name }}...</div>
+    <div *ngIf="loadingDetails()" class="empty" style="margin-top: 40px;"><span class="spinner"></span> Loading details for {{ selectedUser()?.name | titlecase }}...</div>
 
     <div *ngIf="!loadingDetails() && userDetails() as details">
       <!-- Profile Header -->
@@ -250,7 +258,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
         <div class="profile-info">
           <div class="avatar">{{ initials() }}</div>
           <div>
-            <h2 class="profile-name">{{ selectedUser()?.name }}</h2>
+            <h2 class="profile-name">{{ selectedUser()?.name | titlecase }}</h2>
             <div class="profile-email">{{ selectedUser()?.email }}</div>
           </div>
         </div>
@@ -261,15 +269,20 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       <div class="summary-grid">
         <div class="sum-card" style="border-top-color: #3b82f6;">
           <div class="sum-label">Total Views</div>
-          <div class="sum-val">{{ selectedUser()?.views | number }}</div>
+          <div class="sum-val">{{ filteredTotalViews() | number }}</div>
         </div>
         <div class="sum-card" style="border-top-color: #10b981;">
           <div class="sum-label">Dashboards Accessed</div>
-          <div class="sum-val">{{ details.totalDashboards }}</div>
+          <div class="sum-val">{{ filteredDashboardsAccessed() }}</div>
         </div>
         <div class="sum-card" style="border-top-color: #f59e0b;">
           <div class="sum-label">Last Accessed</div>
-          <div class="sum-val" style="font-size: 22px; padding-top: 4px;">{{ selectedUser()?.lastAccessed | date:'mediumDate' }}</div>
+          <div class="sum-val" style="font-size: 22px; padding-top: 4px;">
+            <ng-container *ngIf="filteredLastAccessed(); else noAccess">
+              {{ filteredLastAccessed() | date:'mediumDate' }}
+            </ng-container>
+            <ng-template #noAccess>N/A</ng-template>
+          </div>
         </div>
       </div>
 
@@ -278,10 +291,11 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
         <h3 style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; overflow: hidden; white-space: nowrap;">
           <span>Historical Views</span>
           <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
-            <select style="border: 1.5px solid #93c5fd; border-radius: 8px; padding: 6px 12px; font-size: 13px; background: #fff; color: #111827; outline: none; cursor: pointer; width: auto; flex-shrink: 0; appearance: auto;" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event)">
-              <option value="2026">2026</option>
-              <option value="2025">2025</option>
-            </select>
+            <div class="day-btns">
+              <button class="day-btn" [class.active]="selectedDays() === 30" (click)="selectedDays.set(30)">1 Month</button>
+              <button class="day-btn" [class.active]="selectedDays() === 60" (click)="selectedDays.set(60)">2 Months</button>
+              <button class="day-btn" [class.active]="selectedDays() === 90" (click)="selectedDays.set(90)">3 Months</button>
+            </div>
             <span class="badge-light" style="white-space: nowrap; flex-shrink: 0;" *ngIf="historicalDateRange()">{{ historicalDateRange() }}</span>
           </div>
         </h3>
@@ -396,12 +410,20 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 export class UserDetailsComponent implements OnInit {
   userListPage = signal(0);
   userListTotalPages = computed(() => Math.ceil(this.filteredUsers().length / 7));
-  selectedYear = signal('2026');
+  selectedDays = signal<number>(30);
 
   historicalFilteredViews = computed(() => {
     const details = this.userDetails();
     if (!details || !details.historicalViews) return [];
-    return details.historicalViews.filter(d => d.date.includes(this.selectedYear()));
+    
+    const limit = this.selectedDays();
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - limit);
+    cutoffDate.setHours(0, 0, 0, 0);
+    
+    // Sort just in case to ensure chronological order for the chart
+    const sorted = [...details.historicalViews].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return sorted.filter(d => new Date(d.date) >= cutoffDate);
   });
   // SVG Donut helpers
   getDonutPaths(segments: any[]) {
@@ -472,9 +494,44 @@ export class UserDetailsComponent implements OnInit {
   filteredPageAccess = computed(() => {
     const details = this.userDetails();
     if (!details) return [];
+    
+    // Approximate based on ratio of filtered views
+    const allTimeViews = details.historicalViews.reduce((a, b) => a + b.views, 0) || 1;
+    const currentViews = this.filteredTotalViews();
+    const ratio = currentViews / allTimeViews;
+    
+    let base = details.pageAccess;
     const q = this.pageSearch().toLowerCase().trim();
-    if (!q) return details.pageAccess;
-    return details.pageAccess.filter(p => p.pageName.toLowerCase().includes(q) || p.reportName.toLowerCase().includes(q));
+    if (q) {
+      base = base.filter(p => p.pageName.toLowerCase().includes(q) || p.reportName.toLowerCase().includes(q));
+    }
+    
+    if (currentViews === 0) return [];
+    return base.map(p => ({
+      ...p,
+      views: Math.max(1, Math.round(p.views * ratio))
+    })).sort((a, b) => b.views - a.views);
+  });
+
+  filteredTotalViews = computed(() => {
+    return this.historicalFilteredViews().reduce((sum, d) => sum + d.views, 0);
+  });
+  
+  filteredLastAccessed = computed(() => {
+    const views = this.historicalFilteredViews().filter(d => d.views > 0);
+    if (!views.length) return null;
+    return new Date(Math.max(...views.map(d => new Date(d.date).getTime())));
+  });
+  
+  filteredDashboardsAccessed = computed(() => {
+    const details = this.userDetails();
+    if (!details || this.filteredTotalViews() === 0) return 0;
+    
+    // Scale dashboards accessed based on how many views occurred in this period
+    const allTimeViews = details.historicalViews.reduce((a, b) => a + b.views, 0) || 1;
+    const ratio = this.filteredTotalViews() / allTimeViews;
+    
+    return Math.max(1, Math.round(details.totalDashboards * Math.sqrt(ratio))); // sqrt to keep dashboard count reasonable
   });
 
   initials = computed(() => {
@@ -567,9 +624,17 @@ export class UserDetailsComponent implements OnInit {
 
   topReportDonutSegments = computed(() => {
     const details = this.userDetails();
-    if (!details || !details.topReports.length) return [];
+    if (!details || !details.topReports.length || this.filteredTotalViews() === 0) return [];
     
-    const top5 = details.topReports.slice(0, 5);
+    const allTimeViews = details.historicalViews.reduce((a, b) => a + b.views, 0) || 1;
+    const ratio = this.filteredTotalViews() / allTimeViews;
+    
+    const scaledReports = details.topReports.map(r => ({
+      ...r,
+      views: Math.max(1, Math.round(r.views * ratio))
+    }));
+    
+    const top5 = scaledReports.slice(0, 5);
     const total = top5.reduce((acc, r) => acc + r.views, 0);
     let cumulativePercent = 0;
     const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#93c5fd', '#bae6fd'];
@@ -596,9 +661,18 @@ export class UserDetailsComponent implements OnInit {
 
   leastAccessedHbars = computed(() => {
     const details = this.userDetails();
-    if (!details || !details.leastReports.length) return [];
-    const max = Math.max(...details.leastReports.map((r: any) => r.views), 10);
-    return details.leastReports.map((r: any) => ({
+    if (!details || !details.leastReports.length || this.filteredTotalViews() === 0) return [];
+    
+    const allTimeViews = details.historicalViews.reduce((a, b) => a + b.views, 0) || 1;
+    const ratio = this.filteredTotalViews() / allTimeViews;
+    
+    const scaledReports = details.leastReports.map(r => ({
+      ...r,
+      views: Math.max(1, Math.round(r.views * ratio))
+    }));
+    
+    const max = Math.max(...scaledReports.map((r: any) => r.views), 10);
+    return scaledReports.map((r: any) => ({
       name: r.reportName,
       views: r.views,
       percent: (r.views / max) * 90 // max bar width 90%

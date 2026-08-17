@@ -343,6 +343,14 @@ export class SyncApiService {
   getUserDetails(email: string): Observable<UserDetailsBreakdown> {
     return this.http.get<UserDetailsBreakdown>(`${API}/usage/users/${encodeURIComponent(email)}`);
   }
+
+  getRawUserReportAccess(groupId?: string): Observable<any[]> {
+    let url = `${API}/usage/raw-access`;
+    if (groupId) {
+      url += `?groupId=${encodeURIComponent(groupId)}`;
+    }
+    return this.http.get<any[]>(url);
+  }
 }
 
 // ── Usage Report interfaces ──────────────────────────────────────

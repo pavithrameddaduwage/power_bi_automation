@@ -7,6 +7,7 @@ import {
   WorkspaceUser,
   UsageAnalytics,
 } from './sync.service';
+import { ToastService } from './toast.service';
 
 @Component({
   selector: 'app-usage',
@@ -387,7 +388,7 @@ import {
            style="position:absolute; right:0; top:36px; z-index:100; border:1.5px solid #dbeafe; border-radius:8px; background:#fff; padding:12px; width:280px; max-height:220px; overflow-y:auto; box-shadow:var(--shadow-lg);">
         <div *ngFor="let u of wsUsers()" 
              style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6; font-size:12px;">
-          <span style="color:#111827; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:160px;" [title]="u.displayName">{{ u.displayName }}</span>
+          <span style="color:#111827; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:160px;" [title]="u.displayName | titlecase">{{ u.displayName | titlecase }}</span>
           <span class="badge"
                 [class.badge-admin]="u.role==='Admin'"
                 [class.badge-member]="u.role==='Member'"
@@ -431,9 +432,9 @@ import {
       <!-- Views per day/month chart -->
       <div class="card">
         <h3>Views per Day</h3>
-        <div class="bar-chart-wrap" *ngIf="filteredViewsByDay().length; else noData">
+        <div class="bar-chart-wrap" *ngIf="chartData().length; else noData">
           <div class="bar-chart">
-            <div class="bar-col" *ngFor="let d of filteredViewsByDay()">
+            <div class="bar-col" *ngFor="let d of chartData()">
               <div class="bar animate-bar-y" [style.height.px]="barHeight(d.views)"></div>
               <div class="bar-label">{{ d.date | date:'M/d/yy' }}</div>
             </div>
@@ -445,8 +446,8 @@ import {
       <!-- Platform breakdown -->
       <div class="card">
         <h3>Views by Platform</h3>
-        <div class="platform-list" *ngIf="analytics()!.viewsByPlatform.length; else noPlat">
-          <div class="platform-row" *ngFor="let p of analytics()!.viewsByPlatform">
+        <div class="platform-list" *ngIf="filteredViewsByPlatform().length; else noPlat">
+          <div class="platform-row" *ngFor="let p of filteredViewsByPlatform()">
             <span class="platform-name">{{ p.platform }}</span>
             <div class="platform-bar-wrap">
               <div class="platform-bar-fill" [style.width.%]="platformPct(p.views)"></div>
@@ -479,7 +480,7 @@ import {
                 (click)="toggleSelectedUser(u.email)" 
                 [style.background]="selectedUserEmail() === u.email ? '#eff6ff' : ''"
                 [style.border-left]="selectedUserEmail() === u.email ? '4px solid #1d6ef5' : ''">
-              <td><strong>{{ u.givenName }} {{ u.familyName }}</strong></td>
+              <td><strong>{{ (u.givenName + ' ' + u.familyName) | titlecase }}</strong></td>
               <td>{{ u.email }}</td>
               <td>{{ u.views | number }}</td>
             </tr>
@@ -495,7 +496,7 @@ import {
     <div *ngIf="selectedUserDetails() as details" style="margin-top:24px;border: none;border-radius:12px;background:#fffdfa;padding:20px;box-shadow:var(--shadow-sm);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1.5px solid #fef3c7;padding-bottom:12px;">
         <h3 style="margin:0;color:#b45309;font-weight:700;font-size:14px;letter-spacing:.5px;">
-          Detailed Breakdown- {{ details.givenName }} {{ details.familyName }} 
+          Detailed Breakdown- {{ (details.givenName + ' ' + details.familyName) | titlecase }} 
           <span *ngIf="details.lastAccessed" style="font-size:11px;font-weight:600;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:99px;margin-left:8px;text-transform:none;">
             Last accessed: {{ details.lastAccessed | date:'mediumDate' }}
           </span>
@@ -616,7 +617,11 @@ import {
       <!-- Section Header -->
       <div style="font-size:11px; font-weight:700; color:#374151; margin-bottom:20px; letter-spacing:1px; border-bottom:2px solid #e5e7eb; padding-bottom:10px; text-transform:uppercase; display:flex; align-items:center; gap:8px;">
         <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#3b82f6;"></span>
-        {{ selectedGroupId() ? 'Workspace Analytics Summary' : 'Global Workspace Analytics Overview' }}
+        <span style="flex:1;">{{ selectedGroupId() ? 'Workspace Analytics Summary' : 'Global Workspace Analytics Overview' }}</span>
+        <button (click)="exportRawData()" [disabled]="isExporting()" style="background:#1d6ef5; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600; text-transform:none; font-size:11px; display:flex; align-items:center; gap:6px;">
+          <span *ngIf="isExporting()" class="spinner" style="width:12px; height:12px; border-width:2px; border-top-color:#fff;"></span>
+          Export Raw Data
+        </button>
       </div>
 
       <!-- ROW 1: Top Workspaces | Top Reports | Top Users -->
@@ -679,8 +684,8 @@ import {
               <div style="width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#8b5cf6,#6d28d9); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; flex-shrink:0;">
                 {{ u.name.charAt(0).toUpperCase() }}
               </div>
-              <div style="flex:1; min-width:0;">
-                <div style="font-size:11px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="u.name">{{ u.name }}</div>
+              <div style="display:flex; flex-direction:column; min-width:0; flex:1; gap:2px;">
+                <div style="font-size:11px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="u.name | titlecase">{{ u.name | titlecase }}</div>
                 <div style="font-size:10px; color:#94a3b8;">{{ u.lastAccessed | date:'MMM d' }}</div>
               </div>
               <div style="font-size:12px; font-weight:800; color:#7c3aed; white-space:nowrap;">{{ u.views | number }}</div>
@@ -879,11 +884,38 @@ export class UsageComponent implements OnInit {
     if (!data.length) return [];
     
     const limit = this.selectedDays();
-    const latestDate = new Date(data[data.length - 1].date);
-    const cutoffDate = new Date(latestDate);
+    const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - limit);
+    cutoffDate.setHours(0, 0, 0, 0);
     
     return data.filter(d => new Date(d.date) >= cutoffDate);
+  });
+
+  // For the chart, if >30 days, aggregate by week to avoid squished UI
+  chartData = computed(() => {
+    const dailyData = this.filteredViewsByDay();
+    if (this.selectedDays() <= 30) {
+      return dailyData;
+    }
+    
+    const weeklyMap = new Map<string, number>();
+    for (const d of dailyData) {
+      const dateObj = new Date(d.date);
+      const day = dateObj.getDay();
+      const diff = dateObj.getDate() - day; // Adjust to Sunday
+      const weekStart = new Date(dateObj);
+      weekStart.setDate(diff);
+      
+      const y = weekStart.getFullYear();
+      const m = String(weekStart.getMonth() + 1).padStart(2, '0');
+      const dayStr = String(weekStart.getDate()).padStart(2, '0');
+      const weekKey = `${y}-${m}-${dayStr}`;
+
+      weeklyMap.set(weekKey, (weeklyMap.get(weekKey) || 0) + d.views);
+    }
+    
+    const sortedWeeks = Array.from(weeklyMap.keys()).sort();
+    return sortedWeeks.map(w => ({ date: w, views: weeklyMap.get(w)! }));
   });
 
   // Computed properties for the redesigned UI
@@ -980,6 +1012,25 @@ export class UsageComponent implements OnInit {
   filteredTotalViewers = computed(() => {
     return this.filteredViewsByUser().length;
   });
+  
+  // Dynamically calculate views by platform for active dates (Approximation based on ratio)
+  filteredViewsByPlatform = computed(() => {
+    const rawPlatforms = this.analytics()?.viewsByPlatform ?? [];
+    const allTimeViews = this.analytics()?.totalViews || 1;
+    const currentTotalViews = this.filteredTotalViews();
+
+    if (currentTotalViews === 0) return [];
+
+    const ratio = currentTotalViews / allTimeViews;
+
+    return rawPlatforms
+      .map(p => ({
+        platform: p.platform,
+        views: Math.max(1, Math.round(p.views * ratio))
+      }))
+      .sort((a, b) => b.views - a.views);
+  });
+
   // Dynamically calculate user views per report/dashboard for active dates
   filteredUserReportAccess = computed(() => {
     const rawAccess = this.analytics()?.userReportAccess ?? [];
@@ -1089,17 +1140,19 @@ export class UsageComponent implements OnInit {
   });
 
   // Bar chart helpers
-  maxViews = computed(() => Math.max(...(this.filteredViewsByDay().map(d => d.views) ?? [0]), 1));
+  maxViews = computed(() => Math.max(...(this.chartData().map(d => d.views) ?? [0]), 1));
   barHeight(views: number): number {
     return Math.max(4, Math.round((views / this.maxViews()) * 110));
   }
 
-  maxPlatformViews = computed(() => Math.max(...(this.analytics()?.viewsByPlatform.map(p => p.views) ?? [0]), 1));
+  maxPlatformViews = computed(() => Math.max(...(this.filteredViewsByPlatform().map(p => p.views) ?? [0]), 1));
   platformPct(views: number): number {
     return Math.round((views / this.maxPlatformViews()) * 100);
   }
 
-  constructor(private api: SyncApiService) {}
+  isExporting = signal(false);
+
+  constructor(private api: SyncApiService, private toast: ToastService) {}
 
   ngOnInit(): void {
     this.loadingReports.set(true);
@@ -1143,9 +1196,13 @@ export class UsageComponent implements OnInit {
       error: () => this.wsUsers.set([]),
     });
 
-    // Auto-select first report
-    const first = this.reportsForWorkspace()[0];
-    if (first) this.loadReport(first);
+    // Auto-select the "Usage Metrics" report if it exists, otherwise the first report
+    const reports = this.reportsForWorkspace();
+    if (reports.length > 0) {
+      const usageReport = reports.find(r => r.reportName.toLowerCase().includes('usage metrics'));
+      const targetReport = usageReport || reports[0];
+      this.onReportChange(targetReport.reportId);
+    }
   }
 
   onReportChange(reportId: string) {
@@ -1177,6 +1234,39 @@ export class UsageComponent implements OnInit {
         this.loadingAnalytics.set(false);
         this.errorMsg.set('Failed to load analytics: ' + (e?.message ?? 'check backend logs'));
       },
+    });
+  }
+
+  exportRawData() {
+    this.isExporting.set(true);
+    this.api.getRawUserReportAccess(this.selectedGroupId() || undefined).subscribe({
+      next: (rows) => {
+        if (!rows || rows.length === 0) {
+          this.toast.error('No raw data available to export.');
+          this.isExporting.set(false);
+          return;
+        }
+        this.api.exportExcel('Usage_Raw_Data', rows).subscribe({
+          next: (blob) => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Usage_Raw_Data_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            this.toast.success('Raw data exported successfully.');
+            this.isExporting.set(false);
+          },
+          error: (e) => {
+            this.toast.error('Failed to generate Excel file.');
+            this.isExporting.set(false);
+          }
+        });
+      },
+      error: (e) => {
+        this.toast.error('Failed to fetch raw data.');
+        this.isExporting.set(false);
+      }
     });
   }
 }

@@ -270,6 +270,27 @@ export class UsageService {
       leastUsers
     };
   }
+  async getRawUserReportAccess(groupId?: string) {
+    try {
+      let query = `
+        SELECT date, group_id as "Workspace Name", report_name as "Report Name", email as "User Email", views as "Views"
+        FROM usage_user_report_access
+      `;
+      const params = [];
+      if (groupId) {
+        query += ` WHERE group_id = $1`;
+        params.push(groupId);
+      }
+      query += ` ORDER BY date DESC, "Report Name" ASC, "User Email" ASC`;
+
+      const result = await this.pool.query(query, params);
+      return result.rows;
+    } catch (e) {
+      this.logger.error('Failed to fetch raw user report access', e);
+      return [];
+    }
+  }
+
 
   /** Get aggregated stats for all users */
   async getAllUsersStats() {
