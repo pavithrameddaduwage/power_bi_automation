@@ -70,8 +70,8 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
     /* SVG Line Chart */
     .line-chart-svg { width: 100%; height: 180px; overflow: visible; }
     .chart-line { fill: none; stroke: #3b82f6; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .chart-bar { fill: #fbbf24; opacity: 0.7; width: 6px; rx: 3; transition: height 0.3s ease, y 0.3s ease; }
-    .chart-bar:hover { opacity: 1; cursor: pointer; }
+    .chart-bar { fill: #f59e0b; opacity: 0.85; rx: 4px; ry: 4px; transition: opacity 0.2s, height 0.3s ease; }
+    .chart-bar:hover { fill: #d97706; opacity: 1; cursor: pointer; }
     
     .chart-grid-line { stroke: #e2e8f0; stroke-width: 1; }
     .chart-axis-text { font-size: 10px; fill: #000000; font-weight: 600; }
@@ -223,15 +223,15 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
           <tr><th style="padding-left:24px;">User</th><th style="text-align:right;">Total Views</th><th style="text-align:right; padding-right:24px;">Last Accessed</th></tr>
         </thead>
         <tbody>
-          <tr *ngFor="let u of filteredUsers() | slice: userListPage()*7 : (userListPage()+1)*7" style="cursor: pointer; transition: background 0.2s;" class="hover-bg-slate-50" (click)="selectUser(u)">
+          <tr *ngFor="let u of filteredUsers() | slice: userListPage()*7 : (userListPage()+1)*7; let i = index" style="cursor: pointer; transition: background 0.2s;" class="hover-bg-slate-50" (click)="selectUser(u)">
             <td style="padding-left:24px;">
               <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:36px; height:36px; border-radius:50%; background:#eff6ff; color:#3b82f6; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <div [style.background]="getUserAvatarStyle(u.name, i).bg" [style.color]="getUserAvatarStyle(u.name, i).color" style="width:36px; height:36px; border-radius:50%; font-weight:700; font-size:13.5px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                   {{ u.name.charAt(0) | uppercase }}
                 </div>
                 <div>
                   <div style="font-weight:600; color:#0f172a;">{{ u.name | titlecase }}</div>
-                  <div style="font-size:11px; color:#000000; margin-top:2px;">{{ u.email }}</div>
+                  <div style="font-size:11px; color:#64748b; margin-top:2px;">{{ u.email }}</div>
                 </div>
               </div>
             </td>
@@ -256,7 +256,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       <!-- Profile Header -->
       <div class="profile-header">
         <div class="profile-info">
-          <div class="avatar">{{ initials() }}</div>
+          <div class="avatar" [style.background]="getUserAvatarStyle(selectedUser()?.name).bg" [style.color]="getUserAvatarStyle(selectedUser()?.name).color" style="box-shadow: none;">{{ initials() }}</div>
           <div>
             <h2 class="profile-name">{{ selectedUser()?.name | titlecase }}</h2>
             <div class="profile-email">{{ selectedUser()?.email }}</div>
@@ -299,20 +299,13 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
             <span class="badge-light" style="white-space: nowrap; flex-shrink: 0;" *ngIf="historicalDateRange()">{{ historicalDateRange() }}</span>
           </div>
         </h3>
-        <div style="display:flex; justify-content:flex-end; gap:16px; margin-bottom:16px; font-size:11px; font-weight:600; color:#000000;">
-          <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#3b82f6;"></span> 4-week trend</div>
-          <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#fbbf24; opacity:0.7;"></span> Weekly views</div>
+        <div style="display:flex; justify-content:flex-end; gap:16px; margin-bottom:16px; font-size:11.5px; font-weight:600; color:#475569;">
+          <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#f59e0b;"></span> Views</div>
         </div>
         
         <div style="position:relative; height: 200px; width: 100%;">
           <!-- SVG Chart -->
           <svg class="line-chart-svg" preserveAspectRatio="none" [attr.viewBox]="'0 0 1000 200'" style="width: 100%; height: 100%;">
-            <defs>
-              <linearGradient id="blueGradient" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stop-color="#3b82f6" stop-opacity="1" />
-                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0" />
-              </linearGradient>
-            </defs>
             <!-- Grid Lines (Y-Axis) -->
             <ng-container *ngFor="let y of yAxisLabels()">
               <line class="chart-grid-line" x1="40" [attr.y1]="y.y" x2="1000" [attr.y2]="y.y" />
@@ -326,11 +319,8 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
             <!-- Data Bars -->
             <ng-container *ngFor="let p of chartPoints()">
-              <rect class="chart-bar animate-chart-bar" [attr.x]="p.x - 8" [attr.y]="p.y" width="16" [attr.height]="180 - p.y" (mouseenter)="showTooltip($event, p.date + '\n' + p.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()"></rect>
+              <rect class="chart-bar animate-chart-bar" [attr.x]="p.x - 11" [attr.y]="p.y" width="22" [attr.height]="Math.max(4, 180 - p.y)" rx="4" ry="4" (mouseenter)="showTooltip($event, p.date + '\n' + p.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()"></rect>
             </ng-container>
-
-            <!-- Data Line -->
-            <path class="chart-line animate-chart-line" style="pointer-events: none;" [attr.d]="chartLinePath()" />
           </svg>
         </div>
       </div>
@@ -378,20 +368,30 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
       <!-- Page Tabs Table -->
       <div class="premium-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <h3 style="margin:0;">Page Tabs Accessed </h3>
-          <input type="text" class="table-search-input" style="width:280px; margin:0;" placeholder="Search tab or dashboard/report..."
-                 [ngModel]="pageSearch()" (ngModelChange)="pageSearch.set($event)" />
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+          <h3 style="margin:0;">Page Tabs Accessed</h3>
+          <input type="text" class="table-search-input" style="width:300px; margin:0;" placeholder="Search tab, report, or date..."
+                 [ngModel]="pageSearch()" (ngModelChange)="pageSearch.set($event); pagePageAccess.set(0)" />
         </div>
         <div class="table-container"><table class="clean-table">
-          <thead><tr><th>Tab</th><th>Dashboard / Report</th><th style="text-align:right;">Views</th></tr></thead>
+          <thead>
+            <tr>
+              <th style="padding-left:24px;">Tab</th>
+              <th>Dashboard / Report</th>
+              <th style="text-align:right;">Views</th>
+              <th style="text-align:right; padding-right:24px;">Last Accessed</th>
+            </tr>
+          </thead>
           <tbody>
             <tr *ngFor="let p of filteredPageAccess() | slice: pagePageAccess()*10 : (pagePageAccess()+1)*10">
-              <td><strong>{{ p.pageName }}</strong></td>
+              <td style="padding-left:24px;"><strong>{{ p.pageName }}</strong></td>
               <td style="color:#000000;">{{ p.reportName }}</td>
               <td style="text-align:right; font-weight:600; color:#3b82f6;">{{ p.views | number }}</td>
+              <td style="text-align:right; color:#000000; padding-right:24px;">
+                {{ formatAccessDate(p.lastAccessed) }}
+              </td>
             </tr>
-            <tr *ngIf="!filteredPageAccess().length"><td colspan="3" class="empty">No page tab access.</td></tr>
+            <tr *ngIf="!filteredPageAccess().length"><td colspan="4" class="empty">No page tab access.</td></tr>
           </tbody>
         </table></div>
         <div class="pagination" *ngIf="filteredPageAccess().length > 10">
@@ -503,7 +503,17 @@ export class UserDetailsComponent implements OnInit {
     let base = details.pageAccess;
     const q = this.pageSearch().toLowerCase().trim();
     if (q) {
-      base = base.filter(p => p.pageName.toLowerCase().includes(q) || p.reportName.toLowerCase().includes(q));
+      base = base.filter(p => {
+        const matchesName = p.pageName.toLowerCase().includes(q) || p.reportName.toLowerCase().includes(q);
+        let matchesDate = false;
+        if (p.lastAccessed) {
+          const raw = String(p.lastAccessed).toLowerCase();
+          const d = new Date(p.lastAccessed);
+          const formatted = isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+          matchesDate = raw.includes(q) || formatted.includes(q);
+        }
+        return matchesName || matchesDate;
+      });
     }
     
     if (currentViews === 0) return [];
@@ -716,5 +726,39 @@ export class UserDetailsComponent implements OnInit {
     this.selectedUser.set(null);
     this.userDetails.set(null);
     this.errorMsg.set('');
+  }
+
+  formatAccessDate(val?: string | null): string {
+    if (!val) {
+      const fallback = this.filteredLastAccessed();
+      if (!fallback) return 'N/A';
+      return new Date(fallback).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  getUserAvatarStyle(name?: string, index: number = 0): { bg: string; color: string } {
+    const pastels = [
+      { bg: '#dbeafe', color: '#1d4ed8' }, // Soft Sky Blue
+      { bg: '#ede9fe', color: '#6d28d9' }, // Lavender / Violet
+      { bg: '#dcfce7', color: '#15803d' }, // Mint / Soft Emerald
+      { bg: '#ffe4e6', color: '#be123c' }, // Soft Rose
+      { bg: '#fef3c7', color: '#b45309' }, // Soft Amber / Peach
+      { bg: '#ccfbf1', color: '#0f766e' }, // Soft Aqua / Teal
+      { bg: '#fce7f3', color: '#be185d' }, // Soft Pink
+      { bg: '#ffedd5', color: '#c2410c' }, // Warm Apricot
+      { bg: '#e0e7ff', color: '#4338ca' }, // Soft Indigo
+      { bg: '#ecfccb', color: '#3f6212' }, // Soft Sage / Lime
+    ];
+
+    if (!name) return pastels[index % pastels.length];
+    let hash = 0;
+    for (let j = 0; j < name.length; j++) {
+      hash = name.charCodeAt(j) + ((hash << 5) - hash);
+    }
+    const colorIndex = Math.abs(hash) % pastels.length;
+    return pastels[colorIndex];
   }
 }

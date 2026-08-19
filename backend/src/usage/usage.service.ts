@@ -259,7 +259,55 @@ export class UsageService {
       lastAccessed: r.last_accessed
     }));
 
+    // Total views, Total Viewers, Total Reports, Total Workspaces
+    let totalViews = 0;
+    let totalViewers = 0;
+    let totalReportsCount = 0;
+    let totalWorkspacesCount = 0;
+
+    try {
+      const totalViewsQuery = await this.pool.query(`
+        SELECT COALESCE(SUM(views), 0) as views
+        FROM usage_views_by_day
+        ${filterClause}
+      `);
+      totalViews = Number(totalViewsQuery.rows[0]?.views || 0);
+
+      const viewersQuery = await this.pool.query(`
+        SELECT COUNT(DISTINCT email) as count
+        FROM usage_views_by_user
+        ${filterClause}
+      `);
+      totalViewers = Number(viewersQuery.rows[0]?.count || 0);
+
+      const reportsQuery = await this.pool.query(`
+        SELECT COUNT(DISTINCT report_name) as count
+        FROM usage_views_by_report
+        ${filterClause}
+      `);
+      totalReportsCount = Number(reportsQuery.rows[0]?.count || 0);
+
+      const wsQuery = await this.pool.query(`
+        SELECT COUNT(DISTINCT group_id) as count
+        FROM usage_views_by_day
+      `);
+      totalWorkspacesCount = Number(wsQuery.rows[0]?.count || 0);
+    } catch {}
+
+    const topReportViews = topReports.length > 0 ? topReports[0].views : 0;
+    const topReportName = topReports.length > 0 ? topReports[0].name : '';
+    const mostActiveUserViews = topUsers.length > 0 ? topUsers[0].views : 0;
+    const mostActiveUserName = topUsers.length > 0 ? topUsers[0].name : '';
+
     return {
+      totalViews,
+      totalViewers,
+      totalReportsCount,
+      totalWorkspacesCount,
+      topReportViews,
+      topReportName,
+      mostActiveUserViews,
+      mostActiveUserName,
       topWorkspaces,
       topUsers,
       topReports,
@@ -320,7 +368,7 @@ export class UsageService {
     `, [email]);
 
     const reportAccessQuery = await this.pool.query(`
-      SELECT report_name, SUM(views) as views
+      SELECT report_name, SUM(views) as views, TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_user_report_access
       WHERE email = $1
       GROUP BY report_name
@@ -328,7 +376,7 @@ export class UsageService {
     `, [email]);
 
     const pageAccessQuery = await this.pool.query(`
-      SELECT page_name, report_name, SUM(views) as views
+      SELECT page_name, report_name, SUM(views) as views, TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_user_page_access
       WHERE email = $1
       GROUP BY page_name, report_name
@@ -344,15 +392,19 @@ export class UsageService {
       };
     });
 
+    const fallbackLastAccessed = historicalViews.length ? historicalViews[historicalViews.length - 1].date : null;
+
     const reportAccess = reportAccessQuery.rows.map(r => ({
       reportName: r.report_name,
-      views: Number(r.views)
+      views: Number(r.views),
+      lastAccessed: r.last_accessed || fallbackLastAccessed || null
     }));
 
     const pageAccess = pageAccessQuery.rows.map(r => ({
       pageName: r.page_name,
       reportName: r.report_name,
-      views: Number(r.views)
+      views: Number(r.views),
+      lastAccessed: r.last_accessed || fallbackLastAccessed || null
     }));
 
     const totalDashboards = reportAccess.length;

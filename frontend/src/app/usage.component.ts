@@ -6,6 +6,8 @@ import {
   UsageReportItem,
   WorkspaceUser,
   UsageAnalytics,
+  GlobalDashboardStats,
+  StatItem,
 } from './sync.service';
 import { ToastService } from './toast.service';
 
@@ -14,810 +16,818 @@ import { ToastService } from './toast.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   styles: [`
-    .custom-tooltip {
-      position: fixed;
-      z-index: 10000;
-      background: rgba(15, 23, 42, 0.9);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      pointer-events: none;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      white-space: pre-wrap;
-      transform: translate(0, 0);
-    }
-    :host { display: block; }
-    .page-header {
-      margin-bottom: 24px;
-    }
-    .page-header h1 { font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 4px 0; }
-    .page-header p  { font-size: 13px; color: #000000; margin: 0; }
-
-    .controls-row {
-      display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 20px; width: 100%;
-    }
-    .controls-row select {
-      flex: 0 0 auto;
-      width: 200px;
-      border: 1.5px solid #93c5fd; border-radius: 8px;
-      padding: 6px 12px; font-size: 13px; background: #fff;
-      color: #111827; outline: none; cursor: pointer;
-    }
-    .controls-row select:focus { border-color: #1d6ef5; }
-
-    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    .sum-card { background: #fff; padding: 20px; border-radius: 12px; border: none; border-top: 4px solid #3b82f6; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; cursor: default; }
-    .sum-card:hover { transform: translateY(-3px); box-shadow: 0 8px 12px -2px rgba(0,0,0,0.1); }
-    .sum-label { font-size: 11px; font-weight: 700; color: #000000; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-    .sum-val { font-size: 28px; font-weight: 800; color: #1e293b; line-height: 1.1; }
-
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-    @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
-
-    .card {
-      background: #fff; border: none; border-radius: 12px;
-      padding: 18px 20px; box-shadow: 0 1px 6px rgba(29,110,245,0.07);
-      margin-bottom: 16px;
-    }
-    .card h3 { font-size: 13px; font-weight: 700; color: #1d4ed8; margin: 0 0 14px 0; letter-spacing: .4px; }
-
-    /* Bar chart */
-    .bar-chart-wrap { overflow: visible; width: 100%; padding-top: 35px; margin-top: -15px; }
-    .bar-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px; width: 100%; }
-    .bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 0; position: relative; }
-    
-    .chart-tooltip {
-      visibility: hidden; background-color: #1f2937; color: #fff; text-align: center;
-      border-radius: 6px; padding: 6px 10px; position: absolute; z-index: 10;
-      bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 8px;
-      white-space: nowrap; font-size: 11px; opacity: 0; transition: opacity 0.15s, visibility 0.15s;
-      pointer-events: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    }
-    .chart-tooltip::after {
-      content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
-      border-width: 5px; border-style: solid; border-color: #1f2937 transparent transparent transparent;
-    }
-    .bar-col:hover .chart-tooltip { visibility: visible; opacity: 1; }
-    .bar {
-      width: 100%; background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
-      border-radius: 3px 3px 0 0; transition: opacity .15s; min-height: 2px;
-    }
-    .bar:hover { opacity: .75; }
-    .bar-label { font-size: 8px; color: #000000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
-
-    /* HBAR Charts Custom */
-    .hbar-row-c { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
-    .hbar-label-c { width: 180px; font-size: 11px; font-weight: 600; color: #000000; text-align: right; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: none; line-height: 1.3; }
-    .hbar-track-c { flex: 1; display: flex; align-items: center; gap: 8px; }
-    .hbar-fill-c { height: 16px; background: #d97706; border-radius: 4px; transition: width 0.4s; min-width: 4px; transform-origin: left; animation: scaleInX 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-    .hbar-val-c { font-size: 11px; font-weight: 600; color: #000000; }
-
-    /* Role badges */
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
-    .badge-admin    { background: #dbeafe; color: #1d4ed8; }
-    .badge-member   { background: #dcfce7; color: #15803d; }
-    .badge-contributor { background: #fef9c3; color: #854d0e; }
-    .badge-viewer   { background: #f3f4f6; color: #000000; }
-
-    /* Platform pills */
-    .platform-list { display: flex; flex-direction: column; gap: 8px; }
-    .platform-row  { display: flex; align-items: center; gap: 10px; }
-    .platform-name { font-size: 12px; color: #000000; width: 90px; flex-shrink: 0; }
-    .platform-bar-wrap { flex: 1; background: #eff6ff; border-radius: 99px; height: 8px; overflow: hidden; }
-    .platform-bar-fill { height: 100%; background: linear-gradient(90deg, #1d6ef5, #60a5fa); border-radius: 99px; transition: width .4s; transform-origin: left; animation: scaleInX 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-    .platform-count { font-size: 11px; color: #000000; width: 40px; text-align: right; }
-
-    /* Unified Table Styles */
-    .table-container {
-      border: 1.5px solid #93c5fd;
-      border-radius: 8px;
-      overflow: hidden;
-      background: white;
-      margin-top: 8px;
-    }
-    .clean-table { width: 100%; border-collapse: collapse; font-size: 13px; text-transform: none; }
-    .clean-table th {
-      background: #e0f2fe;
-      color: #1e40af;
-      font-weight: 700;
-      padding: 12px 16px;
-      text-align: left;
-      border-bottom: 1px solid #93c5fd;
-      white-space: nowrap;
-      font-size: 13px;
-      text-transform: none;
-      letter-spacing: normal;
-    }
-    .clean-table td {
-      text-align: left;
-      padding: 12px 16px;
-      border-bottom: 1px solid #e5e7eb;
-      color: #000000;
-      font-size: 13px;
-      background: #ffffff;
-      vertical-align: middle;
-    }
-    .clean-table tbody tr:last-child td { border-bottom: none; }
-    .clean-table tbody tr:hover td { background: #f0f9ff; cursor: pointer; }
-
-    /* Animations */
-    @keyframes scaleInX {
-      from { transform: scaleX(0); }
-      to { transform: scaleX(1); }
-    }
-    .animate-bar {
-      transform-origin: left;
-      animation: scaleInX 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    }
-    
-    @keyframes scaleInY {
-      from { transform: scaleY(0); }
-      to { transform: scaleY(1); }
-    }
-    .animate-bar-y {
-      transform-origin: bottom;
-      animation: scaleInY 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    :host {
+      display: block;
+      color: #0f172a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    @keyframes fadeInSlide {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-donut {
-      animation: fadeInSlide 0.6s ease-out forwards;
-    }
-    
-    @keyframes drawLine {
-      to { stroke-dashoffset: 0; }
-    }
-
-    /* Empty / loading */
-    
-    .pagination {
-      display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;
-      background: #f8fafc; border-top: 1px solid #bfdbfe; font-size: 12px; font-weight: 600; color: #000000;
-    }
-    .pagination button {
-      background: white; border: 1px solid #93c5fd; border-radius: 6px; padding: 4px 10px;
-      cursor: pointer; color: #1e40af; font-weight: 600; transition: all 0.2s;
-    }
-    .pagination button:hover:not(:disabled) { background: #e0f2fe; border-color: #1d4ed8; }
-    .pagination button:disabled { opacity: 0.5; cursor: not-allowed; color: #94a3b8; border-color: #cbd5e1; }
-
-    .empty { text-align: center; color: #000000; font-size: 13px; padding: 40px 0; }
-    .spinner { display:inline-block; width:18px; height:18px; border:3px solid #dbeafe; border-top-color:#1d6ef5; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .report-list { display: flex; flex-direction: column; gap: 6px; }
-    .report-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 12px; border: 1.5px solid #e0f2fe; border-radius: 8px;
-      background: #f0f9ff; cursor: pointer; transition: background .15s, border-color .15s;
-    }
-    .report-item:hover   { background: #dbeafe; border-color: #93c5fd; }
-    .report-item.active  { background: #dbeafe; border-color: #1d6ef5; }
-    .report-item-name    { font-size: 13px; font-weight: 600; color: #1e3a5f; }
-    .report-item-ws      { font-size: 11px; color: #000000; margin-top: 1px; }
-    .btn-link { background:none; border:none; color:#1d6ef5; font-size:12px; cursor:pointer; text-decoration:underline; padding:0; }
-    .day-btns { display: flex; gap: 4px; }
-    .day-btn {
-      padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
-      border: 1.5px solid #93c5fd; background: #fff; color: #1d4ed8; transition: all .15s;
-    }
-    .day-btn.active { background: #1d6ef5; color: #fff; border-color: #1d6ef5; }
-    .day-btn:hover:not(.active) { background: #eff6ff; }
-    .table-search-input {
+    .compact-dashboard {
       width: 100%;
-      border: 1.5px solid #dbeafe;
-      border-radius: 8px;
-      padding: 6px 12px;
-      font-size: 13px;
-      margin-bottom: 12px;
-      outline: none;
-      box-sizing: border-box;
-      transition: border-color .15s;
-    }
-    .table-search-input:focus {
-      border-color: #1d6ef5;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 4px 0 16px 0;
     }
 
-    /* Premium UI Grid System */
-    .premium-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
+    /* ── Header ── */
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 2px;
     }
-    
-    .section-header {
-      font-size: 11px;
-      font-weight: 700;
-      color: #000000;
-      margin: 24px 0 12px 0;
-      letter-spacing: 0.5px;
+
+    .dash-title-group {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .section-header::before {
-      content: '';
-      display: block;
-      width: 6px;
-      height: 6px;
-      background: #3b82f6;
-      border-radius: 50%;
-    }
-    
-    .card.premium-card {
-      padding: 20px;
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .premium-card h3 {
-      font-size: 13px;
-      font-weight: 700;
-      color: #1e293b;
-      margin: 0 0 16px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .badge-light {
-      background: #eff6ff;
-      color: #3b82f6;
-      font-size: 10px;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-weight: 600;
-    }
 
-    /* Donut Chart */
-    .donut-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-    }
-    .donut-chart {
-      width: 200px;
-      height: 200px;
+    .status-dot {
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
-      position: relative;
+      background: #2563eb;
       flex-shrink: 0;
     }
-    .donut-hole {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 140px;
-      height: 140px;
-      background: #fff;
-      border-radius: 50%;
+
+    .dash-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #1e3a8a;
+      letter-spacing: -0.2px;
     }
-    .donut-legend {
+
+    .dash-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .compact-select {
+      height: 32px;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0 30px 0 10px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #0f172a;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      transition: border-color 0.15s;
+      width: 180px;
+      max-width: 180px;
+    }
+
+    .compact-select:focus {
+      border-color: #2563eb;
+    }
+
+    /* ── Top KPI Cards (5 compact cards in a single row) ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 1024px) {
+      .kpi-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .kpi-card {
+      background: #f0f7ff;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 70px;
+      box-shadow: 0 1px 2px rgba(37, 99, 235, 0.03);
+    }
+
+    .kpi-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #2563eb;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .kpi-value {
+      font-size: 25px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.1;
+      letter-spacing: -0.4px;
+    }
+
+    .kpi-sub {
+      font-size: 10.5px;
+      color: #64748b;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+
+    /* ── Middle Section (2 Columns) ── */
+    .mid-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .mid-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card-outlined {
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 12px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Workspaces progress rows */
+    .ws-row {
+      margin-bottom: 10px;
+    }
+
+    .ws-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+      margin-bottom: 3px;
+    }
+
+    .ws-name {
+      font-weight: 600;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 78%;
+    }
+
+    .ws-views {
+      font-weight: 700;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 6px;
+      background: #f1f5f9;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.5s ease-out;
+    }
+
+    .section-sub {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #64748b;
+      margin: 12px 0 6px 0;
+    }
+
+    .report-pills {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .report-pill {
+      background: #f8fafc;
+      border: 1px solid #eef2f6;
+      border-radius: 6px;
+      padding: 7px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .pill-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 8px;
+    }
+
+    .pill-views {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #2563eb;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Top Users List (No internal scroll) */
+    .users-scroll {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      width: 100%;
-    }
-    .legend-item { display: flex; align-items: center; font-size: 11px; color: #000000; }
-    .legend-dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 12px; flex-shrink: 0; }
-    .legend-name { flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: none; line-height: 1.3; }
-    .legend-value { font-weight: 600; color: #1e293b; width: 60px; text-align: right; }
-    .donut-footer {
-      margin-top: 16px;
-      background: #ecfdf5;
-      color: #047857;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      text-align: center;
     }
 
-    /* Horizontal Bar Chart */
-    .hbar-row {
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 3px 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .user-item:hover {
+      background: #f8fafc;
+    }
+
+    .user-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #60a5fa;
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .user-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-date {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .user-views {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2563eb;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Bottom Section (3 Columns) ── */
+    .bot-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .bot-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card-tinted {
+      background: #f0f7ff;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.02);
       display: flex;
       flex-direction: column;
-      margin-bottom: 12px;
     }
-    .hbar-header {
+
+    .card-tinted .card-title {
+      color: #1e3a8a;
+    }
+
+    .page-list, .least-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .page-row-item {
       display: flex;
       justify-content: space-between;
-      font-size: 11px;
-      margin-bottom: 4px;
-      color: #000000;
-    }
-    .hbar-bg {
-      width: 100%;
-      height: 10px;
-      background: #f1f5f9;
-      border-radius: 5px;
-      overflow: hidden;
-    }
-    .hbar-fill {
-      height: 100%;
-      border-radius: 5px;
-      transition: width 0.3s ease;
+      align-items: center;
+      padding: 2px 0;
     }
 
+    .page-meta {
+      min-width: 0;
+      flex: 1;
+      padding-right: 8px;
+    }
+
+    .page-name-txt {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+
+    .page-sub-txt {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .page-views-txt {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #2563eb;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .least-row-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 0;
+    }
+
+    .least-name-txt {
+      font-size: 12px;
+      font-weight: 500;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 8px;
+      flex: 1;
+    }
+
+    .least-views-txt {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Single Report Drilldown ── */
+    .drilldown-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .report-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .btn-back {
+      height: 28px;
+      background: #ffffff;
+      color: #2563eb;
+      border: 1.5px solid #93c5fd;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 0 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .btn-back:hover {
+      background: #eff6ff;
+    }
+
+    .day-btn {
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+    }
+
+    .day-btn.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #2563eb;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #dbeafe;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Single Report Charts */
+    .bar-chart-wrap { overflow: visible; width: 100%; padding-top: 15px; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 110px; width: 100%; }
+    .bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 0; }
+    .bar-rect {
+      width: 100%; background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
+      border-radius: 4px 4px 0 0; min-height: 4px; transition: opacity 0.15s;
+    }
+    .bar-rect:hover { opacity: 0.8; }
+    .bar-lbl { font-size: 8px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .platform-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .platform-name { font-size: 11.5px; font-weight: 500; color: #0f172a; width: 80px; flex-shrink: 0; }
+    .platform-bar-wrap { flex: 1; background: #eff6ff; border-radius: 99px; height: 7px; overflow: hidden; }
+    .platform-bar-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #60a5fa); border-radius: 99px; }
+    .platform-count { font-size: 11.5px; font-weight: 700; color: #0f172a; width: 35px; text-align: right; }
+
+    .data-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .data-tbl th {
+      background: #f8fafc; color: #475569; font-weight: 600; padding: 6px 10px; text-align: left;
+      border-bottom: 1px solid #e2e8f0; font-size: 11px;
+    }
+    .data-tbl td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
   `],
   template: `
-  <div class="controls-row">
-    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-      <!-- Workspace dropdown -->
-      <select [ngModel]="selectedGroupId()" (ngModelChange)="onWorkspaceChange($event)">
-        <option value=""> Select Workspace </option>
-        <option *ngFor="let ws of workspaces()" [value]="ws.groupId">{{ ws.groupName }}</option>
-      </select>
+  <div class="compact-dashboard">
+    <!-- Top Header -->
+    <div class="dash-header" style="justify-content: flex-end;">
+      <div class="dash-controls">
+        <!-- Compact Workspace dropdown -->
+        <select class="compact-select" [ngModel]="selectedGroupId()" (ngModelChange)="onWorkspaceChange($event)">
+          <option value="">Select workspace</option>
+          <option *ngFor="let ws of workspaces()" [value]="ws.groupId">{{ ws.groupName }}</option>
+        </select>
 
-      <!-- Report dropdown (filtered to selected workspace) -->
-      <select [ngModel]="selectedReportId()" (ngModelChange)="onReportChange($event)"
-              [disabled]="!selectedGroupId()">
-        <option value=""> Select Report </option>
-        <option *ngFor="let r of reportsForWorkspace()" [value]="r.reportId">{{ r.reportName }}</option>
-      </select>
-
-      <!-- Day range toggle -->
-      <div class="day-btns" *ngIf="analytics()">
-        <button class="day-btn" [class.active]="selectedDays() === 30" (click)="selectedDays.set(30)">1 Month</button>
-        <button class="day-btn" [class.active]="selectedDays() === 60" (click)="selectedDays.set(60)">2 Months</button>
-        <button class="day-btn" [class.active]="selectedDays() === 90" (click)="selectedDays.set(90)">3 Months</button>
+        <!-- Compact Report dropdown -->
+        <select class="compact-select" [ngModel]="selectedReportId()" (ngModelChange)="onReportChange($event)">
+          <option value="">Select report</option>
+          <option *ngFor="let r of reportsForWorkspace()" [value]="r.reportId">{{ r.reportName }}</option>
+        </select>
       </div>
-
-      <span *ngIf="loadingAnalytics()"><span class="spinner"></span></span>
     </div>
 
-    <!-- Workspace Members dropdown (Right Aligned) -->
-    <div style="position:relative;" *ngIf="selectedGroupId() && wsUsers().length">
-      <button style="display:flex;align-items:center;gap:6px; border: 1.5px solid #93c5fd; border-radius: 8px; padding: 6px 12px; font-size: 13px; background: #fff; color: #111827; outline: none; cursor: pointer; transition: all 0.2s;" (click)="showWorkspaceMembers.set(!showWorkspaceMembers())" onmouseover="this.style.borderColor='#1d6ef5'" onmouseout="this.style.borderColor='#93c5fd'">
-        <span>Show Workspace Members ({{ wsUsers().length }})</span>
-        <svg *ngIf="showWorkspaceMembers()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="18 15 12 9 6 15"></polyline></svg>
-        <svg *ngIf="!showWorkspaceMembers()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </button>
+    <!-- ──────────────── GLOBAL DASHBOARD OVERVIEW ──────────────── -->
+    <ng-container *ngIf="!selectedReportId()">
+      <!-- Row 1: Top 5 Meaningful KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Total views</div>
+          <div class="kpi-value">{{ displayTotalViews() | number }}</div>
+          <div class="kpi-sub">Across all workspaces</div>
+        </div>
 
-      <div *ngIf="showWorkspaceMembers()" 
-           style="position:absolute; right:0; top:36px; z-index:100; border:1.5px solid #dbeafe; border-radius:8px; background:#fff; padding:12px; width:280px; max-height:220px; overflow-y:auto; box-shadow:var(--shadow-lg);">
-        <div *ngFor="let u of wsUsers()" 
-             style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6; font-size:12px;">
-          <span style="color:#111827; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:160px;" [title]="u.displayName | titlecase">{{ u.displayName | titlecase }}</span>
-          <span class="badge"
-                [class.badge-admin]="u.role==='Admin'"
-                [class.badge-member]="u.role==='Member'"
-                [class.badge-contributor]="u.role==='Contributor'"
-                [class.badge-viewer]="u.role==='Viewer'">
-            {{ u.role }}
-          </span>
+        <div class="kpi-card">
+          <div class="kpi-label">Unique Viewers</div>
+          <div class="kpi-value">{{ displayTotalViewers() | number }}</div>
+          <div class="kpi-sub">Active corporate users</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Active Reports</div>
+          <div class="kpi-value">{{ displayActiveReportsCount() | number }}</div>
+          <div class="kpi-sub">In {{ displayWorkspacesCount() }} workspaces</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Top report views</div>
+          <div class="kpi-value">{{ displayTopReportViews() | number }}</div>
+          <div class="kpi-sub" [title]="displayTopReportName()">{{ displayTopReportName() || 'Most viewed report' }}</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Most active user</div>
+          <div class="kpi-value">{{ displayMostActiveUserViews() | number }}</div>
+          <div class="kpi-sub" [title]="displayMostActiveUserName()">{{ displayMostActiveUserName() || 'Peak viewer' }}</div>
         </div>
       </div>
-    </div>
+
+      <!-- Row 2: Middle Section (2 Columns) -->
+      <div class="mid-grid">
+        <!-- Left: Top workspaces and reports -->
+        <div class="card-outlined">
+          <div class="card-title">
+            <span>Top workspaces and reports</span>
+          </div>
+
+          <!-- Workspaces progress items -->
+          <div class="ws-row" *ngFor="let ws of displayWorkspaces(); let i = index">
+            <div class="ws-info">
+              <span class="ws-name" [title]="ws.name">{{ ws.name }}</span>
+              <span class="ws-views">{{ ws.views | number }}</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" [style.width.%]="ws.percent" [style.background]="getWorkspaceBarColor(i)"></div>
+            </div>
+          </div>
+
+          <!-- Top reports sub-section -->
+          <div class="section-sub">Top reports</div>
+          <div class="report-pills">
+            <div class="report-pill" *ngFor="let rep of displayTopReports()">
+              <span class="pill-name" [title]="rep.name">{{ rep.name }}</span>
+              <span class="pill-views">{{ rep.views | number }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Top 10 Users -->
+        <div class="card-outlined">
+          <div class="card-title">
+            <span>Top users</span>
+          </div>
+
+          <div class="users-scroll">
+            <div class="user-item" *ngFor="let u of displayTopUsers(); let i = index" (click)="navigateToUser.emit(u.email)">
+              <div class="user-avatar" [style.background]="getUserAvatarStyle(u.name, i).bg" [style.color]="getUserAvatarStyle(u.name, i).color">
+                {{ getUserInitial(u.name) }}
+              </div>
+              <div class="user-info">
+                <div class="user-name" [title]="u.name">{{ u.name }}</div>
+                <div class="user-date">{{ formatUserDate(u.lastAccessed) }}</div>
+              </div>
+              <div class="user-views">{{ u.views | number }}</div>
+            </div>
+            <div *ngIf="!displayTopUsers().length" style="color:#94a3b8; font-size:12px; text-align:center; padding:20px;">
+              No users recorded yet.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Bottom Section (3 Columns) -->
+      <div class="bot-grid">
+        <!-- Card 1: Top pages (Outlined White) -->
+        <div class="card-outlined">
+          <div class="card-title">
+            <span>Top pages</span>
+          </div>
+          <div class="page-list">
+            <div class="page-row-item" *ngFor="let p of displayTopPages()">
+              <div class="page-meta">
+                <div class="page-name-txt" [title]="p.pageName">{{ p.pageName }}</div>
+                <div class="page-sub-txt" [title]="p.reportName">{{ p.reportName }}</div>
+              </div>
+              <div class="page-views-txt">{{ p.views | number }}</div>
+            </div>
+            <div *ngIf="!displayTopPages().length" style="color:#94a3b8; font-size:11px; text-align:center; padding:10px;">
+              No pages data.
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Least used reports (Outlined Blue Tinted) -->
+        <div class="card-tinted">
+          <div class="card-title">
+            <span>Least used reports</span>
+          </div>
+          <div class="least-list">
+            <div class="least-row-item" *ngFor="let r of displayLeastReports()">
+              <span class="least-name-txt" [title]="r.name">{{ r.name }}</span>
+              <span class="least-views-txt">{{ r.views | number }}</span>
+            </div>
+            <div *ngIf="!displayLeastReports().length" style="color:#94a3b8; font-size:11px; text-align:center; padding:10px;">
+              No idle reports.
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Least used pages (Outlined Blue Tinted) -->
+        <div class="card-tinted">
+          <div class="card-title">
+            <span>Least used pages</span>
+          </div>
+          <div class="least-list">
+            <div class="least-row-item" *ngFor="let p of displayLeastPages()">
+              <span class="least-name-txt" [title]="p.pageName">{{ p.pageName }}</span>
+              <span class="least-views-txt">{{ p.views | number }}</span>
+            </div>
+            <div *ngIf="!displayLeastPages().length" style="color:#94a3b8; font-size:11px; text-align:center; padding:10px;">
+              No idle pages.
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ──────────────── SINGLE REPORT DRILL-DOWN VIEW ──────────────── -->
+    <ng-container *ngIf="selectedReportId()">
+      <div class="drilldown-bar">
+        <div class="report-badge">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+          <span>{{ selectedReport()?.reportName }}</span>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center;">
+          <div class="day-btns" *ngIf="analytics()" style="display:flex; gap:4px;">
+            <button class="day-btn" [class.active]="selectedDays() === 30" (click)="selectedDays.set(30)">1M</button>
+            <button class="day-btn" [class.active]="selectedDays() === 60" (click)="selectedDays.set(60)">2M</button>
+            <button class="day-btn" [class.active]="selectedDays() === 90" (click)="selectedDays.set(90)">3M</button>
+          </div>
+          <button class="btn-back" (click)="selectedReportId.set('')">
+            ← Global Overview
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="loadingAnalytics()" style="text-align:center; padding:30px 0; color:#64748b; font-size:13px;">
+        <span class="spinner"></span> Loading analytics…
+      </div>
+
+      <div *ngIf="analytics() && !loadingAnalytics()">
+        <!-- Summary cards for this report -->
+        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom:10px;">
+          <div class="kpi-card">
+            <div class="kpi-label">Report Views</div>
+            <div class="kpi-value">{{ filteredTotalViews() | number }}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Unique Viewers</div>
+            <div class="kpi-value">{{ filteredTotalViewers() | number }}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Days with Activity</div>
+            <div class="kpi-value">{{ filteredViewsByDay().length }}</div>
+          </div>
+        </div>
+
+        <div class="mid-grid">
+          <!-- Views per Day -->
+          <div class="card-outlined">
+            <div class="card-title"><span>Views per Day</span></div>
+            <div class="bar-chart-wrap" *ngIf="chartData().length; else noData">
+              <div class="bar-chart">
+                <div class="bar-col" *ngFor="let d of chartData()">
+                  <div class="bar-rect" [style.height.px]="barHeight(d.views)"></div>
+                  <div class="bar-lbl">{{ d.date | date:'M/d' }}</div>
+                </div>
+              </div>
+            </div>
+            <ng-template #noData><p style="color:#94a3b8; font-size:12px; text-align:center; padding:15px 0;">No view data.</p></ng-template>
+          </div>
+
+          <!-- Views by Platform -->
+          <div class="card-outlined">
+            <div class="card-title"><span>Views by Platform</span></div>
+            <div *ngIf="filteredViewsByPlatform().length; else noPlat">
+              <div class="platform-row" *ngFor="let p of filteredViewsByPlatform()">
+                <span class="platform-name">{{ p.platform }}</span>
+                <div class="platform-bar-wrap">
+                  <div class="platform-bar-fill" [style.width.%]="platformPct(p.views)"></div>
+                </div>
+                <span class="platform-count">{{ p.views }}</span>
+              </div>
+            </div>
+            <ng-template #noPlat><p style="color:#94a3b8; font-size:12px; text-align:center; padding:15px 0;">No platform data.</p></ng-template>
+          </div>
+        </div>
+
+        <!-- Views by User -->
+        <div class="card-outlined" style="margin-top:12px;">
+          <div class="card-title">
+            <span>Views by User</span>
+            <span style="font-size:11px; font-weight:500; color:#64748b;">Click a user to view page breakdown</span>
+          </div>
+          <div style="max-height:160px; overflow-y:auto;">
+            <table class="data-tbl">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th style="text-align:right;">Views</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let u of filteredViewsByUser()" (click)="toggleSelectedUser(u.email)" 
+                    [style.background]="selectedUserEmail() === u.email ? '#fef3c7' : ''"
+                    style="cursor:pointer; transition: background 0.15s;">
+                  <td><strong>{{ (u.givenName + ' ' + u.familyName) | titlecase }}</strong></td>
+                  <td style="color:#64748b;">{{ u.email }}</td>
+                  <td style="text-align:right; font-weight:700; color:#2563eb;">{{ u.views | number }}</td>
+                </tr>
+                <tr *ngIf="!filteredViewsByUser().length">
+                  <td colspan="3" style="text-align:center; color:#94a3b8; padding:15px;">No users found.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- User Pages Breakdown with Workspace Name & Last Accessed -->
+          <div *ngIf="selectedUserEmail() && selectedUserDetails() as u" style="margin-top: 14px; border: 1.5px solid #fcd34d; border-radius: 8px; background: #fffdfa; padding: 14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom: 1px solid #fef3c7; padding-bottom: 8px;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
+                <span style="font-weight:700; color:#b45309; font-size:13px;">Pages Accessed by {{ u.name | titlecase }}</span>
+                <span style="font-size:11px; font-weight:600; background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:99px;">
+                  Workspace: {{ selectedWorkspaceName() || 'Selected Workspace' }}
+                </span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <button (click)="navigateToUser.emit(u.email)" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:5px; font-size:11px; font-weight:600; padding:3px 8px; cursor:pointer;">
+                  View Full Profile →
+                </button>
+                <button (click)="selectedUserEmail.set('')" style="background:none; border:none; color:#94a3b8; font-size:14px; cursor:pointer; font-weight:700;">✕</button>
+              </div>
+            </div>
+
+            <div style="max-height: 180px; overflow-y: auto;">
+              <table class="data-tbl">
+                <thead>
+                  <tr>
+                    <th>Workspace Name</th>
+                    <th>Report Name</th>
+                    <th>Page / Tab Name</th>
+                    <th style="text-align:right;">Views</th>
+                    <th style="text-align:right;">Last Accessed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let p of selectedUserPageList()">
+                    <td><span style="font-weight:600; color:#1e40af;">{{ p.workspaceName }}</span></td>
+                    <td>{{ p.reportName }}</td>
+                    <td><strong style="color:#0f172a;">{{ p.pageName }}</strong></td>
+                    <td style="text-align:right; font-weight:700; color:#2563eb;">{{ p.views | number }}</td>
+                    <td style="text-align:right; color:#64748b; font-size:11px;">{{ p.lastAccessed | date:'mediumDate' }}</td>
+                  </tr>
+                  <tr *ngIf="!selectedUserPageList().length">
+                    <td colspan="5" style="text-align:center; color:#94a3b8; padding:15px;">No detailed page access recorded for this user in this workspace.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
   </div>
-
-  <!-- Loading reports -->
-  <div *ngIf="loadingReports()" class="empty"><span class="spinner"></span> Loading workspaces…</div>
-  <div *ngIf="errorMsg()" class="empty" style="color:#dc2626;">{{ errorMsg() }}</div>
-
-  <!-- Analytics section (shown once a report is selected and loaded) -->
-  <ng-container *ngIf="analytics() && !loadingAnalytics()">
-
-    <!-- Summary cards -->
-    <div class="summary-grid">
-      <div class="sum-card" style="border-top-color: #3b82f6;">
-        <div class="sum-label">Total Views</div>
-        <div class="sum-val">{{ filteredTotalViews() | number }}</div>
-      </div>
-      <div class="sum-card" style="border-top-color: #10b981;">
-        <div class="sum-label">Unique Viewers</div>
-        <div class="sum-val">{{ filteredTotalViewers() | number }}</div>
-      </div>
-      <div class="sum-card" style="border-top-color: #f59e0b;">
-        <div class="sum-label">Days of Data</div>
-        <div class="sum-val">{{ filteredViewsByDay().length }}</div>
-      </div>
-      <div class="sum-card" style="border-top-color: #8b5cf6;">
-        <div class="sum-label">Workspace Users</div>
-        <div class="sum-val">{{ wsUsers().length }}</div>
-      </div>
-    </div>
-
-    <div class="two-col">
-      <!-- Views per day/month chart -->
-      <div class="card">
-        <h3>Views per Day</h3>
-        <div class="bar-chart-wrap" *ngIf="chartData().length; else noData">
-          <div class="bar-chart">
-            <div class="bar-col" *ngFor="let d of chartData()">
-              <div class="bar animate-bar-y" [style.height.px]="barHeight(d.views)"></div>
-              <div class="bar-label">{{ d.date | date:'M/d/yy' }}</div>
-            </div>
-          </div>
-        </div>
-        <ng-template #noData><p class="empty">No view data available.</p></ng-template>
-      </div>
-
-      <!-- Platform breakdown -->
-      <div class="card">
-        <h3>Views by Platform</h3>
-        <div class="platform-list" *ngIf="filteredViewsByPlatform().length; else noPlat">
-          <div class="platform-row" *ngFor="let p of filteredViewsByPlatform()">
-            <span class="platform-name">{{ p.platform }}</span>
-            <div class="platform-bar-wrap">
-              <div class="platform-bar-fill" [style.width.%]="platformPct(p.views)"></div>
-            </div>
-            <span class="platform-count">{{ p.views }}</span>
-          </div>
-        </div>
-        <ng-template #noPlat><p class="empty">No platform data.</p></ng-template>
-      </div>
-    </div>
-
-    <!-- Views by user -->
-    <div class="card">
-      <h3>Views by User</h3>
-      <p style="font-size:12px;color:#4b5563;margin-top:-6px;margin-bottom:12px;">Click a user's row below to view their detailed report and tab views breakdown.</p>
-      
-      <!-- Search input for Users -->
-      <input type="text" class="table-search-input" placeholder="Search users by name or email..."
-             [ngModel]="userSearch()" (ngModelChange)="userSearch.set($event)" />
-
-      <div class="table-container">
-        <table>
-          <thead><tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Views</th>
-          </tr></thead>
-          <tbody>
-            <tr *ngFor="let u of filteredViewsByUser()" 
-                (click)="toggleSelectedUser(u.email)" 
-                [style.background]="selectedUserEmail() === u.email ? '#eff6ff' : ''"
-                [style.border-left]="selectedUserEmail() === u.email ? '4px solid #1d6ef5' : ''">
-              <td><strong>{{ (u.givenName + ' ' + u.familyName) | titlecase }}</strong></td>
-              <td>{{ u.email }}</td>
-              <td>{{ u.views | number }}</td>
-            </tr>
-            <tr *ngIf="!filteredViewsByUser().length">
-              <td colspan="3" class="empty">No user data found.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Clicked User breakdown details container -->
-    <div *ngIf="selectedUserDetails() as details" style="margin-top:24px;border: none;border-radius:12px;background:#fffdfa;padding:20px;box-shadow:var(--shadow-sm);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1.5px solid #fef3c7;padding-bottom:12px;">
-        <h3 style="margin:0;color:#b45309;font-weight:700;font-size:14px;letter-spacing:.5px;">
-          Detailed Breakdown- {{ (details.givenName + ' ' + details.familyName) | titlecase }} 
-          <span *ngIf="details.lastAccessed" style="font-size:11px;font-weight:600;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:99px;margin-left:8px;text-transform:none;">
-            Last accessed: {{ details.lastAccessed | date:'mediumDate' }}
-          </span>
-        </h3>
-        <button class="day-btn" style="border-color:#f59e0b;color:#d97706;" (click)="selectedUserEmail.set('')">Close Breakdown</button>
-      </div>
-
-      <div class="two-col" style="margin-top:0;">
-        <!-- User views by report -->
-        <div class="card" style="margin:0;border-color:#f59e0b;">
-          <h3 style="color:#d97706;">Reports / Dashboards Accessed</h3>
-          <div class="table-container" style="border-color:#f59e0b;scrollbar-color:#f59e0b #fef3c7;">
-            <table>
-              <thead><tr><th style="background:#f59e0b;border-bottom-color:#f59e0b;color:#ffffff;">Report / Dashboard Name</th><th style="background:#f59e0b;border-bottom-color:#f59e0b;color:#ffffff;">Views</th></tr></thead>
-              <tbody>
-                <tr *ngFor="let r of selectedUserReportAccess()">
-                  <td><span style="color:#b45309; font-weight:600;">{{ r.reportName }}</span></td>
-                  <td>{{ r.views | number }}</td>
-                </tr>
-                <tr *ngIf="!selectedUserReportAccess().length">
-                  <td colspan="2" class="empty">No report access.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- User views by page tab -->
-        <div class="card" style="margin:0;border-color:#10b981;">
-          <h3 style="color:#059669;">Page Tabs Viewed</h3>
-          <div class="table-container" style="border-color:#10b981;scrollbar-color:#10b981 #ecfdf5;">
-            <table>
-              <thead><tr><th style="background:#10b981;border-bottom-color:#10b981;color:#ffffff;">Tab Name</th><th style="background:#10b981;border-bottom-color:#10b981;color:#ffffff;">Dashboard / Report</th><th style="background:#10b981;border-bottom-color:#10b981;color:#ffffff;">Views</th></tr></thead>
-              <tbody>
-                <tr *ngFor="let p of selectedUserPageAccess()">
-                  <td><span style="color:#047857; font-weight:600;">{{ p.pageName }}</span></td>
-                  <td><span style="font-size:12px;color:#4b5563;">{{ p.reportName }}</span></td>
-                  <td>{{ p.views | number }}</td>
-                </tr>
-                <tr *ngIf="!selectedUserPageAccess().length">
-                  <td colspan="3" class="empty">No page tab access.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Overall Reports and Pages breakdown side by side -->
-    <div class="two-col" *ngIf="!selectedUserEmail()">
-      <!-- Views by Report -->
-      <div class="card" *ngIf="filteredReportViews().length || reportSearch()">
-        <h3>Views by Report / Dashboard</h3>
-        
-        <!-- Search input for Reports -->
-        <input type="text" class="table-search-input" placeholder="Search reports/dashboards..."
-               [ngModel]="reportSearch()" (ngModelChange)="reportSearch.set($event)" />
-
-        <div class="table-container">
-          <table>
-            <thead><tr><th>Name</th><th>Views</th></tr></thead>
-            <tbody>
-              <tr *ngFor="let r of filteredReportViews() | slice: pageReportViews()*10 : (pageReportViews()+1)*10">
-                <td><strong>{{ r.reportName }}</strong></td>
-                <td>{{ r.views | number }}</td>
-              </tr>
-              <tr *ngIf="!filteredReportViews().length">
-                <td colspan="2" class="empty">No matching reports.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="pagination" *ngIf="filteredReportViews().length > 10">
-          <button [disabled]="pageReportViews() === 0" (click)="pageReportViews.set(pageReportViews() - 1)">Previous</button>
-          <span>Page {{ pageReportViews() + 1 }} of {{ Math.ceil(filteredReportViews().length / 10) }}</span>
-          <button [disabled]="(pageReportViews() + 1) * 10 >= filteredReportViews().length" (click)="pageReportViews.set(pageReportViews() + 1)">Next</button>
-        </div>
-      </div>
-
-      <!-- Views by Page -->
-      <div class="card" *ngIf="filteredPageViews().length || pageSearch()">
-        <h3>Views by Page Tab</h3>
-        
-        <!-- Search input for Page Tabs -->
-        <input type="text" class="table-search-input" placeholder="Search tab or dashboard/report..."
-               [ngModel]="pageSearch()" (ngModelChange)="pageSearch.set($event)" />
-
-        <div class="table-container">
-          <table>
-            <thead><tr><th>Tab Name</th><th>Dashboard / Report</th><th>Views</th></tr></thead>
-            <tbody>
-              <tr *ngFor="let p of filteredPageViews() | slice: pagePageViews()*10 : (pagePageViews()+1)*10">
-                <td><strong>{{ p.pageName }}</strong></td>
-                <td><span style="font-size:12px;color:#4b5563;">{{ p.reportName }}</span></td>
-                <td>{{ p.views | number }}</td>
-              </tr>
-              <tr *ngIf="!filteredPageViews().length">
-                <td colspan="3" class="empty">No matching page tabs.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="pagination" *ngIf="filteredPageViews().length > 10">
-          <button [disabled]="pagePageViews() === 0" (click)="pagePageViews.set(pagePageViews() - 1)">Previous</button>
-          <span>Page {{ pagePageViews() + 1 }} of {{ Math.ceil(filteredPageViews().length / 10) }}</span>
-          <button [disabled]="(pagePageViews() + 1) * 10 >= filteredPageViews().length" (click)="pagePageViews.set(pagePageViews() + 1)">Next</button>
-        </div>
-      </div>
-    </div>
-
-  </ng-container>
-
-    <!-- Global / Workspace-Filtered Aggregated Metrics Dashboard -->
-  <ng-container *ngIf="!selectedReportId() && globalStats() as stats">
-    <div style="margin-top:24px;">
-      
-      <!-- Section Header -->
-      <div style="font-size:11px; font-weight:700; color:#374151; margin-bottom:20px; letter-spacing:1px; border-bottom:2px solid #e5e7eb; padding-bottom:10px; text-transform:uppercase; display:flex; align-items:center; gap:8px;">
-        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#3b82f6;"></span>
-        <span style="flex:1;">{{ selectedGroupId() ? 'Workspace Analytics Summary' : 'Global Workspace Analytics Overview' }}</span>
-        <button (click)="exportRawData()" [disabled]="isExporting()" style="background:#1d6ef5; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600; text-transform:none; font-size:11px; display:flex; align-items:center; gap:6px;">
-          <span *ngIf="isExporting()" class="spinner" style="width:12px; height:12px; border-width:2px; border-top-color:#fff;"></span>
-          Export Raw Data
-        </button>
-      </div>
-
-      <!-- ROW 1: Top Workspaces | Top Reports | Top Users -->
-      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:16px;">
-
-        <!-- Card 1: Top Workspaces (Donut) — hidden when workspace selected -->
-        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #10b981;" *ngIf="!selectedGroupId()">
-          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1e293b;">Top Workspaces by Views</h3>
-          <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-            <svg class="animate-donut" viewBox="0 0 200 200" style="width:100px; height:100px; background:none; flex-shrink:0;">
-              <path *ngFor="let p of getDonutPaths(workspaceDonutSegments())" [attr.d]="p.d" [attr.fill]="p.color"
-                (mouseenter)="showTooltip($event, p.name + '\n' + p.views + ' views')"
-                (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()"
-                style="transition:opacity 0.2s; cursor:pointer;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1"></path>
-              <circle cx="100" cy="100" r="60" fill="#ffffff"></circle>
-            </svg>
-            <div style="width:100%;">
-              <div *ngFor="let s of workspaceDonutSegments()" style="display:flex; align-items:center; gap:6px; padding:4px 0; border-bottom:1px solid #f8fafc;">
-                <div style="width:7px; height:7px; border-radius:50%; flex-shrink:0;" [style.background]="s.color"></div>
-                <span style="font-size:11px; font-weight:600; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="s.name">{{ s.name }}</span>
-                <span style="font-size:11px; color:#64748b; margin-left:auto; white-space:nowrap; font-variant-numeric:tabular-nums;">{{ s.views | number }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 2: Top Reports Horizontal Bars -->
-        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #3b82f6;">
-          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1e293b; display:flex; justify-content:space-between; align-items:center;">
-            Top Reports / Dashboards
-            <span style="background:#eff6ff; color:#3b82f6; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Top 5</span>
-          </h3>
-          <div style="display:flex; flex-direction:column; gap:9px;">
-            <div *ngFor="let r of stats.topReports.slice(0, 5)"
-              (mouseenter)="showTooltip($event, r.name + '\n' + r.views + ' views')"
-              (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
-              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
-                <span style="font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78%;" [title]="r.name">{{ r.name }}</span>
-                <span style="color:#3b82f6; font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums;">{{ r.views | number }}</span>
-              </div>
-              <div style="width:100%; height:5px; background:#f1f5f9; border-radius:3px; overflow:hidden;">
-                <div class="animate-bar" style="height:100%; background:#3b82f6; border-radius:3px;"
-                  [style.width.%]="Math.max(1, (r.views / (stats.topReports[0]?.views || 1)) * 100)"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 3: Top Users -->
-        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #8b5cf6;">
-          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1e293b; display:flex; justify-content:space-between; align-items:center;">
-            Top Users
-            <span style="background:#f3f0ff; color:#8b5cf6; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Click → details</span>
-          </h3>
-          <div style="display:flex; flex-direction:column; gap:5px;">
-            <div *ngFor="let u of stats.topUsers.slice(0, 6); let i = index"
-              (click)="navigateToUser.emit(u.email)"
-              style="display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:6px; cursor:pointer; transition:background 0.15s;"
-              onmouseover="this.style.background='#f5f3ff'" onmouseout="this.style.background=''">
-              <div style="width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#8b5cf6,#6d28d9); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; flex-shrink:0;">
-                {{ u.name.charAt(0).toUpperCase() }}
-              </div>
-              <div style="display:flex; flex-direction:column; min-width:0; flex:1; gap:2px;">
-                <div style="font-size:11px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="u.name | titlecase">{{ u.name | titlecase }}</div>
-                <div style="font-size:10px; color:#94a3b8;">{{ u.lastAccessed | date:'MMM d' }}</div>
-              </div>
-              <div style="font-size:12px; font-weight:800; color:#7c3aed; white-space:nowrap;">{{ u.views | number }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ROW 2: Top Pages | Least Used Reports (red) | Least Used Pages (red) -->
-      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
-
-        <!-- Card 4: Top Pages -->
-        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #06b6d4;">
-          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#1e293b; display:flex; justify-content:space-between; align-items:center;">
-            Top Pages / Tabs
-            <span style="background:#ecfeff; color:#0891b2; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Top 5</span>
-          </h3>
-          <div style="display:flex; flex-direction:column; gap:9px;">
-            <div *ngFor="let p of stats.topPages.slice(0, 5)"
-              (mouseenter)="showTooltip($event, p.pageName + '\n' + p.reportName + '\n' + p.views + ' views')"
-              (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()">
-              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;">
-                <span style="font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75%;" [title]="p.pageName">{{ p.pageName }}</span>
-                <span style="color:#0891b2; font-weight:700; white-space:nowrap;">{{ p.views | number }}</span>
-              </div>
-              <div style="font-size:10px; color:#94a3b8; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="p.reportName">{{ p.reportName }}</div>
-              <div style="width:100%; height:4px; background:#ecfeff; border-radius:3px; overflow:hidden;">
-                <div class="animate-bar" style="height:100%; background:#06b6d4; border-radius:3px;"
-                  [style.width.%]="Math.max(1, (p.views / (stats.topPages[0]?.views || 1)) * 100)"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 5: Least Used Reports (RED) -->
-        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #ef4444;">
-          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#dc2626; display:flex; justify-content:space-between; align-items:center;">
-            Least Used Reports
-            <span style="background:#fef2f2; color:#ef4444; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Idle</span>
-          </h3>
-          <div style="display:flex; flex-direction:column; gap:5px;">
-            <div *ngFor="let r of stats.leastReports"
-              style="display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:6px; border:1px solid #fef2f2; background:#fff5f5;">
-              <div style="flex:1; min-width:0;">
-                <div style="font-size:11px; font-weight:600; color:#dc2626; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="r.reportName || r.name">{{ r.reportName || r.name }}</div>
-              </div>
-              <div style="font-size:12px; font-weight:800; color:#ef4444; white-space:nowrap;">{{ r.views | number }}</div>
-            </div>
-            <div *ngIf="!stats.leastReports?.length" style="color:#94a3b8; font-size:12px; text-align:center; padding:10px;">No idle reports.</div>
-          </div>
-        </div>
-
-        <!-- Card 6: Least Used Pages (RED) -->
-        <div class="card premium-card" style="margin:0; padding:12px; overflow:hidden; border-left:4px solid #f97316;">
-          <h3 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:#ea580c; display:flex; justify-content:space-between; align-items:center;">
-            Least Used Pages
-            <span style="background:#fff7ed; color:#f97316; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600;">Idle</span>
-          </h3>
-          <div style="display:flex; flex-direction:column; gap:5px;">
-            <div *ngFor="let p of stats.leastPages"
-              style="display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:6px; border:1px solid #fff7ed; background:#fffbf5;">
-              <div style="flex:1; min-width:0;">
-                <div style="font-size:11px; font-weight:600; color:#ea580c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="p.pageName">{{ p.pageName }}</div>
-                <div style="font-size:10px; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="p.reportName">{{ p.reportName }}</div>
-              </div>
-              <div style="font-size:12px; font-weight:800; color:#f97316; white-space:nowrap;">{{ p.views | number }}</div>
-            </div>
-            <div *ngIf="!stats.leastPages?.length" style="color:#94a3b8; font-size:12px; text-align:center; padding:10px;">No idle pages.</div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </ng-container>
   `,
 })
 export class UsageComponent implements OnInit {
   @Output() navigateToUser = new EventEmitter<string>();
 
-  // SVG Donut helpers
-  getDonutPaths(segments: any[]) {
-    let total = segments.reduce((sum, s) => sum + (s.views || 0), 0);
-    if (total === 0) return [];
-    
-    let currentAngle = -90; // Start at top
-    const cx = 100, cy = 100, r = 80;
-    
-    return segments.map(s => {
-      const angle = ((s.views || 0) / total) * 360;
-      const endAngle = currentAngle + angle;
-      
-      const x1 = cx + r * Math.cos(currentAngle * Math.PI / 180);
-      const y1 = cy + r * Math.sin(currentAngle * Math.PI / 180);
-      const x2 = cx + r * Math.cos(endAngle * Math.PI / 180);
-      const y2 = cy + r * Math.sin(endAngle * Math.PI / 180);
-      
-      const largeArc = angle > 180 ? 1 : 0;
-      let d = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-      
-      if (angle === 360) {
-        d = `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx} ${cy + r} A ${r} ${r} 0 1 1 ${cx} ${cy - r} Z`;
-      }
-      
-      const pathData = { d, color: s.color, name: s.name, views: s.views };
-      currentAngle = endAngle;
-      return pathData;
-    });
-  }
-
-  Math = Math;
-  pageUsers = signal(0);
-  pageReportViews = signal(0);
-  pagePageViews = signal(0);
-  pageTopUsers = signal(0);
-  pageTopPages = signal(0);
-
-  tooltip = signal<{ show: boolean, text: string, x: number, y: number }>({ show: false, text: '', x: 0, y: 0 });
-  showTooltip(event: MouseEvent, text: string) {
-    this.tooltip.set({ show: true, text, x: event.clientX, y: event.clientY });
-  }
-  moveTooltip(event: MouseEvent) {
-    if (this.tooltip().show) {
-      this.tooltip.update(t => ({ ...t, x: event.clientX, y: event.clientY }));
-    }
-  }
-  hideTooltip() {
-    this.tooltip.update(t => ({ ...t, show: false }));
-  }
-  
   allReports = signal<UsageReportItem[]>([]);
   analytics = signal<UsageAnalytics | null>(null);
-  globalStats = signal<any | null>(null);
+  globalStats = signal<GlobalDashboardStats | null>(null);
   wsUsers = signal<WorkspaceUser[]>([]);
   loadingReports = signal(false);
   loadingAnalytics = signal(false);
@@ -826,36 +836,8 @@ export class UsageComponent implements OnInit {
   selectedGroupId = signal('');
   selectedReportId = signal('');
   selectedDays = signal<number>(30);
-  selectedUserEmail = signal<string>('');
-  showWorkspaceMembers = signal<boolean>(false);
 
-  // Search signals for tables
-  userSearch = signal<string>('');
-  reportSearch = signal<string>('');
-  pageSearch = signal<string>('');
-
-  // Selected User Reports/Dashboards Breakdown
-  selectedUserReportAccess = computed(() => {
-    const email = this.selectedUserEmail();
-    if (!email) return [];
-    return this.filteredUserReportAccess().filter(a => a.email === email);
-  });
-
-  // Selected User Page Tab Breakdown
-  selectedUserPageAccess = computed(() => {
-    const email = this.selectedUserEmail();
-    if (!email) return [];
-    return this.filteredUserPageAccess().filter(a => a.email === email);
-  });
-
-  // Selected User Details object
-  selectedUserDetails = computed(() => {
-    const email = this.selectedUserEmail();
-    if (!email) return null;
-    return this.filteredViewsByUser().find(u => u.email === email) ?? null;
-  });
-
-  // Unique workspaces from all reports
+  // Workspaces list for dropdown
   workspaces = computed(() => {
     const seen = new Map<string, string>();
     for (const r of this.allReports()) {
@@ -866,291 +848,279 @@ export class UsageComponent implements OnInit {
       .sort((a, b) => a.groupName.localeCompare(b.groupName));
   });
 
-  reportsForWorkspace = computed(() =>
-    this.allReports().filter(r => r.groupId === this.selectedGroupId()),
-  );
+  reportsForWorkspace = computed(() => {
+    const groupId = this.selectedGroupId();
+    if (!groupId) return this.allReports();
+    return this.allReports().filter(r => r.groupId === groupId);
+  });
 
   selectedReport = computed(() =>
     this.allReports().find(r => r.reportId === this.selectedReportId()) ?? null,
   );
 
-  selectedWorkspaceName = computed(() =>
-    this.workspaces().find(w => w.groupId === this.selectedGroupId())?.groupName ?? '',
-  );
+  selectedUserEmail = signal<string>('');
 
-  // Filter viewsByDay to show only the last N days chronologically.
+  selectedWorkspaceName = computed(() => {
+    const gid = this.selectedGroupId();
+    if (!gid) return '';
+    return this.workspaces().find(w => w.groupId === gid)?.groupName || '';
+  });
+
+  selectedUserDetails = computed(() => {
+    const email = this.selectedUserEmail();
+    if (!email) return null;
+    const user = this.filteredViewsByUser().find(u => u.email === email);
+    if (user) {
+      return { name: `${user.givenName} ${user.familyName}`.trim() || user.email, email: user.email };
+    }
+    return { name: email, email };
+  });
+
+  selectedUserPageList = computed(() => {
+    const email = this.selectedUserEmail();
+    if (!email) return [];
+    const wsName = this.selectedWorkspaceName() || 'Selected Workspace';
+    const rawAccess = this.analytics()?.userPageAccess ?? [];
+    const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
+    
+    const map = new Map<string, { workspaceName: string; reportName: string; pageName: string; views: number; lastAccessed: string }>();
+
+    for (const a of rawAccess) {
+      if (a.email === email && (activeDates.size === 0 || activeDates.has(a.date))) {
+        const key = `${a.reportName}|${a.pageName}`;
+        const existing = map.get(key);
+        if (existing) {
+          existing.views += a.views;
+          if (a.date && (!existing.lastAccessed || a.date > existing.lastAccessed)) {
+            existing.lastAccessed = a.date;
+          }
+        } else {
+          map.set(key, {
+            workspaceName: wsName,
+            reportName: a.reportName,
+            pageName: a.pageName,
+            views: a.views,
+            lastAccessed: a.date
+          });
+        }
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.views - a.views);
+  });
+
+  toggleSelectedUser(email: string) {
+    if (this.selectedUserEmail() === email) {
+      this.selectedUserEmail.set('');
+    } else {
+      this.selectedUserEmail.set(email);
+    }
+  }
+
+  // ── Dynamic Display Computed Properties for Global Dashboard ──
+  displayTotalViews = computed(() => this.globalStats()?.totalViews || 0);
+  displayTotalViewers = computed(() => this.globalStats()?.totalViewers || 0);
+  displayActiveReportsCount = computed(() => {
+    const count = this.globalStats()?.totalReportsCount;
+    if (count !== undefined && count > 0) return count;
+    return this.globalStats()?.topReports?.length || 0;
+  });
+  displayWorkspacesCount = computed(() => {
+    const count = this.globalStats()?.totalWorkspacesCount;
+    if (count !== undefined && count > 0) return count;
+    return this.globalStats()?.topWorkspaces?.length || 0;
+  });
+
+  displayTopReportViews = computed(() => {
+    const stats = this.globalStats();
+    if (stats?.topReportViews && stats.topReportViews > 0) return stats.topReportViews;
+    return stats?.topReports?.[0]?.views || 0;
+  });
+
+  displayTopReportName = computed(() => {
+    const stats = this.globalStats();
+    if (stats?.topReportName) return stats.topReportName;
+    return stats?.topReports?.[0]?.name || '';
+  });
+
+  displayMostActiveUserViews = computed(() => {
+    const stats = this.globalStats();
+    if (stats?.mostActiveUserViews && stats.mostActiveUserViews > 0) return stats.mostActiveUserViews;
+    return stats?.topUsers?.[0]?.views || 0;
+  });
+
+  displayMostActiveUserName = computed(() => {
+    const stats = this.globalStats();
+    if (stats?.mostActiveUserName) return stats.mostActiveUserName;
+    return stats?.topUsers?.[0]?.name || '';
+  });
+
+  displayWorkspaces = computed(() => {
+    const raw = this.globalStats()?.topWorkspaces || [];
+    const list = raw.slice(0, 3);
+    const max = Math.max(...list.map(w => w.views || 1), 1);
+    return list.map(w => ({
+      name: w.name || 'Workspace',
+      views: w.views,
+      percent: Math.max(6, Math.round((w.views / max) * 100)),
+    }));
+  });
+
+  displayTopReports = computed(() => {
+    const raw = this.globalStats()?.topReports || [];
+    return raw.slice(0, 3);
+  });
+
+  // Top Users dynamically (top 5 to balance middle section height)
+  displayTopUsers = computed(() => {
+    const raw = this.globalStats()?.topUsers || [];
+    return raw.slice(0, 5);
+  });
+
+  displayTopPages = computed(() => {
+    const raw = this.globalStats()?.topPages || [];
+    return raw.slice(0, 4);
+  });
+
+  displayLeastReports = computed(() => {
+    const raw = this.globalStats()?.leastReports || [];
+    return raw.slice(0, 4);
+  });
+
+  displayLeastPages = computed(() => {
+    const raw = this.globalStats()?.leastPages || [];
+    return raw.slice(0, 4);
+  });
+
+  // Helpers
+  getWorkspaceBarColor(index: number): string {
+    const colors = ['#1d6ef5', '#60a5fa', '#bfdbfe'];
+    return colors[index % colors.length];
+  }
+
+  getUserInitial(name?: string): string {
+    if (!name) return 'U';
+    const clean = name.trim();
+    return clean ? clean.charAt(0).toUpperCase() : 'U';
+  }
+
+  getUserAvatarStyle(name?: string, index: number = 0): { bg: string; color: string } {
+    const pastels = [
+      { bg: '#dbeafe', color: '#1d4ed8' }, // Soft Sky Blue
+      { bg: '#ede9fe', color: '#6d28d9' }, // Lavender / Violet
+      { bg: '#dcfce7', color: '#15803d' }, // Mint / Soft Emerald
+      { bg: '#ffe4e6', color: '#be123c' }, // Soft Rose
+      { bg: '#fef3c7', color: '#b45309' }, // Soft Amber / Peach
+      { bg: '#ccfbf1', color: '#0f766e' }, // Soft Aqua / Teal
+      { bg: '#fce7f3', color: '#be185d' }, // Soft Pink
+      { bg: '#ffedd5', color: '#c2410c' }, // Warm Apricot
+      { bg: '#e0e7ff', color: '#4338ca' }, // Soft Indigo
+      { bg: '#ecfccb', color: '#3f6212' }, // Soft Sage / Lime
+    ];
+
+    if (!name) return pastels[index % pastels.length];
+    let hash = 0;
+    for (let j = 0; j < name.length; j++) {
+      hash = name.charCodeAt(j) + ((hash << 5) - hash);
+    }
+    const colorIndex = Math.abs(hash) % pastels.length;
+    return pastels[colorIndex];
+  }
+
+  formatUserDate(dateStr?: string): string {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return '';
+    }
+  }
+
+  // ── Single Report Analytics Computations ──
   filteredViewsByDay = computed(() => {
     const data = this.analytics()?.viewsByDay ?? [];
     if (!data.length) return [];
-    
     const limit = this.selectedDays();
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - limit);
     cutoffDate.setHours(0, 0, 0, 0);
-    
     return data.filter(d => new Date(d.date) >= cutoffDate);
   });
 
-  // For the chart, if >30 days, aggregate by week to avoid squished UI
   chartData = computed(() => {
     const dailyData = this.filteredViewsByDay();
-    if (this.selectedDays() <= 30) {
-      return dailyData;
-    }
-    
+    if (this.selectedDays() <= 30) return dailyData;
+
     const weeklyMap = new Map<string, number>();
     for (const d of dailyData) {
       const dateObj = new Date(d.date);
       const day = dateObj.getDay();
-      const diff = dateObj.getDate() - day; // Adjust to Sunday
+      const diff = dateObj.getDate() - day;
       const weekStart = new Date(dateObj);
       weekStart.setDate(diff);
-      
+
       const y = weekStart.getFullYear();
       const m = String(weekStart.getMonth() + 1).padStart(2, '0');
       const dayStr = String(weekStart.getDate()).padStart(2, '0');
       const weekKey = `${y}-${m}-${dayStr}`;
-
       weeklyMap.set(weekKey, (weeklyMap.get(weekKey) || 0) + d.views);
     }
-    
-    const sortedWeeks = Array.from(weeklyMap.keys()).sort();
-    return sortedWeeks.map(w => ({ date: w, views: weeklyMap.get(w)! }));
+    return Array.from(weeklyMap.keys()).sort().map(w => ({ date: w, views: weeklyMap.get(w)! }));
   });
 
-  // Computed properties for the redesigned UI
-  workspaceDonutSegments = computed(() => {
-    const stats = this.globalStats();
-    if (!stats || !stats.topWorkspaces || stats.topWorkspaces.length === 0) return [];
-    
-    // Take top 5
-    const top5 = stats.topWorkspaces.slice(0, 5);
-    const total = top5.reduce((acc: number, w: any) => acc + w.views, 0);
-    
-    let cumulativePercent = 0;
-    const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#93c5fd', '#bae6fd'];
-    
-    return top5.map((w: any, i: number) => {
-      const percent = total > 0 ? (w.views / total) * 100 : 0;
-      const start = cumulativePercent;
-      cumulativePercent += percent;
-      return {
-        ...w,
-        color: colors[i % colors.length],
-        percent,
-        conicString: `${colors[i % colors.length]} ${start}% ${cumulativePercent}%`
-      };
-    });
-  });
+  filteredTotalViews = computed(() =>
+    this.filteredViewsByDay().reduce((sum, d) => sum + d.views, 0)
+  );
 
-  workspaceDonutStyle = computed(() => {
-    const segments = this.workspaceDonutSegments();
-    if (!segments.length) return '';
-    return `conic-gradient(${segments.map((s: any) => s.conicString).join(', ')})`;
-  });
-
-  topUsersHbars = computed(() => {
-    const stats = this.globalStats();
-    if (!stats || !stats.topUsers || stats.topUsers.length === 0) return [];
-    const max = Math.max(...stats.topUsers.map((u: any) => u.views));
-    return stats.topUsers.map((u: any) => ({
-      ...u,
-      percent: max > 0 ? (u.views / max) * 100 : 0
-    }));
-  });
-
-  leastReportsHbars = computed(() => {
-    const stats = this.globalStats();
-    if (!stats || !stats.leastReports || stats.leastReports.length === 0) return [];
-    const max = Math.max(...stats.leastReports.map((r: any) => r.views));
-    // Scale so max bar is like 80% to leave room
-    return stats.leastReports.map((r: any) => ({
-      ...r,
-      percent: max > 0 ? (r.views / max) * 80 : 0
-    }));
-  });
-  // Calculate total views for selected day range
-  filteredTotalViews = computed(() => {
-    return this.filteredViewsByDay().reduce((sum, d) => sum + d.views, 0);
-  });
-
-  // Dynamically calculate user view counts for the selected day range.
   filteredViewsByUser = computed(() => {
     const rawUsers = this.analytics()?.viewsByUser ?? [];
     const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
-    const query = this.userSearch().trim().toLowerCase();
-    
-    // Group and aggregate views by user email/details for the active dates
-    const userMap = new Map<string, { givenName: string; familyName: string; email: string; views: number; lastAccessed?: string }>();
-    
+    const userMap = new Map<string, { givenName: string; familyName: string; email: string; views: number }>();
+
     for (const u of rawUsers) {
       if (activeDates.has(u.date)) {
         const existing = userMap.get(u.email);
         if (existing) {
           existing.views += u.views;
-          if (u.date && (!existing.lastAccessed || u.date > existing.lastAccessed)) {
-            existing.lastAccessed = u.date;
-          }
         } else {
           userMap.set(u.email, {
             givenName: u.givenName,
             familyName: u.familyName,
             email: u.email,
             views: u.views,
-            lastAccessed: u.date
           });
         }
       }
     }
-    
     return Array.from(userMap.values())
       .filter(u => u.views > 0)
-      .filter(u => !query || `${u.givenName} ${u.familyName}`.toLowerCase().includes(query) || u.email.toLowerCase().includes(query))
       .sort((a, b) => b.views - a.views);
   });
 
-  filteredTotalViewers = computed(() => {
-    return this.filteredViewsByUser().length;
-  });
-  
-  // Dynamically calculate views by platform for active dates (Approximation based on ratio)
+  filteredTotalViewers = computed(() => this.filteredViewsByUser().length);
+
   filteredViewsByPlatform = computed(() => {
     const rawPlatforms = this.analytics()?.viewsByPlatform ?? [];
     const allTimeViews = this.analytics()?.totalViews || 1;
     const currentTotalViews = this.filteredTotalViews();
-
     if (currentTotalViews === 0) return [];
-
     const ratio = currentTotalViews / allTimeViews;
-
     return rawPlatforms
-      .map(p => ({
-        platform: p.platform,
-        views: Math.max(1, Math.round(p.views * ratio))
-      }))
+      .map(p => ({ platform: p.platform, views: Math.max(1, Math.round(p.views * ratio)) }))
       .sort((a, b) => b.views - a.views);
   });
 
-  // Dynamically calculate user views per report/dashboard for active dates
-  filteredUserReportAccess = computed(() => {
-    const rawAccess = this.analytics()?.userReportAccess ?? [];
-    const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
-    const accessMap = new Map<string, { givenName: string; familyName: string; email: string; reportName: string; views: number }>();
-
-    for (const a of rawAccess) {
-      if (activeDates.has(a.date)) {
-        const key = `${a.email}|${a.reportName}`;
-        const existing = accessMap.get(key);
-        if (existing) {
-          existing.views += a.views;
-        } else {
-          accessMap.set(key, {
-            givenName: a.givenName,
-            familyName: a.familyName,
-            email: a.email,
-            reportName: a.reportName,
-            views: a.views
-          });
-        }
-      }
-    }
-
-    return Array.from(accessMap.values())
-      .filter(a => a.views > 0)
-      .sort((a, b) => b.reportName.localeCompare(a.reportName) || b.views - a.views);
-  });
-
-  // Dynamically calculate user views per page/tab for active dates
-  filteredUserPageAccess = computed(() => {
-    const rawAccess = this.analytics()?.userPageAccess ?? [];
-    const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
-    const accessMap = new Map<string, { givenName: string; familyName: string; email: string; reportName: string; pageName: string; views: number }>();
-
-    for (const a of rawAccess) {
-      if (activeDates.has(a.date)) {
-        const key = `${a.email}|${a.reportName}|${a.pageName}`;
-        const existing = accessMap.get(key);
-        if (existing) {
-          existing.views += a.views;
-        } else {
-          accessMap.set(key, {
-            givenName: a.givenName,
-            familyName: a.familyName,
-            email: a.email,
-            reportName: a.reportName,
-            pageName: a.pageName,
-            views: a.views
-          });
-        }
-      }
-    }
-
-    return Array.from(accessMap.values())
-      .filter(a => a.views > 0)
-      .sort((a, b) => a.reportName.localeCompare(b.reportName) || b.views - a.views);
-  });
-
-  // Dynamically calculate report-level views (DisplayName)
-  filteredReportViews = computed(() => {
-    const rawReports = this.analytics()?.reportViews ?? [];
-    const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
-    const reportMap = new Map<string, number>();
-    const query = this.reportSearch().trim().toLowerCase();
-
-    for (const r of rawReports) {
-      if (activeDates.has(r.date)) {
-        reportMap.set(r.reportName, (reportMap.get(r.reportName) ?? 0) + r.views);
-      }
-    }
-
-    return Array.from(reportMap.entries())
-      .map(([reportName, views]) => ({ reportName, views }))
-      .filter(r => r.views > 0)
-      .filter(r => !query || r.reportName.toLowerCase().includes(query))
-      .sort((a, b) => b.views - a.views);
-  });
-
-  // Dynamically calculate page-level views (ReportPage)
-  filteredPageViews = computed(() => {
-    const rawPages = this.analytics()?.pageViews ?? [];
-    const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
-    const pageMap = new Map<string, { pageName: string; reportName: string; views: number }>();
-    const query = this.pageSearch().trim().toLowerCase();
-
-    for (const p of rawPages) {
-      if (activeDates.has(p.date)) {
-        const key = `${p.reportName}|${p.pageName}`;
-        const existing = pageMap.get(key);
-        if (existing) {
-          existing.views += p.views;
-        } else {
-          pageMap.set(key, {
-            pageName: p.pageName,
-            reportName: p.reportName,
-            views: p.views
-          });
-        }
-      }
-    }
-
-    return Array.from(pageMap.values())
-      .filter(p => p.views > 0)
-      .filter(p => !query || p.pageName.toLowerCase().includes(query) || p.reportName.toLowerCase().includes(query))
-      .sort((a, b) => a.reportName.localeCompare(b.reportName) || b.views - a.views);
-  });
-
-  // Bar chart helpers
   maxViews = computed(() => Math.max(...(this.chartData().map(d => d.views) ?? [0]), 1));
   barHeight(views: number): number {
-    return Math.max(4, Math.round((views / this.maxViews()) * 110));
+    return Math.max(3, Math.round((views / this.maxViews()) * 100));
   }
 
   maxPlatformViews = computed(() => Math.max(...(this.filteredViewsByPlatform().map(p => p.views) ?? [0]), 1));
   platformPct(views: number): number {
     return Math.round((views / this.maxPlatformViews()) * 100);
   }
-
-  isExporting = signal(false);
 
   constructor(private api: SyncApiService, private toast: ToastService) {}
 
@@ -1161,8 +1131,7 @@ export class UsageComponent implements OnInit {
         this.allReports.set(reports);
         this.loadingReports.set(false);
       },
-      error: (e) => {
-        this.errorMsg.set('Failed to load usage reports: ' + (e?.message ?? 'Unknown error'));
+      error: () => {
         this.loadingReports.set(false);
       },
     });
@@ -1173,56 +1142,30 @@ export class UsageComponent implements OnInit {
   loadGlobalStats(groupId?: string) {
     this.api.getGlobalDashboardStats(groupId).subscribe({
       next: (stats) => this.globalStats.set(stats),
-      error: () => this.globalStats.set(null)
+      error: () => this.globalStats.set(null),
     });
   }
 
   onWorkspaceChange(groupId: string) {
     this.selectedGroupId.set(groupId);
     this.selectedReportId.set('');
-    this.selectedUserEmail.set('');
-    this.showWorkspaceMembers.set(false);
     this.analytics.set(null);
-    this.wsUsers.set([]);
-    
-    // Refresh stats filtered to workspace
     this.loadGlobalStats(groupId || undefined);
-
-    if (!groupId) return;
-
-    // Load workspace users
-    this.api.getWorkspaceUsers(groupId).subscribe({
-      next: (u) => this.wsUsers.set(u),
-      error: () => this.wsUsers.set([]),
-    });
-
-    // Auto-select the "Usage Metrics" report if it exists, otherwise the first report
-    const reports = this.reportsForWorkspace();
-    if (reports.length > 0) {
-      const usageReport = reports.find(r => r.reportName.toLowerCase().includes('usage metrics'));
-      const targetReport = usageReport || reports[0];
-      this.onReportChange(targetReport.reportId);
-    }
   }
 
   onReportChange(reportId: string) {
     this.selectedReportId.set(reportId);
-    this.selectedUserEmail.set('');
+    if (!reportId) {
+      this.analytics.set(null);
+      return;
+    }
     const r = this.allReports().find(x => x.reportId === reportId);
-    if (r) this.loadReport(r);
-  }
-
-  toggleSelectedUser(email: string) {
-    if (this.selectedUserEmail() === email) {
-      this.selectedUserEmail.set('');
-    } else {
-      this.selectedUserEmail.set(email);
+    if (r) {
+      this.loadReport(r);
     }
   }
 
   private loadReport(r: UsageReportItem) {
-    this.selectedReportId.set(r.reportId);
-    this.selectedUserEmail.set('');
     this.analytics.set(null);
     this.loadingAnalytics.set(true);
     this.api.getUsageAnalytics(r.groupId, r.datasetId).subscribe({
@@ -1232,41 +1175,8 @@ export class UsageComponent implements OnInit {
       },
       error: (e) => {
         this.loadingAnalytics.set(false);
-        this.errorMsg.set('Failed to load analytics: ' + (e?.message ?? 'check backend logs'));
+        this.errorMsg.set('Failed to load analytics: ' + (e?.message ?? 'error'));
       },
-    });
-  }
-
-  exportRawData() {
-    this.isExporting.set(true);
-    this.api.getRawUserReportAccess(this.selectedGroupId() || undefined).subscribe({
-      next: (rows) => {
-        if (!rows || rows.length === 0) {
-          this.toast.error('No raw data available to export.');
-          this.isExporting.set(false);
-          return;
-        }
-        this.api.exportExcel('Usage_Raw_Data', rows).subscribe({
-          next: (blob) => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Usage_Raw_Data_${new Date().toISOString().slice(0, 10)}.xlsx`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-            this.toast.success('Raw data exported successfully.');
-            this.isExporting.set(false);
-          },
-          error: (e) => {
-            this.toast.error('Failed to generate Excel file.');
-            this.isExporting.set(false);
-          }
-        });
-      },
-      error: (e) => {
-        this.toast.error('Failed to fetch raw data.');
-        this.isExporting.set(false);
-      }
     });
   }
 }

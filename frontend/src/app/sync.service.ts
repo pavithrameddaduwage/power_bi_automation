@@ -390,14 +390,22 @@ export interface StatItem {
 }
 
 export interface GlobalDashboardStats {
+  totalViews?: number;
+  totalViewers?: number;
+  totalReportsCount?: number;
+  totalWorkspacesCount?: number;
+  topReportViews?: number;
+  topReportName?: string;
+  mostActiveUserViews?: number;
+  mostActiveUserName?: string;
   topWorkspaces: StatItem[];
   topUsers: StatItem[];
   topReports: StatItem[];
   topPages: StatItem[];
-  leastWorkspaces: StatItem[];
+  leastWorkspaces?: StatItem[];
   leastReports: StatItem[];
   leastPages: StatItem[];
-  leastUsers: StatItem[];
+  leastUsers?: StatItem[];
 }
 
 export interface AllUsersStat {
@@ -409,8 +417,8 @@ export interface AllUsersStat {
 
 export interface UserDetailsBreakdown {
   historicalViews: { date: string; views: number }[];
-  reportAccess: { reportName: string; views: number }[];
-  pageAccess: { pageName: string; reportName: string; views: number }[];
+  reportAccess: { reportName: string; views: number; lastAccessed?: string }[];
+  pageAccess: { pageName: string; reportName: string; views: number; lastAccessed?: string }[];
   totalDashboards: number;
   topReports: { reportName: string; views: number }[];
   leastReports: { reportName: string; views: number }[];
