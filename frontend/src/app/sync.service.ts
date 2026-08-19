@@ -404,7 +404,7 @@ export interface UsageAnalytics {
   totalViewers: number;
   viewsByDay: { date: string; views: number }[];
   viewsByUser: { givenName: string; familyName: string; email: string; date: string; views: number }[];
-  viewsByPlatform: { platform: string; views: number }[];
+  viewsByPlatform: { platform: string; views: number; date?: string }[];
   reportViews: { reportName: string; date: string; views: number }[];
   pageViews: { pageName: string; reportName: string; date: string; views: number }[];
   userReportAccess: { givenName: string; familyName: string; email: string; reportName: string; date: string; views: number }[];

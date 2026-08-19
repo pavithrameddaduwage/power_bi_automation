@@ -545,10 +545,10 @@ export class UsageService {
 
       viewsByPlatformRows = await runQuery(
         `EVALUATE SUMMARIZECOLUMNS(
+          'Report views'[Date],
           'Report views'[UserAgent],
           "TotalViews", COUNT('Report views'[UserAgent])
-        )
-        ORDER BY [TotalViews] DESC`,
+        )`,
       );
 
       // Classic query: group by Report views Date and ReportName (Report views)
@@ -599,10 +599,11 @@ export class UsageService {
 
       viewsByPlatformRows = await runQuery(
         `EVALUATE SUMMARIZECOLUMNS(
+          Views[Date],
           Views[Platform],
           "TotalViews", SUM(Views[GranularViewsCount])
         )
-        ORDER BY [TotalViews] DESC`,
+        ORDER BY Views[Date] ASC`,
       );
 
       // Upgraded query: group by Date and Reports DisplayName
@@ -661,7 +662,8 @@ export class UsageService {
 
     const viewsByUser: ViewsByUser[] = viewsByUserRows.map((r) => {
       if (isClassic) {
-        const email = String(r['Report views[UserId]'] ?? '');
+        const rawEmail = String(r['Report views[UserId]'] ?? '');
+        const email = rawEmail.toLowerCase().trim();
         const namePart = email.split('@')[0] || 'User';
         return {
           givenName: namePart.charAt(0).toUpperCase() + namePart.slice(1),
@@ -671,10 +673,11 @@ export class UsageService {
           views: Number(r['[TotalViews]'] ?? 0),
         };
       } else {
+        const rawEmail = String(r['Users[UserPrincipalName]'] ?? '');
         return {
           givenName: String(r['Users[GivenName]'] ?? ''),
           familyName: String(r['Users[FamilyName]'] ?? ''),
-          email: String(r['Users[UserPrincipalName]'] ?? ''),
+          email: rawEmail.toLowerCase().trim(),
           date: String(r['Views[Date]'] ?? '').slice(0, 10),
           views: Number(r['[TotalViews]'] ?? 0),
         };
@@ -683,7 +686,7 @@ export class UsageService {
 
     const viewsByPlatform = viewsByPlatformRows.map((r) => {
       const label = String(r[isClassic ? 'Report views[UserAgent]' : 'Views[Platform]'] ?? 'Unknown');
-      // Normalize user agents to simpler platform names for classic view
+      const date = String(r[isClassic ? 'Report views[Date]' : 'Views[Date]'] ?? '').slice(0, 10);
       let platform = label;
       if (isClassic) {
         if (/windows/i.test(label)) platform = 'Windows';
@@ -695,18 +698,9 @@ export class UsageService {
       return {
         platform,
         views: Number(r['[TotalViews]'] ?? 0),
+        date: date || undefined
       };
     });
-
-    // Aggregate platforms to avoid duplicate entries after normalization
-    const platformMap = new Map<string, number>();
-    for (const p of viewsByPlatform) {
-      platformMap.set(p.platform, (platformMap.get(p.platform) ?? 0) + p.views);
-    }
-    const aggregatedPlatforms = Array.from(platformMap.entries()).map(([platform, views]) => ({
-      platform,
-      views,
-    })).sort((a, b) => b.views - a.views);
 
     const reportViews = reportViewsRows.map((r) => ({
       reportName: String(r[isClassic ? 'Report views[ReportName]' : 'Reports[DisplayName]'] ?? 'Unknown'),
@@ -714,16 +708,26 @@ export class UsageService {
       views: Number(r['[TotalViews]'] ?? 0),
     })).filter(r => r.reportName && r.date);
 
-    const pageViews = pageViewsRows.map((r) => ({
+    let pageViews = pageViewsRows.map((r) => ({
       pageName: String(r[isClassic ? 'Report views[ReportName]' : 'Views[ReportPage]'] ?? 'Unknown'),
       reportName: String(r[isClassic ? 'Report views[ReportName]' : 'Reports[DisplayName]'] ?? 'Unknown'),
       date: String(r[isClassic ? 'Report views[Date]' : 'Views[Date]'] ?? '').slice(0, 10),
       views: Number(r['[TotalViews]'] ?? 0),
     })).filter(r => r.pageName && r.date);
 
+    if (!pageViews.length && reportViews.length) {
+      pageViews = reportViews.map(r => ({
+        pageName: r.reportName,
+        reportName: r.reportName,
+        date: r.date,
+        views: r.views
+      }));
+    }
+
     const userReportAccess = userReportAccessRows.map((r) => {
       if (isClassic) {
-        const email = String(r['Report views[UserId]'] ?? '');
+        const rawEmail = String(r['Report views[UserId]'] ?? '');
+        const email = rawEmail.toLowerCase().trim();
         const namePart = email.split('@')[0] || 'User';
         return {
           givenName: namePart.charAt(0).toUpperCase() + namePart.slice(1),
@@ -734,10 +738,11 @@ export class UsageService {
           views: Number(r['[TotalViews]'] ?? 0),
         };
       } else {
+        const rawEmail = String(r['Users[UserPrincipalName]'] ?? '');
         return {
           givenName: String(r['Users[GivenName]'] ?? ''),
           familyName: String(r['Users[FamilyName]'] ?? ''),
-          email: String(r['Users[UserPrincipalName]'] ?? ''),
+          email: rawEmail.toLowerCase().trim(),
           reportName: String(r['Reports[DisplayName]'] ?? 'Unknown'),
           date: String(r['Views[Date]'] ?? '').slice(0, 10),
           views: Number(r['[TotalViews]'] ?? 0),
@@ -745,9 +750,10 @@ export class UsageService {
       }
     }).filter(r => r.email && r.reportName && r.date);
 
-    const userPageAccess = userPageAccessRows.map((r) => {
+    let userPageAccess = userPageAccessRows.map((r) => {
       if (isClassic) {
-        const email = String(r['Report views[UserId]'] ?? '');
+        const rawEmail = String(r['Report views[UserId]'] ?? '');
+        const email = rawEmail.toLowerCase().trim();
         const namePart = email.split('@')[0] || 'User';
         return {
           givenName: namePart.charAt(0).toUpperCase() + namePart.slice(1),
@@ -759,10 +765,11 @@ export class UsageService {
           views: Number(r['[TotalViews]'] ?? 0),
         };
       } else {
+        const rawEmail = String(r['Users[UserPrincipalName]'] ?? '');
         return {
           givenName: String(r['Users[GivenName]'] ?? ''),
           familyName: String(r['Users[FamilyName]'] ?? ''),
-          email: String(r['Users[UserPrincipalName]'] ?? ''),
+          email: rawEmail.toLowerCase().trim(),
           reportName: String(r['Reports[DisplayName]'] ?? 'Unknown'),
           pageName: String(r['Views[ReportPage]'] ?? 'Unknown'),
           date: String(r['Views[Date]'] ?? '').slice(0, 10),
@@ -770,6 +777,13 @@ export class UsageService {
         };
       }
     }).filter(r => r.email && r.pageName && r.date);
+
+    if (!userPageAccess.length && userReportAccess.length) {
+      userPageAccess = userReportAccess.map(r => ({
+        ...r,
+        pageName: r.reportName
+      }));
+    }
 
     const totalViews = viewsByDay.reduce((s, r) => s + r.views, 0);
     const totalViewers = new Set(viewsByUser.map((u) => u.email)).size;
@@ -789,7 +803,7 @@ export class UsageService {
       totalViewers,
       viewsByDay,
       viewsByUser,
-      viewsByPlatform: aggregatedPlatforms,
+      viewsByPlatform,
       reportViews,
       pageViews,
       userReportAccess,

@@ -900,9 +900,9 @@ export class UsageComponent implements OnInit {
   });
 
   selectedUserDetails = computed(() => {
-    const email = this.selectedUserEmail();
+    const email = (this.selectedUserEmail() || '').toLowerCase().trim();
     if (!email) return null;
-    const user = this.filteredViewsByUser().find(u => u.email === email);
+    const user = this.filteredViewsByUser().find(u => u.email.toLowerCase().trim() === email);
     if (user) {
       return { name: `${user.givenName} ${user.familyName}`.trim() || user.email, email: user.email };
     }
@@ -910,16 +910,18 @@ export class UsageComponent implements OnInit {
   });
 
   selectedUserPageList = computed(() => {
-    const email = this.selectedUserEmail();
+    const email = (this.selectedUserEmail() || '').toLowerCase().trim();
     if (!email) return [];
     const wsName = this.selectedWorkspaceName() || 'Selected Workspace';
     const rawAccess = this.analytics()?.userPageAccess ?? [];
+    const rawReportAccess = this.analytics()?.userReportAccess ?? [];
     const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
     
     const map = new Map<string, { workspaceName: string; reportName: string; pageName: string; views: number; lastAccessed: string }>();
 
+    // 1. Try page-level access first (case-insensitive email matching)
     for (const a of rawAccess) {
-      if (a.email === email && (activeDates.size === 0 || activeDates.has(a.date))) {
+      if ((a.email || '').toLowerCase().trim() === email && (activeDates.size === 0 || activeDates.has(a.date))) {
         const key = `${a.reportName}|${a.pageName}`;
         const existing = map.get(key);
         if (existing) {
@@ -935,6 +937,30 @@ export class UsageComponent implements OnInit {
             views: a.views,
             lastAccessed: a.date
           });
+        }
+      }
+    }
+
+    // 2. Fallback to report-level access if no page-level entries matched
+    if (map.size === 0) {
+      for (const a of rawReportAccess) {
+        if ((a.email || '').toLowerCase().trim() === email && (activeDates.size === 0 || activeDates.has(a.date))) {
+          const key = `${a.reportName}|${a.reportName}`;
+          const existing = map.get(key);
+          if (existing) {
+            existing.views += a.views;
+            if (a.date && (!existing.lastAccessed || a.date > existing.lastAccessed)) {
+              existing.lastAccessed = a.date;
+            }
+          } else {
+            map.set(key, {
+              workspaceName: wsName,
+              reportName: a.reportName,
+              pageName: a.reportName,
+              views: a.views,
+              lastAccessed: a.date
+            });
+          }
         }
       }
     }
@@ -1071,15 +1097,16 @@ export class UsageComponent implements OnInit {
     }
   }
 
-  // ── Single Report Analytics Computations ──
   filteredViewsByDay = computed(() => {
     const data = this.analytics()?.viewsByDay ?? [];
     if (!data.length) return [];
     const limit = this.selectedDays();
-    const cutoffDate = new Date();
+    const sorted = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const latestDate = new Date(sorted[sorted.length - 1].date);
+    const cutoffDate = new Date(latestDate);
     cutoffDate.setDate(cutoffDate.getDate() - limit);
     cutoffDate.setHours(0, 0, 0, 0);
-    return data.filter(d => new Date(d.date) >= cutoffDate);
+    return sorted.filter(d => new Date(d.date) >= cutoffDate);
   });
 
   chartData = computed(() => {
@@ -1143,12 +1170,18 @@ export class UsageComponent implements OnInit {
 
   filteredViewsByPlatform = computed(() => {
     const rawPlatforms = this.analytics()?.viewsByPlatform ?? [];
-    const allTimeViews = this.analytics()?.totalViews || 1;
-    const currentTotalViews = this.filteredTotalViews();
-    if (currentTotalViews === 0) return [];
-    const ratio = currentTotalViews / allTimeViews;
-    return rawPlatforms
-      .map(p => ({ platform: p.platform, views: Math.max(1, Math.round(p.views * ratio)) }))
+    if (!rawPlatforms.length) return [];
+    const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
+    const platformMap = new Map<string, number>();
+
+    for (const p of rawPlatforms) {
+      if (!p.date || activeDates.has(p.date) || activeDates.size === 0) {
+        platformMap.set(p.platform, (platformMap.get(p.platform) || 0) + p.views);
+      }
+    }
+
+    return Array.from(platformMap.entries())
+      .map(([platform, views]) => ({ platform, views }))
       .sort((a, b) => b.views - a.views);
   });
 
