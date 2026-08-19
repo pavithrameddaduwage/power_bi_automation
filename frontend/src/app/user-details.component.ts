@@ -289,18 +289,25 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       <!-- SVG Line Chart Combo -->
       <div class="premium-card" style="margin-bottom: 24px;">
         <h3 style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; overflow: hidden; white-space: nowrap;">
-          <span>Historical Views</span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span>Historical Views</span>
+            <div *ngIf="selectedDate()" style="display:flex; align-items:center; gap:6px; background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:2px 8px; border-radius:6px; font-size:11.5px; font-weight:600;">
+              <span>📅 Filtered: {{ selectedDate() | date:'mediumDate' }} ({{ selectedDayViews() | number }} views)</span>
+              <button (click)="selectedDate.set(null)" style="background:none; border:none; cursor:pointer; color:#b45309; font-weight:700; font-size:11px; padding:0 2px;" title="Clear date filter">✕ All</button>
+            </div>
+          </div>
           <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
             <div class="day-btns">
-              <button class="day-btn" [class.active]="selectedDays() === 30" (click)="selectedDays.set(30)">1 Month</button>
-              <button class="day-btn" [class.active]="selectedDays() === 60" (click)="selectedDays.set(60)">2 Months</button>
-              <button class="day-btn" [class.active]="selectedDays() === 90" (click)="selectedDays.set(90)">3 Months</button>
+              <button class="day-btn" [class.active]="selectedDays() === 30 && !selectedDate()" (click)="setDaysRange(30)">1 Month</button>
+              <button class="day-btn" [class.active]="selectedDays() === 60 && !selectedDate()" (click)="setDaysRange(60)">2 Months</button>
+              <button class="day-btn" [class.active]="selectedDays() === 90 && !selectedDate()" (click)="setDaysRange(90)">3 Months</button>
             </div>
             <span class="badge-light" style="white-space: nowrap; flex-shrink: 0;" *ngIf="historicalDateRange()">{{ historicalDateRange() }}</span>
           </div>
         </h3>
-        <div style="display:flex; justify-content:flex-end; gap:16px; margin-bottom:16px; font-size:11.5px; font-weight:600; color:#475569;">
-          <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#f59e0b;"></span> Views</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:11px; font-weight:500; color:#64748b;">
+          <span style="font-style:italic;">💡 Click any bar to drill down to that specific day's usage</span>
+          <div style="display:flex; align-items:center; gap:6px; font-weight:600; color:#475569;"><span style="width:12px; height:12px; border-radius:3px; background:#f59e0b;"></span> Daily Views</div>
         </div>
         
         <div style="position:relative; height: 200px; width: 100%;">
@@ -319,7 +326,22 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
             <!-- Data Bars -->
             <ng-container *ngFor="let p of chartPoints()">
-              <rect class="chart-bar animate-chart-bar" [attr.x]="p.x - 11" [attr.y]="p.y" width="22" [attr.height]="Math.max(4, 180 - p.y)" rx="4" ry="4" (mouseenter)="showTooltip($event, p.date + '\n' + p.views + ' views')" (mousemove)="moveTooltip($event)" (mouseleave)="hideTooltip()"></rect>
+              <rect class="chart-bar animate-chart-bar"
+                [attr.x]="p.x - 11"
+                [attr.y]="p.y"
+                width="22"
+                [attr.height]="Math.max(4, 180 - p.y)"
+                rx="4" ry="4"
+                [style.fill]="p.isSelected ? '#d97706' : '#f59e0b'"
+                [style.stroke]="p.isSelected ? '#78350f' : 'none'"
+                [style.stroke-width]="p.isSelected ? '2px' : '0'"
+                [style.opacity]="selectedDate() && !p.isSelected ? '0.35' : '1'"
+                style="cursor: pointer; transition: all 0.2s;"
+                (click)="toggleDaySelection(p.date)"
+                (mouseenter)="showTooltip($event, (p.isSelected ? '★ Active Day: ' : '') + p.date + '\n' + p.views + ' views' + (p.isSelected ? '\n(Click to show all range)' : '\n(Click to filter details to this day)'))"
+                (mousemove)="moveTooltip($event)"
+                (mouseleave)="hideTooltip()">
+              </rect>
             </ng-container>
           </svg>
         </div>
@@ -411,20 +433,53 @@ export class UserDetailsComponent implements OnInit {
   userListPage = signal(0);
   userListTotalPages = computed(() => Math.ceil(this.filteredUsers().length / 7));
   selectedDays = signal<number>(30);
+  selectedDate = signal<string | null>(null);
+
+  setDaysRange(days: number) {
+    this.selectedDays.set(days);
+    this.selectedDate.set(null);
+  }
+
+  toggleDaySelection(date: string) {
+    if (this.selectedDate() === date) {
+      this.selectedDate.set(null);
+    } else {
+      this.selectedDate.set(date);
+    }
+  }
+
+  selectedDayViews = computed(() => {
+    const date = this.selectedDate();
+    if (!date) return 0;
+    const match = this.userDetails()?.historicalViews.find(h => h.date === date);
+    return match?.views || 0;
+  });
 
   historicalFilteredViews = computed(() => {
     const details = this.userDetails();
-    if (!details || !details.historicalViews) return [];
+    if (!details || !details.historicalViews || !details.historicalViews.length) return [];
     
+    const sorted = [...details.historicalViews].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const limit = this.selectedDays();
-    const cutoffDate = new Date();
+    
+    const latestDate = new Date(sorted[sorted.length - 1].date);
+    const cutoffDate = new Date(latestDate);
     cutoffDate.setDate(cutoffDate.getDate() - limit);
     cutoffDate.setHours(0, 0, 0, 0);
     
-    // Sort just in case to ensure chronological order for the chart
-    const sorted = [...details.historicalViews].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    return sorted.filter(d => new Date(d.date) >= cutoffDate);
+    const filtered = sorted.filter(d => new Date(d.date) >= cutoffDate);
+    return filtered.length ? filtered : sorted;
   });
+
+  activeDates = computed<Set<string>>(() => {
+    const single = this.selectedDate();
+    if (single) {
+      return new Set([single]);
+    }
+    const views = this.historicalFilteredViews();
+    return new Set(views.map(v => v.date));
+  });
+
   // SVG Donut helpers
   getDonutPaths(segments: any[]) {
     let total = segments.reduce((sum, s) => sum + (s.views || 0), 0);
@@ -493,17 +548,48 @@ export class UserDetailsComponent implements OnInit {
 
   filteredPageAccess = computed(() => {
     const details = this.userDetails();
-    if (!details) return [];
-    
-    // Approximate based on ratio of filtered views
-    const allTimeViews = details.historicalViews.reduce((a, b) => a + b.views, 0) || 1;
-    const currentViews = this.filteredTotalViews();
-    const ratio = currentViews / allTimeViews;
-    
-    let base = details.pageAccess;
+    if (!details || this.filteredTotalViews() === 0) return [];
+    const dates = this.activeDates();
+
+    let list: { pageName: string; reportName: string; views: number; lastAccessed?: string }[] = [];
+
+    if (details.dailyPageAccess && details.dailyPageAccess.length) {
+      const pageMap = new Map<string, { pageName: string; reportName: string; views: number; dates: string[] }>();
+      for (const p of details.dailyPageAccess) {
+        if (dates.has(p.date) && p.views > 0) {
+          const key = `${p.pageName}:::${p.reportName}`;
+          const existing = pageMap.get(key);
+          if (existing) {
+            existing.views += p.views;
+            existing.dates.push(p.date);
+          } else {
+            pageMap.set(key, {
+              pageName: p.pageName,
+              reportName: p.reportName,
+              views: p.views,
+              dates: [p.date]
+            });
+          }
+        }
+      }
+
+      list = Array.from(pageMap.values()).map(p => {
+        p.dates.sort();
+        const last = p.dates[p.dates.length - 1];
+        return {
+          pageName: p.pageName,
+          reportName: p.reportName,
+          views: p.views,
+          lastAccessed: last
+        };
+      });
+    } else {
+      list = details.pageAccess.map(p => ({ ...p }));
+    }
+
     const q = this.pageSearch().toLowerCase().trim();
     if (q) {
-      base = base.filter(p => {
+      list = list.filter(p => {
         const matchesName = p.pageName.toLowerCase().includes(q) || p.reportName.toLowerCase().includes(q);
         let matchesDate = false;
         if (p.lastAccessed) {
@@ -515,33 +601,48 @@ export class UserDetailsComponent implements OnInit {
         return matchesName || matchesDate;
       });
     }
-    
-    if (currentViews === 0) return [];
-    return base.map(p => ({
-      ...p,
-      views: Math.max(1, Math.round(p.views * ratio))
-    })).sort((a, b) => b.views - a.views);
+
+    return list.sort((a, b) => b.views - a.views);
   });
 
   filteredTotalViews = computed(() => {
-    return this.historicalFilteredViews().reduce((sum, d) => sum + d.views, 0);
+    const dates = this.activeDates();
+    const details = this.userDetails();
+    if (!details || !details.historicalViews) return 0;
+    return details.historicalViews
+      .filter(d => dates.has(d.date))
+      .reduce((sum, d) => sum + d.views, 0);
   });
   
   filteredLastAccessed = computed(() => {
-    const views = this.historicalFilteredViews().filter(d => d.views > 0);
-    if (!views.length) return null;
-    return new Date(Math.max(...views.map(d => new Date(d.date).getTime())));
+    const single = this.selectedDate();
+    if (single) return single;
+    const details = this.userDetails();
+    if (!details || !details.historicalViews) return null;
+    const dates = this.activeDates();
+    const activeViews = details.historicalViews.filter(d => dates.has(d.date) && d.views > 0);
+    if (!activeViews.length) return null;
+    return activeViews[activeViews.length - 1].date;
   });
   
   filteredDashboardsAccessed = computed(() => {
     const details = this.userDetails();
     if (!details || this.filteredTotalViews() === 0) return 0;
-    
-    // Scale dashboards accessed based on how many views occurred in this period
-    const allTimeViews = details.historicalViews.reduce((a, b) => a + b.views, 0) || 1;
-    const ratio = this.filteredTotalViews() / allTimeViews;
-    
-    return Math.max(1, Math.round(details.totalDashboards * Math.sqrt(ratio))); // sqrt to keep dashboard count reasonable
+    const dates = this.activeDates();
+
+    if (details.dailyReportAccess && details.dailyReportAccess.length) {
+      const activeReports = new Set(
+        details.dailyReportAccess.filter(r => dates.has(r.date) && r.views > 0).map(r => r.reportName)
+      );
+      return activeReports.size;
+    }
+    if (details.dailyPageAccess && details.dailyPageAccess.length) {
+      const activeReports = new Set(
+        details.dailyPageAccess.filter(p => dates.has(p.date) && p.views > 0).map(p => p.reportName)
+      );
+      return activeReports.size;
+    }
+    return details.reportAccess.length;
   });
 
   initials = computed(() => {
@@ -565,8 +666,7 @@ export class UserDetailsComponent implements OnInit {
   yAxisLabels = computed(() => {
     const views = this.historicalFilteredViews();
     if (!views.length) return [];
-    const maxViews = Math.max(...views.map((d: any) => d.views), 60);
-    // Let's generate 4 grid lines
+    const maxViews = Math.max(...views.map((d: any) => d.views), 10);
     const labels = [];
     for (let i = 0; i <= 4; i++) {
       const val = Math.round(maxViews - (i / 4) * maxViews);
@@ -579,9 +679,14 @@ export class UserDetailsComponent implements OnInit {
   xAxisLabels = computed(() => {
     const pts = this.chartPoints();
     if (!pts.length) return [];
-    // Pick 5 evenly spaced points
     const labels = [];
-    const count = 5;
+    const count = Math.min(5, pts.length);
+    if (count === 1) {
+      const p = pts[0];
+      const d = new Date(p.date);
+      labels.push({ x: p.x, label: `${d.getMonth() + 1}/${d.getDate()}` });
+      return labels;
+    }
     for (let i = 0; i < count; i++) {
       const index = Math.floor((i / (count - 1)) * (pts.length - 1));
       const p = pts[index];
@@ -595,61 +700,60 @@ export class UserDetailsComponent implements OnInit {
     const views = this.historicalFilteredViews();
     if (!views.length) return [];
     
-    // Smooth out points across 1000px width, 180px height
-    const maxViews = Math.max(...views.map(d => d.views), 60);
+    const maxViews = Math.max(...views.map(d => d.views), 10);
     const width = 1000;
     const height = 180;
     const paddingX = 40;
+    const selDate = this.selectedDate();
     
     return views.map((d, i, arr) => {
       const x = paddingX + (i / Math.max(1, arr.length - 1)) * (width - paddingX);
       const y = height - (d.views / maxViews) * height;
-      return { x, y, views: d.views, date: d.date };
+      return {
+        x,
+        y,
+        views: d.views,
+        date: d.date,
+        isSelected: d.date === selDate
+      };
     });
-  });
-
-  chartLinePath = computed(() => {
-    const pts = this.chartPoints();
-    if (!pts.length) return '';
-    // Bezier curve approximation
-    let path = `M ${pts[0].x} ${pts[0].y}`;
-    for (let i = 1; i < pts.length; i++) {
-      const prev = pts[i - 1];
-      const curr = pts[i];
-      const cx = (prev.x + curr.x) / 2;
-      path += ` C ${cx} ${prev.y}, ${cx} ${curr.y}, ${curr.x} ${curr.y}`;
-    }
-    return path;
-  });
-
-  chartAreaPath = computed(() => {
-    const pts = this.chartPoints();
-    if (!pts.length) return '';
-    let path = this.chartLinePath();
-    const width = 1000;
-    const height = 180;
-    path += ` L ${pts[pts.length - 1].x} ${height} L ${pts[0].x} ${height} Z`;
-    return path;
   });
 
   topReportDonutSegments = computed(() => {
     const details = this.userDetails();
-    if (!details || !details.topReports.length || this.filteredTotalViews() === 0) return [];
-    
-    const allTimeViews = details.historicalViews.reduce((a, b) => a + b.views, 0) || 1;
-    const ratio = this.filteredTotalViews() / allTimeViews;
-    
-    const scaledReports = details.topReports.map(r => ({
-      ...r,
-      views: Math.max(1, Math.round(r.views * ratio))
-    }));
-    
-    const top5 = scaledReports.slice(0, 5);
+    if (!details || this.filteredTotalViews() === 0) return [];
+    const dates = this.activeDates();
+
+    const reportMap = new Map<string, number>();
+
+    if (details.dailyReportAccess && details.dailyReportAccess.length) {
+      for (const r of details.dailyReportAccess) {
+        if (dates.has(r.date) && r.views > 0) {
+          reportMap.set(r.reportName, (reportMap.get(r.reportName) || 0) + r.views);
+        }
+      }
+    } else if (details.dailyPageAccess && details.dailyPageAccess.length) {
+      for (const p of details.dailyPageAccess) {
+        if (dates.has(p.date) && p.views > 0) {
+          reportMap.set(p.reportName, (reportMap.get(p.reportName) || 0) + p.views);
+        }
+      }
+    } else {
+      for (const r of details.reportAccess) {
+        reportMap.set(r.reportName, r.views);
+      }
+    }
+
+    const sorted = Array.from(reportMap.entries())
+      .map(([name, views]) => ({ reportName: name, views }))
+      .sort((a, b) => b.views - a.views);
+
+    const top5 = sorted.slice(0, 5);
     const total = top5.reduce((acc, r) => acc + r.views, 0);
     let cumulativePercent = 0;
     const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#93c5fd', '#bae6fd'];
     
-    return top5.map((r: any, i: number) => {
+    return top5.map((r, i) => {
       const percent = total > 0 ? (r.views / total) * 100 : 0;
       const start = cumulativePercent;
       cumulativePercent += percent;
@@ -671,22 +775,34 @@ export class UserDetailsComponent implements OnInit {
 
   leastAccessedHbars = computed(() => {
     const details = this.userDetails();
-    if (!details || !details.leastReports.length || this.filteredTotalViews() === 0) return [];
-    
-    const allTimeViews = details.historicalViews.reduce((a, b) => a + b.views, 0) || 1;
-    const ratio = this.filteredTotalViews() / allTimeViews;
-    
-    const scaledReports = details.leastReports.map(r => ({
-      ...r,
-      views: Math.max(1, Math.round(r.views * ratio))
-    }));
-    
-    const max = Math.max(...scaledReports.map((r: any) => r.views), 10);
-    return scaledReports.map((r: any) => ({
-      name: r.reportName,
-      views: r.views,
-      percent: (r.views / max) * 90 // max bar width 90%
-    }));
+    if (!details || this.filteredTotalViews() === 0) return [];
+    const dates = this.activeDates();
+
+    const reportMap = new Map<string, number>();
+
+    if (details.dailyReportAccess && details.dailyReportAccess.length) {
+      for (const r of details.dailyReportAccess) {
+        if (dates.has(r.date) && r.views > 0) {
+          reportMap.set(r.reportName, (reportMap.get(r.reportName) || 0) + r.views);
+        }
+      }
+    } else if (details.dailyPageAccess && details.dailyPageAccess.length) {
+      for (const p of details.dailyPageAccess) {
+        if (dates.has(p.date) && p.views > 0) {
+          reportMap.set(p.reportName, (reportMap.get(p.reportName) || 0) + p.views);
+        }
+      }
+    } else {
+      for (const r of details.leastReports) {
+        reportMap.set(r.reportName, r.views);
+      }
+    }
+
+    const sorted = Array.from(reportMap.entries())
+      .map(([name, views]) => ({ name, views }))
+      .sort((a, b) => a.views - b.views);
+
+    return sorted.slice(0, 5);
   });
 
   ngOnInit() {
@@ -709,6 +825,7 @@ export class UserDetailsComponent implements OnInit {
 
   selectUser(u: AllUsersStat) {
     this.selectedUser.set(u);
+    this.selectedDate.set(null);
     this.loadingDetails.set(true);
     this.api.getUserDetails(u.email).subscribe({
       next: (details) => {
@@ -725,6 +842,7 @@ export class UserDetailsComponent implements OnInit {
   clearSelected() {
     this.selectedUser.set(null);
     this.userDetails.set(null);
+    this.selectedDate.set(null);
     this.errorMsg.set('');
   }
 

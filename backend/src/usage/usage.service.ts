@@ -386,15 +386,44 @@ export class UsageService {
 
   /** Get detailed usage breakdown for a specific user */
   async getUserDetails(email: string) {
+    let workspaceMap = new Map<string, string>();
+    try {
+      const reports = await this.listUsageReports();
+      for (const r of reports) {
+        workspaceMap.set(r.groupId, r.groupName);
+      }
+    } catch {}
+
     const normalizedEmail = (email || '').toLowerCase().trim();
+
+    // 1. Exact daily view counts for the user
     const historicalViewsQuery = await this.pool.query(`
-      SELECT date, SUM(views) as views
+      SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(views) as views
       FROM usage_views_by_user
       WHERE LOWER(TRIM(email)) = $1
       GROUP BY date
       ORDER BY date ASC
     `, [normalizedEmail]);
 
+    // 2. Exact daily report access records
+    const dailyReportAccessQuery = await this.pool.query(`
+      SELECT group_id, report_name, TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(views) as views
+      FROM usage_user_report_access
+      WHERE LOWER(TRIM(email)) = $1
+      GROUP BY group_id, report_name, date
+      ORDER BY date DESC, views DESC
+    `, [normalizedEmail]);
+
+    // 3. Exact daily page tab access records
+    const dailyPageAccessQuery = await this.pool.query(`
+      SELECT group_id, report_name, page_name, TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(views) as views
+      FROM usage_user_page_access
+      WHERE LOWER(TRIM(email)) = $1
+      GROUP BY group_id, report_name, page_name, date
+      ORDER BY date DESC, views DESC
+    `, [normalizedEmail]);
+
+    // 4. All-time aggregate report access
     const reportAccessQuery = await this.pool.query(`
       SELECT report_name, SUM(views) as views, TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_user_report_access
@@ -403,6 +432,7 @@ export class UsageService {
       ORDER BY views DESC
     `, [normalizedEmail]);
 
+    // 5. All-time aggregate page access
     const pageAccessQuery = await this.pool.query(`
       SELECT page_name, report_name, SUM(views) as views, TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_user_page_access
@@ -411,14 +441,27 @@ export class UsageService {
       ORDER BY views DESC
     `, [normalizedEmail]);
 
-    const historicalViews = historicalViewsQuery.rows.map(r => {
-      const d = new Date(r.date);
-      const iso = isNaN(d.getTime()) ? String(r.date) : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-      return {
-        date: iso,
-        views: Number(r.views)
-      };
-    });
+    const historicalViews = historicalViewsQuery.rows.map(r => ({
+      date: r.date,
+      views: Number(r.views)
+    }));
+
+    const dailyReportAccess = dailyReportAccessQuery.rows.map(r => ({
+      groupId: r.group_id,
+      workspaceName: workspaceMap.get(r.group_id) || r.group_id,
+      reportName: r.report_name,
+      date: r.date,
+      views: Number(r.views)
+    }));
+
+    const dailyPageAccess = dailyPageAccessQuery.rows.map(r => ({
+      groupId: r.group_id,
+      workspaceName: workspaceMap.get(r.group_id) || r.group_id,
+      reportName: r.report_name,
+      pageName: r.page_name,
+      date: r.date,
+      views: Number(r.views)
+    }));
 
     const fallbackLastAccessed = historicalViews.length ? historicalViews[historicalViews.length - 1].date : null;
 
@@ -443,6 +486,8 @@ export class UsageService {
       historicalViews,
       reportAccess,
       pageAccess,
+      dailyReportAccess,
+      dailyPageAccess,
       totalDashboards,
       topReports,
       leastReports

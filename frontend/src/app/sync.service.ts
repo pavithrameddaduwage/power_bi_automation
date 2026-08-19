@@ -446,10 +446,29 @@ export interface AllUsersStat {
   lastAccessed: string;
 }
 
+export interface UserDailyReportAccess {
+  groupId?: string;
+  workspaceName?: string;
+  reportName: string;
+  date: string;
+  views: number;
+}
+
+export interface UserDailyPageAccess {
+  groupId?: string;
+  workspaceName?: string;
+  reportName: string;
+  pageName: string;
+  date: string;
+  views: number;
+}
+
 export interface UserDetailsBreakdown {
   historicalViews: { date: string; views: number }[];
   reportAccess: { reportName: string; views: number; lastAccessed?: string }[];
   pageAccess: { pageName: string; reportName: string; views: number; lastAccessed?: string }[];
+  dailyReportAccess?: UserDailyReportAccess[];
+  dailyPageAccess?: UserDailyPageAccess[];
   totalDashboards: number;
   topReports: { reportName: string; views: number }[];
   leastReports: { reportName: string; views: number }[];
