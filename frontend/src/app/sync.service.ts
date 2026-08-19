@@ -351,6 +351,37 @@ export class SyncApiService {
     }
     return this.http.get<any[]>(url);
   }
+
+  // ── Instant Cache for Dashboard Warm Start ──
+  getCachedGlobalStats(): GlobalDashboardStats | null {
+    try {
+      const val = localStorage.getItem('pbi_cached_global_stats');
+      return val ? JSON.parse(val) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  setCachedGlobalStats(stats: GlobalDashboardStats) {
+    try {
+      localStorage.setItem('pbi_cached_global_stats', JSON.stringify(stats));
+    } catch {}
+  }
+
+  getCachedUsageReports(): UsageReportItem[] {
+    try {
+      const val = localStorage.getItem('pbi_cached_usage_reports');
+      return val ? JSON.parse(val) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  setCachedUsageReports(reports: UsageReportItem[]) {
+    try {
+      localStorage.setItem('pbi_cached_usage_reports', JSON.stringify(reports));
+    } catch {}
+  }
 }
 
 // ── Usage Report interfaces ──────────────────────────────────────

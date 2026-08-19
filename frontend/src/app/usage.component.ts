@@ -508,6 +508,19 @@ import { ToastService } from './toast.service';
       border-bottom: 1px solid #e2e8f0; font-size: 11px;
     }
     .data-tbl td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
+
+    /* Skeleton Loading State */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .skeleton-box {
+      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 12px;
+      border: 1.5px solid #e2e8f0;
+    }
   `],
   template: `
   <div class="compact-dashboard">
@@ -530,13 +543,31 @@ import { ToastService } from './toast.service';
 
     <!-- ──────────────── GLOBAL DASHBOARD OVERVIEW ──────────────── -->
     <ng-container *ngIf="!selectedReportId()">
-      <!-- Row 1: Top 5 Meaningful KPI Cards -->
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-label">Total views</div>
-          <div class="kpi-value">{{ displayTotalViews() | number }}</div>
-          <div class="kpi-sub">Across all workspaces</div>
+      <!-- Skeleton Loading State (Only shown if totally empty and fetching for the first time) -->
+      <div *ngIf="loadingGlobal() && !globalStats()" class="skeleton-dashboard">
+        <div class="kpi-grid">
+          <div class="skeleton-box" style="height:70px;" *ngFor="let _ of [1,2,3,4,5]"></div>
         </div>
+        <div class="mid-grid" style="margin-top:14px;">
+          <div class="skeleton-box" style="height:270px;"></div>
+          <div class="skeleton-box" style="height:270px;"></div>
+        </div>
+        <div class="bot-grid" style="margin-top:14px;">
+          <div class="skeleton-box" style="height:150px;"></div>
+          <div class="skeleton-box" style="height:150px;"></div>
+          <div class="skeleton-box" style="height:150px;"></div>
+        </div>
+      </div>
+
+      <!-- Real Loaded Dashboard (Warm start: instant 0ms render) -->
+      <ng-container *ngIf="globalStats() || !loadingGlobal()">
+        <!-- Row 1: Top 5 Meaningful KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Total views</div>
+            <div class="kpi-value">{{ displayTotalViews() | number }}</div>
+            <div class="kpi-sub">Across all workspaces</div>
+          </div>
 
         <div class="kpi-card">
           <div class="kpi-label">Unique Viewers</div>
@@ -669,6 +700,7 @@ import { ToastService } from './toast.service';
           </div>
         </div>
       </div>
+      </ng-container>
     </ng-container>
 
     <!-- ──────────────── SINGLE REPORT DRILL-DOWN VIEW ──────────────── -->
@@ -831,6 +863,7 @@ export class UsageComponent implements OnInit {
   wsUsers = signal<WorkspaceUser[]>([]);
   loadingReports = signal(false);
   loadingAnalytics = signal(false);
+  loadingGlobal = signal(false);
   errorMsg = signal('');
 
   selectedGroupId = signal('');
@@ -1132,10 +1165,26 @@ export class UsageComponent implements OnInit {
   constructor(private api: SyncApiService, private toast: ToastService) {}
 
   ngOnInit(): void {
-    this.loadingReports.set(true);
+    // 1. Instant Warm Start: Render from local cache immediately (0ms lag)
+    const cachedStats = this.api.getCachedGlobalStats();
+    if (cachedStats) {
+      this.globalStats.set(cachedStats);
+    } else {
+      this.loadingGlobal.set(true);
+    }
+
+    const cachedReports = this.api.getCachedUsageReports();
+    if (cachedReports && cachedReports.length) {
+      this.allReports.set(cachedReports);
+    } else {
+      this.loadingReports.set(true);
+    }
+
+    // 2. Fetch fresh usage reports
     this.api.listUsageReports().subscribe({
       next: (reports) => {
         this.allReports.set(reports);
+        this.api.setCachedUsageReports(reports);
         this.loadingReports.set(false);
       },
       error: () => {
@@ -1143,13 +1192,25 @@ export class UsageComponent implements OnInit {
       },
     });
 
+    // 3. Silently revalidate dashboard metrics from backend
     this.loadGlobalStats();
   }
 
   loadGlobalStats(groupId?: string) {
+    if (!this.globalStats()) {
+      this.loadingGlobal.set(true);
+    }
     this.api.getGlobalDashboardStats(groupId).subscribe({
-      next: (stats) => this.globalStats.set(stats),
-      error: () => this.globalStats.set(null),
+      next: (stats) => {
+        this.globalStats.set(stats);
+        if (!groupId) {
+          this.api.setCachedGlobalStats(stats);
+        }
+        this.loadingGlobal.set(false);
+      },
+      error: () => {
+        this.loadingGlobal.set(false);
+      },
     });
   }
 
