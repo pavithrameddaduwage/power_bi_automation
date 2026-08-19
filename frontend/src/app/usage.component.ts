@@ -1081,14 +1081,21 @@ export class UsageComponent implements OnInit {
 
     for (const u of rawUsers) {
       if (activeDates.has(u.date)) {
-        const existing = userMap.get(u.email);
+        const emailKey = (u.email || '').toLowerCase().trim();
+        if (!emailKey) continue;
+        const existing = userMap.get(emailKey);
         if (existing) {
           existing.views += u.views;
+          // Prefer full names if available
+          if ((!existing.givenName || existing.givenName === existing.email) && u.givenName && u.givenName !== u.email) {
+            existing.givenName = u.givenName;
+            existing.familyName = u.familyName;
+          }
         } else {
-          userMap.set(u.email, {
+          userMap.set(emailKey, {
             givenName: u.givenName,
             familyName: u.familyName,
-            email: u.email,
+            email: emailKey,
             views: u.views,
           });
         }

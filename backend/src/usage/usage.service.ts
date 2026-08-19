@@ -156,18 +156,27 @@ export class UsageService {
       views: Number(r.views)
     }));
 
-    // 2. Top 10 Users
+    // 2. Top 10 Users (Grouped strictly by email, picking best display name)
     const topUsersQuery = await this.pool.query(`
-      SELECT email, given_name, family_name, SUM(views) as views, MAX(date) as last_accessed
+      SELECT 
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name,
+        SUM(views) as views,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_views_by_user
       ${filterClause}
-      GROUP BY email, given_name, family_name
+      GROUP BY LOWER(TRIM(email))
       ORDER BY views DESC
       LIMIT 10
     `);
     const topUsers = topUsersQuery.rows.map(r => ({
       email: r.email,
-      name: r.given_name ? `${r.given_name} ${r.family_name || ''}`.trim() : r.email,
+      name: r.name,
       views: Number(r.views),
       lastAccessed: r.last_accessed
     }));
@@ -245,16 +254,25 @@ export class UsageService {
 
     // 8. Least Accessed Users (Inactive Watchlist)
     const leastUsersQuery = await this.pool.query(`
-      SELECT email, given_name, family_name, SUM(views) as views, MAX(date) as last_accessed
+      SELECT 
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name,
+        SUM(views) as views,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_views_by_user
       ${filterClause}
-      GROUP BY email, given_name, family_name
+      GROUP BY LOWER(TRIM(email))
       ORDER BY last_accessed ASC
       LIMIT 5
     `);
     const leastUsers = leastUsersQuery.rows.map(r => ({
       email: r.email,
-      name: r.given_name ? `${r.given_name} ${r.family_name || ''}`.trim() : r.email,
+      name: r.name,
       views: Number(r.views),
       lastAccessed: r.last_accessed
     }));
@@ -343,15 +361,24 @@ export class UsageService {
   /** Get aggregated stats for all users */
   async getAllUsersStats() {
     const query = await this.pool.query(`
-      SELECT email, given_name, family_name, SUM(views) as views, MAX(date) as last_accessed
+      SELECT 
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name,
+        SUM(views) as views,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_views_by_user
-      GROUP BY email, given_name, family_name
+      GROUP BY LOWER(TRIM(email))
       ORDER BY views DESC
     `);
     
     return query.rows.map(r => ({
       email: r.email,
-      name: r.given_name ? `${r.given_name} ${r.family_name || ''}`.trim() : r.email,
+      name: r.name,
       views: Number(r.views),
       lastAccessed: r.last_accessed
     }));
@@ -359,29 +386,30 @@ export class UsageService {
 
   /** Get detailed usage breakdown for a specific user */
   async getUserDetails(email: string) {
+    const normalizedEmail = (email || '').toLowerCase().trim();
     const historicalViewsQuery = await this.pool.query(`
       SELECT date, SUM(views) as views
       FROM usage_views_by_user
-      WHERE email = $1
+      WHERE LOWER(TRIM(email)) = $1
       GROUP BY date
       ORDER BY date ASC
-    `, [email]);
+    `, [normalizedEmail]);
 
     const reportAccessQuery = await this.pool.query(`
       SELECT report_name, SUM(views) as views, TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_user_report_access
-      WHERE email = $1
+      WHERE LOWER(TRIM(email)) = $1
       GROUP BY report_name
       ORDER BY views DESC
-    `, [email]);
+    `, [normalizedEmail]);
 
     const pageAccessQuery = await this.pool.query(`
       SELECT page_name, report_name, SUM(views) as views, TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_user_page_access
-      WHERE email = $1
+      WHERE LOWER(TRIM(email)) = $1
       GROUP BY page_name, report_name
       ORDER BY views DESC
-    `, [email]);
+    `, [normalizedEmail]);
 
     const historicalViews = historicalViewsQuery.rows.map(r => {
       const d = new Date(r.date);
