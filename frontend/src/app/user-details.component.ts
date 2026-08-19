@@ -289,13 +289,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       <!-- SVG Line Chart Combo -->
       <div class="premium-card" style="margin-bottom: 24px;">
         <h3 style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; overflow: hidden; white-space: nowrap;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <span>Historical Views</span>
-            <div *ngIf="selectedDate()" style="display:flex; align-items:center; gap:6px; background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:2px 8px; border-radius:6px; font-size:11.5px; font-weight:600;">
-              <span>📅 Filtered: {{ selectedDate() | date:'mediumDate' }} ({{ selectedDayViews() | number }} views)</span>
-              <button (click)="selectedDate.set(null)" style="background:none; border:none; cursor:pointer; color:#b45309; font-weight:700; font-size:11px; padding:0 2px;" title="Clear date filter">✕ All</button>
-            </div>
-          </div>
+          <span>Historical Views</span>
           <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
             <div class="day-btns">
               <button class="day-btn" [class.active]="selectedDays() === 30 && !selectedDate()" (click)="setDaysRange(30)">1 Month</button>
@@ -305,9 +299,8 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
             <span class="badge-light" style="white-space: nowrap; flex-shrink: 0;" *ngIf="historicalDateRange()">{{ historicalDateRange() }}</span>
           </div>
         </h3>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:11px; font-weight:500; color:#64748b;">
-          <span style="font-style:italic;">💡 Click any bar to drill down to that specific day's usage</span>
-          <div style="display:flex; align-items:center; gap:6px; font-weight:600; color:#475569;"><span style="width:12px; height:12px; border-radius:3px; background:#f59e0b;"></span> Daily Views</div>
+        <div style="display:flex; justify-content:flex-end; gap:16px; margin-bottom:16px; font-size:11.5px; font-weight:600; color:#475569;">
+          <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#f59e0b;"></span> Daily Views</div>
         </div>
         
         <div style="position:relative; height: 200px; width: 100%;">
