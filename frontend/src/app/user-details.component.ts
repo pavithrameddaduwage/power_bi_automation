@@ -402,16 +402,16 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
           
           <div style="position:relative; height: 200px; width: 100%;">
             <!-- SVG Chart -->
-            <svg class="line-chart-svg" preserveAspectRatio="none" [attr.viewBox]="'0 0 1000 200'" style="width: 100%; height: 100%;">
+            <svg class="line-chart-svg" preserveAspectRatio="none" [attr.viewBox]="'0 0 1000 200'" style="width: 100%; height: 100%; overflow: visible;">
               <!-- Grid Lines (Y-Axis) -->
               <ng-container *ngFor="let y of yAxisLabels()">
-                <line class="chart-grid-line" x1="40" [attr.y1]="y.y" x2="965" [attr.y2]="y.y" />
+                <line class="chart-grid-line" x1="35" [attr.y1]="y.y" x2="975" [attr.y2]="y.y" />
                 <text class="chart-axis-text" x="0" [attr.y]="y.y + 4">{{ y.val }}</text>
               </ng-container>
 
               <!-- X-Axis Labels -->
               <ng-container *ngFor="let x of xAxisLabels()">
-                <text class="chart-axis-text" [attr.x]="x.x" y="196" text-anchor="middle">{{ x.label }}</text>
+                <text class="chart-axis-text" [attr.x]="x.x" y="190" [attr.text-anchor]="x.anchor">{{ x.label }}</text>
               </ng-container>
 
               <!-- Data Bars (Preserved Yellow #f59e0b) -->
@@ -420,15 +420,15 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
                   [attr.x]="p.x - p.halfWidth"
                   [attr.y]="p.y"
                   [attr.width]="p.barWidth"
-                  [attr.height]="Math.max(4, 180 - p.y)"
+                  [attr.height]="p.barHeight"
                   rx="4" ry="4"
-                  [style.fill]="p.isSelected ? '#d97706' : '#f59e0b'"
+                  [style.fill]="p.isSelected ? '#d97706' : (p.views > 0 ? '#f59e0b' : '#e2e8f0')"
                   [style.stroke]="p.isSelected ? '#78350f' : 'none'"
                   [style.stroke-width]="p.isSelected ? '2px' : '0'"
-                  [style.opacity]="selectedDate() && !p.isSelected ? '0.35' : '1'"
+                  [style.opacity]="selectedDate() && !p.isSelected ? (p.views > 0 ? '0.35' : '0.2') : '1'"
                   style="cursor: pointer; transition: all 0.2s;"
-                  (click)="toggleDaySelection(p.date)"
-                  (mouseenter)="showTooltip($event, (p.isSelected ? '★ Active Day: ' : '') + p.date + '\n' + p.views + ' views' + (p.isSelected ? '\n(Click to show all range)' : '\n(Click to filter details to this day)'))"
+                  (click)="p.views > 0 ? toggleDaySelection(p.date) : null"
+                  (mouseenter)="showTooltip($event, (p.isSelected ? '★ Active Day: ' : '') + p.date + '\n' + (p.views > 0 ? p.views + ' views' + (p.isSelected ? '\n(Click to show all range)' : '\n(Click to filter details to this day)') : '0 views'))"
                   (mousemove)="moveTooltip($event)"
                   (mouseleave)="hideTooltip()">
                 </rect>
@@ -962,16 +962,28 @@ export class UserDetailsComponent implements OnInit {
     const details = this.userDetails();
     if (!details || !details.historicalViews || !details.historicalViews.length) return [];
     
-    const sorted = [...details.historicalViews].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const views = details.historicalViews;
+    const map = new Map(views.map(v => [v.date, Number(v.views) || 0]));
+    
+    // Determine the latest date in the dataset
+    let maxDateStr = views[0].date;
+    for (const v of views) {
+      if (v.date > maxDateStr) maxDateStr = v.date;
+    }
+    
+    const [y, m, d] = maxDateStr.slice(0, 10).split('-').map(Number);
     const limit = this.selectedDays();
     
-    const latestDate = new Date(sorted[sorted.length - 1].date);
-    const cutoffDate = new Date(latestDate);
-    cutoffDate.setDate(cutoffDate.getDate() - limit);
-    cutoffDate.setHours(0, 0, 0, 0);
-    
-    const filtered = sorted.filter(d => new Date(d.date) >= cutoffDate);
-    return filtered.length ? filtered : sorted;
+    const result = [];
+    for (let i = limit - 1; i >= 0; i--) {
+      const cur = new Date(Date.UTC(y, m - 1, d - i));
+      const curStr = cur.toISOString().slice(0, 10);
+      result.push({
+        date: curStr,
+        views: map.get(curStr) || 0
+      });
+    }
+    return result;
   });
 
   activeDates = computed<Set<string>>(() => {
@@ -1166,6 +1178,19 @@ export class UserDetailsComponent implements OnInit {
     return `${first.toLocaleDateString('en-US', opts)} — ${last.toLocaleDateString('en-US', opts)}`;
   });
 
+  formatDateLabel(dateStr: string): string {
+    if (!dateStr) return '';
+    const clean = dateStr.slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      return `${month}/${day}`;
+    }
+    const d = new Date(dateStr);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  }
+
   yAxisLabels = computed(() => {
     const views = this.historicalFilteredViews();
     if (!views.length) return [];
@@ -1173,7 +1198,7 @@ export class UserDetailsComponent implements OnInit {
     const labels = [];
     for (let i = 0; i <= 4; i++) {
       const val = Math.round(maxViews - (i / 4) * maxViews);
-      const y = 20 + (i / 4) * 160;
+      const y = 20 + (i / 4) * 145;
       labels.push({ val, y });
     }
     return labels;
@@ -1186,15 +1211,22 @@ export class UserDetailsComponent implements OnInit {
     const count = Math.min(5, pts.length);
     if (count === 1) {
       const p = pts[0];
-      const d = new Date(p.date);
-      labels.push({ x: p.x, label: `${d.getMonth() + 1}/${d.getDate()}` });
+      labels.push({ x: p.x, label: this.formatDateLabel(p.date), anchor: 'middle' });
       return labels;
     }
     for (let i = 0; i < count; i++) {
       const index = Math.floor((i / (count - 1)) * (pts.length - 1));
       const p = pts[index];
-      const d = new Date(p.date);
-      labels.push({ x: p.x, label: `${d.getMonth() + 1}/${d.getDate()}` });
+      let anchor = 'middle';
+      let x = p.x;
+      if (i === 0) {
+        anchor = 'start';
+        x = Math.max(35, p.x - p.halfWidth);
+      } else if (i === count - 1) {
+        anchor = 'end';
+        x = Math.min(975, p.x + p.halfWidth + 4);
+      }
+      labels.push({ x, label: this.formatDateLabel(p.date), anchor });
     }
     return labels;
   });
@@ -1205,7 +1237,7 @@ export class UserDetailsComponent implements OnInit {
     
     const maxViews = Math.max(...views.map(d => d.views), 10);
     const width = 1000;
-    const height = 180;
+    const baseHeight = 168;
     const paddingLeft = 45;
     const paddingRight = 45;
     const availableWidth = width - paddingLeft - paddingRight;
@@ -1215,10 +1247,12 @@ export class UserDetailsComponent implements OnInit {
     
     return views.map((d, i, arr) => {
       const x = paddingLeft + (i / Math.max(1, arr.length - 1)) * availableWidth;
-      const y = height - (d.views / maxViews) * height;
+      const barHeight = d.views > 0 ? Math.max(5, (d.views / maxViews) * 145) : 2.5;
+      const y = baseHeight - barHeight;
       return {
         x,
         y,
+        barHeight,
         views: d.views,
         date: d.date,
         barWidth,
