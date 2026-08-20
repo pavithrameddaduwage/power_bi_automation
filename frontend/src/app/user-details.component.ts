@@ -1069,35 +1069,35 @@ export class UserDetailsComponent implements OnInit {
     let list: { pageName: string; reportName: string; views: number; lastAccessed?: string }[] = [];
 
     if (details.dailyPageAccess && details.dailyPageAccess.length) {
-      const pageMap = new Map<string, { pageName: string; reportName: string; views: number; dates: string[] }>();
+      const pageMap = new Map<string, { pageName: string; reportName: string; views: number; lastAccessed: string }>();
       for (const p of details.dailyPageAccess) {
         if (dates.has(p.date) && p.views > 0) {
           const key = `${p.pageName}:::${p.reportName}`;
           const existing = pageMap.get(key);
           if (existing) {
-            existing.views += p.views;
-            existing.dates.push(p.date);
+            if (p.date && p.date > existing.lastAccessed) {
+              existing.lastAccessed = p.date;
+              existing.views = p.views;
+            } else if (p.date === existing.lastAccessed) {
+              existing.views += p.views;
+            }
           } else {
             pageMap.set(key, {
               pageName: p.pageName,
               reportName: p.reportName,
               views: p.views,
-              dates: [p.date]
+              lastAccessed: p.date
             });
           }
         }
       }
 
-      list = Array.from(pageMap.values()).map(p => {
-        p.dates.sort();
-        const last = p.dates[p.dates.length - 1];
-        return {
-          pageName: p.pageName,
-          reportName: p.reportName,
-          views: p.views,
-          lastAccessed: last
-        };
-      });
+      list = Array.from(pageMap.values()).map(p => ({
+        pageName: p.pageName,
+        reportName: p.reportName,
+        views: p.views,
+        lastAccessed: p.lastAccessed
+      }));
     } else {
       list = details.pageAccess.map(p => ({ ...p }));
     }
@@ -1109,8 +1109,7 @@ export class UserDetailsComponent implements OnInit {
         let matchesDate = false;
         if (p.lastAccessed) {
           const raw = String(p.lastAccessed).toLowerCase();
-          const d = new Date(p.lastAccessed);
-          const formatted = isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+          const formatted = this.formatAccessDate(p.lastAccessed).toLowerCase();
           matchesDate = raw.includes(q) || formatted.includes(q);
         }
         return matchesName || matchesDate;

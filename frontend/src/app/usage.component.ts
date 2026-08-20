@@ -925,9 +925,11 @@ export class UsageComponent implements OnInit {
         const key = `${a.reportName}|${a.pageName}`;
         const existing = map.get(key);
         if (existing) {
-          existing.views += a.views;
-          if (a.date && (!existing.lastAccessed || a.date > existing.lastAccessed)) {
+          if (a.date && a.date > existing.lastAccessed) {
             existing.lastAccessed = a.date;
+            existing.views = a.views;
+          } else if (a.date === existing.lastAccessed) {
+            existing.views += a.views;
           }
         } else {
           map.set(key, {
@@ -948,9 +950,11 @@ export class UsageComponent implements OnInit {
           const key = `${a.reportName}|${a.reportName}`;
           const existing = map.get(key);
           if (existing) {
-            existing.views += a.views;
-            if (a.date && (!existing.lastAccessed || a.date > existing.lastAccessed)) {
+            if (a.date && a.date > existing.lastAccessed) {
               existing.lastAccessed = a.date;
+              existing.views = a.views;
+            } else if (a.date === existing.lastAccessed) {
+              existing.views += a.views;
             }
           } else {
             map.set(key, {
