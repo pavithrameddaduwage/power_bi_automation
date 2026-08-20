@@ -325,7 +325,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
             <td style="text-align:right;">
               <span class="badge-pastel-blue">{{ u.views | number }}</span>
             </td>
-            <td style="text-align:right; color:#64748b; font-size:11.5px; padding-right:24px;">{{ u.lastAccessed | date:'mediumDate' }}</td>
+            <td style="text-align:right; color:#64748b; font-size:11.5px; padding-right:24px;">{{ formatAccessDate(u.lastAccessed) }}</td>
           </tr>
         </tbody>
       </table>
@@ -376,7 +376,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
             <div class="sum-label">Last Accessed</div>
             <div class="sum-val" style="font-size: 22px; padding-top: 4px;">
               <ng-container *ngIf="filteredLastAccessed(); else noAccess">
-                {{ filteredLastAccessed() | date:'mediumDate' }}
+                {{ formatAccessDate(filteredLastAccessed()) }}
               </ng-container>
               <ng-template #noAccess>N/A</ng-template>
             </div>
@@ -1392,13 +1392,21 @@ export class UserDetailsComponent implements OnInit {
 
   formatAccessDate(val?: string | null): string {
     if (!val) {
-      const fallback = this.filteredLastAccessed();
-      if (!fallback) return 'N/A';
-      return new Date(fallback).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      val = this.filteredLastAccessed();
+      if (!val) return 'N/A';
     }
-    const d = new Date(val);
-    if (isNaN(d.getTime())) return String(val);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const clean = String(val).trim().slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      if (month >= 1 && month <= 12 && !isNaN(day) && !isNaN(year)) {
+        return `${months[month - 1]} ${day}, ${year}`;
+      }
+    }
+    return String(val);
   }
 
   getUserAvatarStyle(name?: string, index: number = 0): { bg: string; color: string } {

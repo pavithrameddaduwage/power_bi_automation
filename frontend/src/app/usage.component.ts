@@ -839,7 +839,7 @@ import { ToastService } from './toast.service';
                     <td>{{ p.reportName }}</td>
                     <td><strong style="color:#0f172a;">{{ p.pageName }}</strong></td>
                     <td style="text-align:right; font-weight:700; color:#2563eb;">{{ p.views | number }}</td>
-                    <td style="text-align:right; color:#64748b; font-size:11px;">{{ p.lastAccessed | date:'mediumDate' }}</td>
+                    <td style="text-align:right; color:#64748b; font-size:11px;">{{ formatAccessDate(p.lastAccessed) }}</td>
                   </tr>
                   <tr *ngIf="!selectedUserPageList().length">
                     <td colspan="5" style="text-align:center; color:#94a3b8; padding:15px;">No detailed page access recorded for this user in this workspace.</td>
@@ -1279,5 +1279,21 @@ export class UsageComponent implements OnInit {
         this.errorMsg.set('Failed to load analytics: ' + (e?.message ?? 'error'));
       },
     });
+  }
+
+  formatAccessDate(val?: string | null): string {
+    if (!val) return 'N/A';
+    const clean = String(val).trim().slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      if (month >= 1 && month <= 12 && !isNaN(day) && !isNaN(year)) {
+        return `${months[month - 1]} ${day}, ${year}`;
+      }
+    }
+    return String(val);
   }
 }
