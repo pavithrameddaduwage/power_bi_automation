@@ -131,6 +131,8 @@ export class UsageService {
 
   /** Fetch global dashboard metrics and stats from PG database */
   async getGlobalDashboardStats(filterGroupId?: string) {
+    await this.ensureTablesExist();
+
     // Helper to extract workspace display names mapping from listUsageReports
     let workspaceMap = new Map<string, string>();
     try {
@@ -141,18 +143,17 @@ export class UsageService {
     } catch {}
 
     const filterClause = filterGroupId ? `WHERE group_id = '${filterGroupId}'` : '';
-    const filterAndClause = filterGroupId ? `AND group_id = '${filterGroupId}'` : '';
 
     // 1. Top 10 Workspaces
     const topWorkspacesQuery = await this.pool.query(`
-      SELECT group_id, SUM(views) as views
-      FROM usage_views_by_day
+      SELECT group_id, COALESCE(MAX(group_name), '') as group_name, SUM(views) as views
+      FROM usage_user_activity
       GROUP BY group_id
       ORDER BY views DESC
       LIMIT 10
     `);
     const topWorkspaces = topWorkspacesQuery.rows.map(r => ({
-      name: workspaceMap.get(r.group_id) || r.group_id,
+      name: workspaceMap.get(r.group_id) || (r.group_name && r.group_name.trim() !== '' ? r.group_name : r.group_id),
       views: Number(r.views)
     }));
 
@@ -168,7 +169,7 @@ export class UsageService {
         ) as name,
         SUM(views) as views,
         TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
-      FROM usage_views_by_user
+      FROM usage_user_activity
       ${filterClause}
       GROUP BY LOWER(TRIM(email))
       ORDER BY views DESC
@@ -184,7 +185,7 @@ export class UsageService {
     // 3. Top Reports / Dashboards
     const topReportsQuery = await this.pool.query(`
       SELECT report_name, SUM(views) as views
-      FROM usage_views_by_report
+      FROM usage_user_activity
       ${filterClause}
       GROUP BY report_name
       ORDER BY views DESC
@@ -198,7 +199,7 @@ export class UsageService {
     // 4. Top Pages
     const topPagesQuery = await this.pool.query(`
       SELECT page_name, report_name, SUM(views) as views
-      FROM usage_views_by_page
+      FROM usage_user_activity
       ${filterClause}
       GROUP BY page_name, report_name
       ORDER BY views DESC
@@ -212,21 +213,21 @@ export class UsageService {
 
     // 5. Least Used Workspace
     const leastWorkspacesQuery = await this.pool.query(`
-      SELECT group_id, SUM(views) as views
-      FROM usage_views_by_day
+      SELECT group_id, COALESCE(MAX(group_name), '') as group_name, SUM(views) as views
+      FROM usage_user_activity
       GROUP BY group_id
       ORDER BY views ASC
       LIMIT 5
     `);
     const leastWorkspaces = leastWorkspacesQuery.rows.map(r => ({
-      name: workspaceMap.get(r.group_id) || r.group_id,
+      name: workspaceMap.get(r.group_id) || (r.group_name && r.group_name.trim() !== '' ? r.group_name : r.group_id),
       views: Number(r.views)
     }));
 
     // 6. Least Used Reports
     const leastReportsQuery = await this.pool.query(`
       SELECT report_name, SUM(views) as views
-      FROM usage_views_by_report
+      FROM usage_user_activity
       ${filterClause}
       GROUP BY report_name
       ORDER BY views ASC
@@ -240,7 +241,7 @@ export class UsageService {
     // 7. Least Used Pages
     const leastPagesQuery = await this.pool.query(`
       SELECT page_name, report_name, SUM(views) as views
-      FROM usage_views_by_page
+      FROM usage_user_activity
       ${filterClause}
       GROUP BY page_name, report_name
       ORDER BY views ASC
@@ -264,7 +265,7 @@ export class UsageService {
         ) as name,
         SUM(views) as views,
         TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
-      FROM usage_views_by_user
+      FROM usage_user_activity
       ${filterClause}
       GROUP BY LOWER(TRIM(email))
       ORDER BY last_accessed ASC
@@ -286,28 +287,28 @@ export class UsageService {
     try {
       const totalViewsQuery = await this.pool.query(`
         SELECT COALESCE(SUM(views), 0) as views
-        FROM usage_views_by_day
+        FROM usage_user_activity
         ${filterClause}
       `);
       totalViews = Number(totalViewsQuery.rows[0]?.views || 0);
 
       const viewersQuery = await this.pool.query(`
-        SELECT COUNT(DISTINCT email) as count
-        FROM usage_views_by_user
+        SELECT COUNT(DISTINCT LOWER(TRIM(email))) as count
+        FROM usage_user_activity
         ${filterClause}
       `);
       totalViewers = Number(viewersQuery.rows[0]?.count || 0);
 
       const reportsQuery = await this.pool.query(`
         SELECT COUNT(DISTINCT report_name) as count
-        FROM usage_views_by_report
+        FROM usage_user_activity
         ${filterClause}
       `);
       totalReportsCount = Number(reportsQuery.rows[0]?.count || 0);
 
       const wsQuery = await this.pool.query(`
         SELECT COUNT(DISTINCT group_id) as count
-        FROM usage_views_by_day
+        FROM usage_user_activity
       `);
       totalWorkspacesCount = Number(wsQuery.rows[0]?.count || 0);
     } catch {}
@@ -336,18 +337,20 @@ export class UsageService {
       leastUsers
     };
   }
+
   async getRawUserReportAccess(groupId?: string) {
+    await this.ensureTablesExist();
     try {
       let query = `
-        SELECT date, group_id as "Workspace Name", report_name as "Report Name", email as "User Email", views as "Views"
-        FROM usage_user_report_access
+        SELECT date, COALESCE(NULLIF(group_name, ''), group_id) as "Workspace Name", report_name as "Report Name", page_name as "Page Name", email as "User Email", views as "Views"
+        FROM usage_user_activity
       `;
       const params = [];
       if (groupId) {
         query += ` WHERE group_id = $1`;
         params.push(groupId);
       }
-      query += ` ORDER BY date DESC, "Report Name" ASC, "User Email" ASC`;
+      query += ` ORDER BY date DESC, report_name ASC, email ASC`;
 
       const result = await this.pool.query(query, params);
       return result.rows;
@@ -357,9 +360,9 @@ export class UsageService {
     }
   }
 
-
   /** Get aggregated stats for all users */
   async getAllUsersStats() {
+    await this.ensureTablesExist();
     const query = await this.pool.query(`
       SELECT 
         LOWER(TRIM(email)) as email,
@@ -371,7 +374,7 @@ export class UsageService {
         ) as name,
         SUM(views) as views,
         TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
-      FROM usage_views_by_user
+      FROM usage_user_activity
       GROUP BY LOWER(TRIM(email))
       ORDER BY views DESC
     `);
@@ -386,6 +389,7 @@ export class UsageService {
 
   /** Get detailed usage breakdown for a specific user */
   async getUserDetails(email: string) {
+    await this.ensureTablesExist();
     let workspaceMap = new Map<string, string>();
     try {
       const reports = await this.listUsageReports();
@@ -399,7 +403,7 @@ export class UsageService {
     // 1. Exact daily view counts for the user
     const historicalViewsQuery = await this.pool.query(`
       SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(views) as views
-      FROM usage_views_by_user
+      FROM usage_user_activity
       WHERE LOWER(TRIM(email)) = $1
       GROUP BY date
       ORDER BY date ASC
@@ -407,8 +411,8 @@ export class UsageService {
 
     // 2. Exact daily report access records
     const dailyReportAccessQuery = await this.pool.query(`
-      SELECT group_id, report_name, TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(views) as views
-      FROM usage_user_report_access
+      SELECT group_id, COALESCE(MAX(group_name), '') as group_name, report_name, TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(views) as views
+      FROM usage_user_activity
       WHERE LOWER(TRIM(email)) = $1
       GROUP BY group_id, report_name, date
       ORDER BY date DESC, views DESC
@@ -416,8 +420,8 @@ export class UsageService {
 
     // 3. Exact daily page tab access records
     const dailyPageAccessQuery = await this.pool.query(`
-      SELECT group_id, report_name, page_name, TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(views) as views
-      FROM usage_user_page_access
+      SELECT group_id, COALESCE(MAX(group_name), '') as group_name, report_name, page_name, TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(views) as views
+      FROM usage_user_activity
       WHERE LOWER(TRIM(email)) = $1
       GROUP BY group_id, report_name, page_name, date
       ORDER BY date DESC, views DESC
@@ -426,7 +430,7 @@ export class UsageService {
     // 4. All-time aggregate report access
     const reportAccessQuery = await this.pool.query(`
       SELECT report_name, SUM(views) as views, TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
-      FROM usage_user_report_access
+      FROM usage_user_activity
       WHERE LOWER(TRIM(email)) = $1
       GROUP BY report_name
       ORDER BY views DESC
@@ -435,7 +439,7 @@ export class UsageService {
     // 5. All-time aggregate page access
     const pageAccessQuery = await this.pool.query(`
       SELECT page_name, report_name, SUM(views) as views, TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
-      FROM usage_user_page_access
+      FROM usage_user_activity
       WHERE LOWER(TRIM(email)) = $1
       GROUP BY page_name, report_name
       ORDER BY views DESC
@@ -448,7 +452,7 @@ export class UsageService {
 
     const dailyReportAccess = dailyReportAccessQuery.rows.map(r => ({
       groupId: r.group_id,
-      workspaceName: workspaceMap.get(r.group_id) || r.group_id,
+      workspaceName: workspaceMap.get(r.group_id) || (r.group_name && r.group_name.trim() !== '' ? r.group_name : r.group_id),
       reportName: r.report_name,
       date: r.date,
       views: Number(r.views)
@@ -456,7 +460,7 @@ export class UsageService {
 
     const dailyPageAccess = dailyPageAccessQuery.rows.map(r => ({
       groupId: r.group_id,
-      workspaceName: workspaceMap.get(r.group_id) || r.group_id,
+      workspaceName: workspaceMap.get(r.group_id) || (r.group_name && r.group_name.trim() !== '' ? r.group_name : r.group_id),
       reportName: r.report_name,
       pageName: r.page_name,
       date: r.date,
@@ -811,6 +815,76 @@ export class UsageService {
     };
   }
 
+  private async ensureTablesExist() {
+    await this.pool.query(`
+      CREATE TABLE IF NOT EXISTS usage_user_activity (
+        id bigserial PRIMARY KEY,
+        group_id text NOT NULL,
+        group_name text DEFAULT '',
+        dataset_id text NOT NULL,
+        email text NOT NULL,
+        given_name text DEFAULT '',
+        family_name text DEFAULT '',
+        report_name text NOT NULL DEFAULT 'Unknown',
+        page_name text NOT NULL DEFAULT 'Unknown',
+        date date NOT NULL,
+        views integer NOT NULL DEFAULT 1,
+        platform text DEFAULT '',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (group_id, dataset_id, email, report_name, page_name, date)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_usage_user_activity_email ON usage_user_activity (email);
+      CREATE INDEX IF NOT EXISTS idx_usage_user_activity_group_id ON usage_user_activity (group_id);
+      CREATE INDEX IF NOT EXISTS idx_usage_user_activity_date ON usage_user_activity (date);
+      CREATE INDEX IF NOT EXISTS idx_usage_user_activity_report_name ON usage_user_activity (report_name);
+    `);
+
+    // Auto-migrate from legacy tables if they exist
+    try {
+      await this.pool.query(`
+        DO $$
+        BEGIN
+          -- 1. Migrate from usage_user_page_access
+          IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'usage_user_page_access') THEN
+            INSERT INTO usage_user_activity (group_id, dataset_id, email, given_name, family_name, report_name, page_name, date, views, updated_at)
+            SELECT group_id, dataset_id, email, given_name, family_name, report_name, page_name, date, views, now()
+            FROM usage_user_page_access
+            ON CONFLICT (group_id, dataset_id, email, report_name, page_name, date)
+            DO UPDATE SET
+              views = EXCLUDED.views,
+              given_name = COALESCE(NULLIF(EXCLUDED.given_name, ''), usage_user_activity.given_name),
+              family_name = COALESCE(NULLIF(EXCLUDED.family_name, ''), usage_user_activity.family_name),
+              updated_at = now();
+          END IF;
+
+          -- 2. Migrate from usage_user_report_access
+          IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'usage_user_report_access') THEN
+            INSERT INTO usage_user_activity (group_id, dataset_id, email, given_name, family_name, report_name, page_name, date, views, updated_at)
+            SELECT group_id, dataset_id, email, given_name, family_name, report_name, report_name, date, views, now()
+            FROM usage_user_report_access
+            ON CONFLICT (group_id, dataset_id, email, report_name, page_name, date)
+            DO UPDATE SET
+              views = EXCLUDED.views,
+              updated_at = now();
+          END IF;
+
+          -- 3. Migrate from usage_views_by_user
+          IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'usage_views_by_user') THEN
+            INSERT INTO usage_user_activity (group_id, dataset_id, email, given_name, family_name, report_name, page_name, date, views, updated_at)
+            SELECT group_id, dataset_id, email, given_name, family_name, 'General Usage', 'Overview', date, views, now()
+            FROM usage_views_by_user
+            ON CONFLICT (group_id, dataset_id, email, report_name, page_name, date)
+            DO NOTHING;
+          END IF;
+        END $$;
+      `);
+    } catch (migErr: any) {
+      this.logger.warn(`Legacy migration skipped or completed: ${migErr?.message || migErr}`);
+    }
+  }
+
   private async saveHistoricalUsageData(
     groupId: string,
     datasetId: string,
@@ -823,142 +897,126 @@ export class UsageService {
       userPageAccess: UserPageAccess[];
     }
   ) {
-    // 1. Ensure historical storage tables exist in Postgres
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS usage_views_by_day (
-        group_id text NOT NULL,
-        dataset_id text NOT NULL,
-        date date NOT NULL,
-        views integer NOT NULL,
-        PRIMARY KEY (group_id, dataset_id, date)
-      );
-    `);
+    // 1. Ensure the single unified table exists
+    await this.ensureTablesExist();
 
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS usage_views_by_user (
-        group_id text NOT NULL,
-        dataset_id text NOT NULL,
-        email text NOT NULL,
-        given_name text,
-        family_name text,
-        date date NOT NULL,
-        views integer NOT NULL,
-        PRIMARY KEY (group_id, dataset_id, email, date)
-      );
-    `);
+    // Map workspace name if available
+    let workspaceName = '';
+    try {
+      const reports = await this.listUsageReports();
+      const match = reports.find(r => r.groupId === groupId);
+      if (match) workspaceName = match.groupName;
+    } catch {}
 
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS usage_views_by_report (
-        group_id text NOT NULL,
-        dataset_id text NOT NULL,
-        report_name text NOT NULL,
-        date date NOT NULL,
-        views integer NOT NULL,
-        PRIMARY KEY (group_id, dataset_id, report_name, date)
-      );
-    `);
+    // Prepare consolidated entries for usage_user_activity
+    const userActivityMap = new Map<string, {
+      groupId: string;
+      groupName: string;
+      datasetId: string;
+      email: string;
+      givenName: string;
+      familyName: string;
+      reportName: string;
+      pageName: string;
+      date: string;
+      views: number;
+    }>();
 
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS usage_views_by_page (
-        group_id text NOT NULL,
-        dataset_id text NOT NULL,
-        page_name text NOT NULL,
-        report_name text NOT NULL,
-        date date NOT NULL,
-        views integer NOT NULL,
-        PRIMARY KEY (group_id, dataset_id, page_name, report_name, date)
-      );
-    `);
-
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS usage_user_report_access (
-        group_id text NOT NULL,
-        dataset_id text NOT NULL,
-        email text NOT NULL,
-        given_name text,
-        family_name text,
-        report_name text NOT NULL,
-        date date NOT NULL,
-        views integer NOT NULL,
-        PRIMARY KEY (group_id, dataset_id, email, report_name, date)
-      );
-    `);
-
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS usage_user_page_access (
-        group_id text NOT NULL,
-        dataset_id text NOT NULL,
-        email text NOT NULL,
-        given_name text,
-        family_name text,
-        report_name text NOT NULL,
-        page_name text NOT NULL,
-        date date NOT NULL,
-        views integer NOT NULL,
-        PRIMARY KEY (group_id, dataset_id, email, report_name, page_name, date)
-      );
-    `);
-
-    // 2. Perform Batch Upserts for viewsByDay
-    for (const d of data.viewsByDay) {
-      await this.pool.query(`
-        INSERT INTO usage_views_by_day (group_id, dataset_id, date, views)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (group_id, dataset_id, date)
-        DO UPDATE SET views = EXCLUDED.views;
-      `, [groupId, datasetId, d.date, d.views]);
-    }
-
-    // 3. Perform Batch Upserts for viewsByUser
-    for (const u of data.viewsByUser) {
-      await this.pool.query(`
-        INSERT INTO usage_views_by_user (group_id, dataset_id, email, given_name, family_name, date, views)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT (group_id, dataset_id, email, date)
-        DO UPDATE SET views = EXCLUDED.views, given_name = EXCLUDED.given_name, family_name = EXCLUDED.family_name;
-      `, [groupId, datasetId, u.email, u.givenName, u.familyName, u.date, u.views]);
-    }
-
-    // 4. Perform Batch Upserts for reportViews
-    for (const r of data.reportViews) {
-      await this.pool.query(`
-        INSERT INTO usage_views_by_report (group_id, dataset_id, report_name, date, views)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (group_id, dataset_id, report_name, date)
-        DO UPDATE SET views = EXCLUDED.views;
-      `, [groupId, datasetId, r.reportName, r.date, r.views]);
-    }
-
-    // 5. Perform Batch Upserts for pageViews
-    for (const p of data.pageViews) {
-      await this.pool.query(`
-        INSERT INTO usage_views_by_page (group_id, dataset_id, page_name, report_name, date, views)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (group_id, dataset_id, page_name, report_name, date)
-        DO UPDATE SET views = EXCLUDED.views;
-      `, [groupId, datasetId, p.pageName, p.reportName, p.date, p.views]);
-    }
-
-    // 6. Perform Batch Upserts for userReportAccess
-    for (const a of data.userReportAccess) {
-      await this.pool.query(`
-        INSERT INTO usage_user_report_access (group_id, dataset_id, email, given_name, family_name, report_name, date, views)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ON CONFLICT (group_id, dataset_id, email, report_name, date)
-        DO UPDATE SET views = EXCLUDED.views, given_name = EXCLUDED.given_name, family_name = EXCLUDED.family_name;
-      `, [groupId, datasetId, a.email, a.givenName, a.familyName, a.reportName, a.date, a.views]);
-    }
-
-    // 7. Perform Batch Upserts for userPageAccess
+    // 1. Ingest detailed userPageAccess
     for (const a of data.userPageAccess) {
-      await this.pool.query(`
-        INSERT INTO usage_user_page_access (group_id, dataset_id, email, given_name, family_name, report_name, page_name, date, views)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        ON CONFLICT (group_id, dataset_id, email, report_name, page_name, date)
-        DO UPDATE SET views = EXCLUDED.views, given_name = EXCLUDED.given_name, family_name = EXCLUDED.family_name;
-      `, [groupId, datasetId, a.email, a.givenName, a.familyName, a.reportName, a.pageName, a.date, a.views]);
+      if (!a.email || !a.date) continue;
+      const key = `${groupId}|${datasetId}|${a.email.toLowerCase().trim()}|${a.reportName || 'Unknown'}|${a.pageName || 'Unknown'}|${a.date}`;
+      userActivityMap.set(key, {
+        groupId,
+        groupName: workspaceName,
+        datasetId,
+        email: a.email.toLowerCase().trim(),
+        givenName: a.givenName || '',
+        familyName: a.familyName || '',
+        reportName: a.reportName || 'Unknown',
+        pageName: a.pageName || 'Unknown',
+        date: a.date,
+        views: a.views || 1,
+      });
     }
 
-    this.logger.log(`Successfully persisted historical usage dataset ${datasetId} to Postgres.`);
+    // 2. Ingest userReportAccess (if not already captured in userPageAccess)
+    for (const r of data.userReportAccess) {
+      if (!r.email || !r.date) continue;
+      const email = r.email.toLowerCase().trim();
+      const reportName = r.reportName || 'Unknown';
+      const prefix = `${groupId}|${datasetId}|${email}|${reportName}|`;
+      const hasPageEntry = Array.from(userActivityMap.keys()).some(k => k.startsWith(prefix) && k.endsWith(`|${r.date}`));
+      if (!hasPageEntry) {
+        const key = `${groupId}|${datasetId}|${email}|${reportName}|${reportName}|${r.date}`;
+        userActivityMap.set(key, {
+          groupId,
+          groupName: workspaceName,
+          datasetId,
+          email,
+          givenName: r.givenName || '',
+          familyName: r.familyName || '',
+          reportName,
+          pageName: reportName,
+          date: r.date,
+          views: r.views || 1,
+        });
+      }
+    }
+
+    // 3. Ingest viewsByUser (if user+date not captured above)
+    for (const u of data.viewsByUser) {
+      if (!u.email || !u.date) continue;
+      const email = u.email.toLowerCase().trim();
+      const prefix = `${groupId}|${datasetId}|${email}|`;
+      const hasAnyEntry = Array.from(userActivityMap.keys()).some(k => k.startsWith(prefix) && k.endsWith(`|${u.date}`));
+      if (!hasAnyEntry) {
+        const key = `${groupId}|${datasetId}|${email}|General Usage|Overview|${u.date}`;
+        userActivityMap.set(key, {
+          groupId,
+          groupName: workspaceName,
+          datasetId,
+          email,
+          givenName: u.givenName || '',
+          familyName: u.familyName || '',
+          reportName: 'General Usage',
+          pageName: 'Overview',
+          date: u.date,
+          views: u.views || 1,
+        });
+      }
+    }
+
+    // 4. Batch UPSERT into usage_user_activity
+    const records = Array.from(userActivityMap.values());
+    for (const item of records) {
+      await this.pool.query(`
+        INSERT INTO usage_user_activity (
+          group_id, group_name, dataset_id, email, given_name, family_name,
+          report_name, page_name, date, views, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+        ON CONFLICT (group_id, dataset_id, email, report_name, page_name, date)
+        DO UPDATE SET
+          views = EXCLUDED.views,
+          given_name = COALESCE(NULLIF(EXCLUDED.given_name, ''), usage_user_activity.given_name),
+          family_name = COALESCE(NULLIF(EXCLUDED.family_name, ''), usage_user_activity.family_name),
+          group_name = COALESCE(NULLIF(EXCLUDED.group_name, ''), usage_user_activity.group_name),
+          updated_at = now();
+      `, [
+        item.groupId,
+        item.groupName,
+        item.datasetId,
+        item.email,
+        item.givenName,
+        item.familyName,
+        item.reportName,
+        item.pageName,
+        item.date,
+        item.views
+      ]);
+    }
+
+    this.logger.log(`Successfully persisted ${records.length} activity records to unified table usage_user_activity for dataset ${datasetId}.`);
   }
 }
