@@ -405,7 +405,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
             <svg class="line-chart-svg" preserveAspectRatio="none" [attr.viewBox]="'0 0 1000 200'" style="width: 100%; height: 100%;">
               <!-- Grid Lines (Y-Axis) -->
               <ng-container *ngFor="let y of yAxisLabels()">
-                <line class="chart-grid-line" x1="40" [attr.y1]="y.y" x2="1000" [attr.y2]="y.y" />
+                <line class="chart-grid-line" x1="40" [attr.y1]="y.y" x2="965" [attr.y2]="y.y" />
                 <text class="chart-axis-text" x="0" [attr.y]="y.y + 4">{{ y.val }}</text>
               </ng-container>
 
@@ -417,9 +417,9 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
               <!-- Data Bars (Preserved Yellow #f59e0b) -->
               <ng-container *ngFor="let p of chartPoints()">
                 <rect class="chart-bar animate-chart-bar"
-                  [attr.x]="p.x - 11"
+                  [attr.x]="p.x - p.halfWidth"
                   [attr.y]="p.y"
-                  width="22"
+                  [attr.width]="p.barWidth"
                   [attr.height]="Math.max(4, 180 - p.y)"
                   rx="4" ry="4"
                   [style.fill]="p.isSelected ? '#d97706' : '#f59e0b'"
@@ -1206,17 +1206,23 @@ export class UserDetailsComponent implements OnInit {
     const maxViews = Math.max(...views.map(d => d.views), 10);
     const width = 1000;
     const height = 180;
-    const paddingX = 40;
+    const paddingLeft = 45;
+    const paddingRight = 45;
+    const availableWidth = width - paddingLeft - paddingRight;
     const selDate = this.selectedDate();
+    const barWidth = views.length <= 35 ? 18 : (views.length <= 65 ? 10 : 6);
+    const halfWidth = barWidth / 2;
     
     return views.map((d, i, arr) => {
-      const x = paddingX + (i / Math.max(1, arr.length - 1)) * (width - paddingX);
+      const x = paddingLeft + (i / Math.max(1, arr.length - 1)) * availableWidth;
       const y = height - (d.views / maxViews) * height;
       return {
         x,
         y,
         views: d.views,
         date: d.date,
+        barWidth,
+        halfWidth,
         isSelected: d.date === selDate
       };
     });
