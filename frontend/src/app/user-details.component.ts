@@ -24,92 +24,101 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
     }
     :host { display: block; }
     .page-header { margin-bottom: 24px; }
-    .page-header h1 { font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 4px 0; }
-    .page-header p  { font-size: 11px; color: #000000; margin: 0; }
+    .page-header h1 { font-size: 22px; font-weight: 700; color: #1e293b; margin: 0 0 4px 0; }
+    .page-header p  { font-size: 12px; color: #64748b; margin: 0; }
 
-    /* Premium Header */
+    /* Light Pastel Header */
     .profile-header {
-      background: white;
-      border: 1.5px solid #3b82f6;
-      border-radius: 12px;
-      padding: 24px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 20px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       color: #0f172a;
       margin-bottom: 24px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.03);
     }
     .profile-info { display: flex; align-items: center; gap: 16px; }
     .avatar {
-      width: 48px; height: 48px; border-radius: 8px;
-      background: #3b82f6; display: flex; align-items: center; justify-content: center;
-      font-size: 18px; font-weight: 700; color: white;
-      box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 700;
+      box-shadow: none;
     }
-    .profile-name { font-size: 18px; font-weight: 700; margin: 0; line-height: 1.2; color: #0f172a;}
-    .profile-email { font-size: 11px; color: #000000; margin-top: 4px; }
+    .profile-name { font-size: 18px; font-weight: 700; margin: 0; line-height: 1.2; color: #0f172a; }
+    .profile-email { font-size: 12px; color: #64748b; margin-top: 3px; font-weight: 500; }
     
     .btn-back {
-      background: #2563eb;
-      color: #ffffff; border: none;
-      padding: 7px 14px; border-radius: 8px; font-size: 11.5px; font-weight: 600;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;
       cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-      transition: all 0.2s; box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+      transition: all 0.2s; box-shadow: 0 1px 2px rgba(37, 99, 235, 0.05);
     }
     .btn-back:hover {
-      background: #1d4ed8;
-      box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3);
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #93c5fd;
       transform: translateY(-1px);
     }
 
     .btn-historical {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      color: #ffffff; border: none;
-      padding: 7px 14px; border-radius: 8px; font-size: 11.5px; font-weight: 600;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+      padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;
       cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-      transition: all 0.2s; box-shadow: 0 1px 2px rgba(217, 119, 6, 0.2);
+      transition: all 0.2s; box-shadow: 0 1px 2px rgba(217, 119, 6, 0.05);
     }
     .btn-historical:hover {
-      background: linear-gradient(135deg, #d97706, #b45309);
-      box-shadow: 0 2px 5px rgba(217, 119, 6, 0.3);
+      background: #fde68a;
+      color: #78350f;
+      border-color: #fcd34d;
       transform: translateY(-1px);
     }
 
-    /* Summary Cards */
+    /* Summary Cards with soft pastel top borders */
     .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
     .sum-card {
-      background: white; border-radius: 12px; padding: 20px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      border: none; border-top: 4px solid #3b82f6;
+      background: white; border-radius: 14px; padding: 20px 22px;
+      box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+      border: 1px solid #e2e8f0;
     }
-    .sum-label { font-size: 10px; font-weight: 700; color: #000000; letter-spacing: 0.5px; margin-bottom: 8px; text-transform: uppercase; }
-    .sum-val { font-size: 28px; font-weight: 800; color: #0f172a; line-height: 1; }
+    .sum-card.pastel-blue { border-top: 3.5px solid #93c5fd; }
+    .sum-card.pastel-green { border-top: 3.5px solid #6ee7b7; }
+    .sum-card.pastel-amber { border-top: 3.5px solid #fde68a; }
+    .sum-card.pastel-purple { border-top: 3.5px solid #c4b5fd; }
+    
+    .sum-label { font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 0.5px; margin-bottom: 8px; text-transform: uppercase; }
+    .sum-val { font-size: 28px; font-weight: 800; color: #1e293b; line-height: 1.1; }
 
-    /* SVG Line Chart */
+    /* SVG Line Chart (kept yellow bars) */
     .line-chart-svg { width: 100%; height: 180px; overflow: visible; }
-    .chart-line { fill: none; stroke: #3b82f6; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .chart-bar { fill: #f59e0b; opacity: 0.85; rx: 4px; ry: 4px; transition: opacity 0.2s, height 0.3s ease; }
+    .chart-line { fill: none; stroke: #93c5fd; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .chart-bar { fill: #f59e0b; opacity: 0.9; rx: 4px; ry: 4px; transition: opacity 0.2s, height 0.3s ease; }
     .chart-bar:hover { fill: #d97706; opacity: 1; cursor: pointer; }
     
-    .chart-grid-line { stroke: #e2e8f0; stroke-width: 1; }
-    .chart-axis-text { font-size: 10px; fill: #000000; font-weight: 600; }
+    .chart-grid-line { stroke: #f1f5f9; stroke-width: 1; }
+    .chart-axis-text { font-size: 10px; fill: #64748b; font-weight: 600; }
 
     /* Two Column Layout */
     .two-col-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
 
     .premium-card {
-      background: white; border-radius: 12px; padding: 24px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      border: none; display: flex; flex-direction: column;
+      background: white; border-radius: 14px; padding: 22px;
+      box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+      border: 1px solid #e2e8f0; display: flex; flex-direction: column;
     }
     .premium-card h3 {
-      font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 20px 0;
+      font-size: 14px; font-weight: 700; color: #1e293b; margin: 0 0 18px 0;
       display: flex; justify-content: space-between; align-items: center;
     }
     .badge-light {
-      background: #eff6ff; color: #3b82f6; font-size: 10px; padding: 4px 10px;
-      border-radius: 12px; font-weight: 600; letter-spacing: 0.5px;
+      background: #f8fafc; color: #64748b; font-size: 11px; padding: 4px 10px;
+      border-radius: 8px; font-weight: 600; letter-spacing: 0.3px; border: 1px solid #e2e8f0;
     }
 
     /* Donut Chart */
@@ -118,11 +127,11 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 12px;
     }
     .donut-chart {
-      width: 200px;
-      height: 200px;
+      width: 190px;
+      height: 190px;
       border-radius: 50%;
       position: relative;
       flex-shrink: 0;
@@ -131,8 +140,8 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 140px;
-      height: 140px;
+      width: 130px;
+      height: 130px;
       background: #fff;
       border-radius: 50%;
     }
@@ -142,48 +151,109 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       gap: 8px;
       width: 100%;
     }
-    .legend-item { display: flex; align-items: center; font-size: 11px; color: #000000; }
-    .legend-dot { width: 10px; height: 10px; border-radius: 2px; margin-right: 12px; flex-shrink: 0; }
-    .legend-name { flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: none; line-height: 1.3; }
-    .legend-value { font-weight: 600; color: #1e293b; width: 60px; text-align: right; }
+    .legend-item { display: flex; align-items: center; font-size: 12px; color: #334155; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; margin-right: 10px; flex-shrink: 0; }
+    .legend-name { flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: none; line-height: 1.3; font-weight: 500; }
+    .legend-value { font-weight: 600; color: #64748b; width: 60px; text-align: right; }
 
-    /* Vertical Bar Chart for Least Accessed */
-    .vbar-chart { display: flex; align-items: flex-end; justify-content: space-around; height: 140px; padding-bottom: 0px; border-bottom: 2px solid #e2e8f0; margin-top: 16px; margin-bottom: 70px; }
-    .vbar-col { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; width: 50px; height: 100%; }
-    .vbar { background: #d97706; border-radius: 4px 4px 0 0; width: 36px; transition: height 0.4s ease; min-height: 4px; transform-origin: bottom; animation: scaleInY 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-    .vbar-label { position: absolute; top: calc(100% + 8px); right: 50%; transform: rotate(-45deg); transform-origin: top right; font-size: 10px; font-weight: 600; color: #000000; text-align: right; white-space: nowrap; width: 120px; overflow: hidden; text-overflow: ellipsis; }
+    /* Tables in User Details with Blue Table Headers */
+    .table-container {
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(29, 110, 245, 0.05);
+      background: #ffffff;
+    }
+    .clean-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      background: #ffffff;
+    }
+    .clean-table th {
+      text-align: left;
+      padding: 11px 16px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap;
+      border-bottom: 2px solid #93c5fd;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .clean-table td {
+      text-align: left;
+      padding: 11px 16px;
+      border-bottom: 1px solid #eff6ff;
+      color: #334155;
+      font-size: 12px;
+      background: #ffffff;
+      vertical-align: middle;
+    }
+    .clean-table tbody tr:hover td { background: #f8fafc; }
+    .clean-table tbody tr:last-child td { border-bottom: none; }
 
-    /* Horizontal Bar Chart */
-    .hbar-row-c { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
-    .hbar-label-c { width: 180px; font-size: 11px; font-weight: 600; color: #000000; text-align: right; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: none; line-height: 1.3; }
-    .hbar-track-c { flex: 1; display: flex; align-items: center; gap: 8px; }
-    .hbar-fill-c { height: 14px; background: #d97706; border-radius: 3px; min-width: 4px; transition: width 0.4s ease; transform-origin: left; animation: scaleInX 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-    .hbar-val-c { font-size: 11px; color: #000000; font-weight: 600; width: 20px; }
+    .table-search-input {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      color: #1e293b;
+      padding: 7px 12px;
+      font-size: 12px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .table-search-input:focus {
+      background: #ffffff;
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.2);
+    }
+
+    .badge-pastel-blue {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-pastel-amber {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 11px;
+      font-weight: 600;
+    }
 
     .hover-bg-slate-50:hover { background: #f8fafc; }
     
     .pagination {
-      display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;
-      background: #f8fafc; border-top: 1px solid #bfdbfe; font-size: 12px; font-weight: 600; color: #000000;
+      display: flex; justify-content: space-between; align-items: center; padding: 10px 16px;
+      background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 12px; font-weight: 500; color: #64748b;
     }
     .pagination button {
-      background: white; border: 1px solid #93c5fd; border-radius: 6px; padding: 4px 10px;
-      cursor: pointer; color: #1e40af; font-weight: 600; transition: all 0.2s;
+      background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 12px;
+      cursor: pointer; color: #334155; font-weight: 600; font-size: 11.5px; transition: all 0.15s;
     }
-    .pagination button:hover:not(:disabled) { background: #e0f2fe; border-color: #1d4ed8; }
-    .pagination button:disabled { opacity: 0.5; cursor: not-allowed; color: #94a3b8; border-color: #cbd5e1; }
+    .pagination button:hover:not(:disabled) { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; color: #94a3b8; border-color: #e2e8f0; }
 
-    .empty { text-align: center; color: #000000; font-size: 11px; padding: 40px 0; }
-    .spinner { display:inline-block; width:18px; height:18px; border:3px solid #dbeafe; border-top-color:#1d6ef5; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
+    .empty { text-align: center; color: #64748b; font-size: 12px; padding: 40px 0; }
+    .spinner { display:inline-block; width:18px; height:18px; border:3px solid #e2e8f0; border-top-color:#93c5fd; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .day-btns { display: flex; gap: 4px; }
     .day-btn {
-      padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
-      border: 1.5px solid #93c5fd; background: #fff; color: #1d4ed8; transition: all .15s;
+      padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+      border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; transition: all .15s;
     }
-    .day-btn.active { background: #1d6ef5; color: #fff; border-color: #1d6ef5; }
-    .day-btn:hover:not(.active) { background: #eff6ff; }
+    .day-btn.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; font-weight: 700; }
+    .day-btn:hover:not(.active) { background: #f1f5f9; color: #1e293b; border-color: #cbd5e1; }
 
     /* Animations */
     @keyframes drawLine {
@@ -230,32 +300,32 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
              [ngModel]="userSearch()" (ngModelChange)="userSearch.set($event); userListPage.set(0)" />
     </div>
 
-
-
     <!-- User List -->
     <div *ngIf="loadingAll()" class="empty"><span class="spinner"></span> Loading user statistics...</div>
     <div *ngIf="errorMsg()" class="empty" style="color: #dc2626;">{{ errorMsg() }}</div>
 
-    <div *ngIf="!loadingAll() && filteredUsers().length" class="card" style="padding: 0; overflow: hidden; border-radius: 12px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-      <table class="clean-table" style="font-size: 11px;">
+    <div *ngIf="!loadingAll() && filteredUsers().length" class="table-container">
+      <table class="clean-table">
         <thead>
           <tr><th style="padding-left:24px;">User</th><th style="text-align:right;">Total Views</th><th style="text-align:right; padding-right:24px;">Last Accessed</th></tr>
         </thead>
         <tbody>
-          <tr *ngFor="let u of filteredUsers() | slice: userListPage()*7 : (userListPage()+1)*7; let i = index" style="cursor: pointer; transition: background 0.2s;" class="hover-bg-slate-50" (click)="selectUser(u)">
+          <tr *ngFor="let u of filteredUsers() | slice: userListPage()*7 : (userListPage()+1)*7; let i = index" style="cursor: pointer;" class="hover-bg-slate-50" (click)="selectUser(u)">
             <td style="padding-left:24px;">
               <div style="display:flex; align-items:center; gap:12px;">
-                <div [style.background]="getUserAvatarStyle(u.name, i).bg" [style.color]="getUserAvatarStyle(u.name, i).color" style="width:36px; height:36px; border-radius:50%; font-weight:700; font-size:13.5px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <div [style.background]="getUserAvatarStyle(u.name, i).bg" [style.color]="getUserAvatarStyle(u.name, i).color" style="width:36px; height:36px; border-radius:10px; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                   {{ u.name.charAt(0) | uppercase }}
                 </div>
                 <div>
                   <div style="font-weight:600; color:#0f172a;">{{ u.name | titlecase }}</div>
-                  <div style="font-size:11px; color:#64748b; margin-top:2px;">{{ u.email }}</div>
+                  <div style="font-size:11.5px; color:#64748b; margin-top:2px;">{{ u.email }}</div>
                 </div>
               </div>
             </td>
-            <td style="text-align:right; font-weight:600; color:#3b82f6;">{{ u.views | number }}</td>
-            <td style="text-align:right; color:#000000; padding-right:24px;">{{ u.lastAccessed | date:'mediumDate' }}</td>
+            <td style="text-align:right;">
+              <span class="badge-pastel-blue">{{ u.views | number }}</span>
+            </td>
+            <td style="text-align:right; color:#64748b; font-size:11.5px; padding-right:24px;">{{ u.lastAccessed | date:'mediumDate' }}</td>
           </tr>
         </tbody>
       </table>
@@ -273,9 +343,9 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
     <div *ngIf="!loadingDetails() && userDetails() as details">
       <!-- Profile Header -->
-      <div class="profile-header" [style.border-color]="getUserAvatarStyle(selectedUser()?.name).color">
+      <div class="profile-header">
         <div class="profile-info">
-          <div class="avatar" [style.background]="getUserAvatarStyle(selectedUser()?.name).bg" [style.color]="getUserAvatarStyle(selectedUser()?.name).color" style="box-shadow: none;">{{ initials() }}</div>
+          <div class="avatar" [style.background]="getUserAvatarStyle(selectedUser()?.name).bg" [style.color]="getUserAvatarStyle(selectedUser()?.name).color">{{ initials() }}</div>
           <div>
             <h2 class="profile-name">{{ selectedUser()?.name | titlecase }}</h2>
             <div class="profile-email">{{ selectedUser()?.email }}</div>
@@ -294,15 +364,15 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       <ng-container *ngIf="!showHistoricalView()">
         <!-- Summary Grid -->
         <div class="summary-grid">
-          <div class="sum-card" style="border-top-color: #3b82f6;">
+          <div class="sum-card pastel-blue">
             <div class="sum-label">Total Views</div>
             <div class="sum-val">{{ filteredTotalViews() | number }}</div>
           </div>
-          <div class="sum-card" style="border-top-color: #10b981;">
+          <div class="sum-card pastel-green">
             <div class="sum-label">Dashboards Accessed</div>
             <div class="sum-val">{{ filteredDashboardsAccessed() }}</div>
           </div>
-          <div class="sum-card" style="border-top-color: #f59e0b;">
+          <div class="sum-card pastel-amber">
             <div class="sum-label">Last Accessed</div>
             <div class="sum-val" style="font-size: 22px; padding-top: 4px;">
               <ng-container *ngIf="filteredLastAccessed(); else noAccess">
@@ -313,7 +383,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
           </div>
         </div>
 
-        <!-- SVG Line Chart Combo -->
+        <!-- SVG Bar Chart (Historical Views) -->
         <div class="premium-card" style="margin-bottom: 24px;">
           <h3 style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; overflow: hidden; white-space: nowrap;">
             <span>Historical Views</span>
@@ -326,8 +396,8 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
               <span class="badge-light" style="white-space: nowrap; flex-shrink: 0;" *ngIf="historicalDateRange()">{{ historicalDateRange() }}</span>
             </div>
           </h3>
-          <div style="display:flex; justify-content:flex-end; gap:16px; margin-bottom:16px; font-size:11.5px; font-weight:600; color:#475569;">
-            <div style="display:flex; align-items:center; gap:6px;"><span style="width:12px; height:12px; border-radius:3px; background:#f59e0b;"></span> Daily Views</div>
+          <div style="display:flex; justify-content:flex-end; gap:16px; margin-bottom:16px; font-size:11.5px; font-weight:600; color:#64748b;">
+            <div style="display:flex; align-items:center; gap:6px;"><span style="width:10px; height:10px; border-radius:3px; background:#f59e0b;"></span> Daily Views</div>
           </div>
           
           <div style="position:relative; height: 200px; width: 100%;">
@@ -344,7 +414,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
                 <text class="chart-axis-text" [attr.x]="x.x" y="196" text-anchor="middle">{{ x.label }}</text>
               </ng-container>
 
-              <!-- Data Bars -->
+              <!-- Data Bars (Preserved Yellow #f59e0b) -->
               <ng-container *ngFor="let p of chartPoints()">
                 <rect class="chart-bar animate-chart-bar"
                   [attr.x]="p.x - 11"
@@ -391,13 +461,15 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
           <!-- Least Accessed -->
           <div class="premium-card">
             <h3>Least Accessed Reports</h3>
-            <div class="table-container" style="margin-top: 16px;">
+            <div class="table-container" style="margin-top: 10px;">
               <table class="clean-table">
                 <thead><tr><th>Report Name</th><th style="text-align:right;">Views</th></tr></thead>
                 <tbody>
                   <tr *ngFor="let r of leastAccessedHbars()">
                     <td><strong>{{ r.name }}</strong></td>
-                    <td style="text-align:right; font-weight:600; color:#d97706;">{{ r.views | number }}</td>
+                    <td style="text-align:right;">
+                      <span class="badge-pastel-amber">{{ r.views | number }}</span>
+                    </td>
                   </tr>
                   <tr *ngIf="!leastAccessedHbars().length"><td colspan="2" class="empty">No idle reports.</td></tr>
                 </tbody>
@@ -425,9 +497,11 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
             <tbody>
               <tr *ngFor="let p of filteredPageAccess() | slice: pagePageAccess()*10 : (pagePageAccess()+1)*10">
                 <td style="padding-left:24px;"><strong>{{ p.pageName }}</strong></td>
-                <td style="color:#000000;">{{ p.reportName }}</td>
-                <td style="text-align:right; font-weight:600; color:#3b82f6;">{{ p.views | number }}</td>
-                <td style="text-align:right; color:#000000; padding-right:24px;">
+                <td style="color:#475569;">{{ p.reportName }}</td>
+                <td style="text-align:right;">
+                  <span class="badge-pastel-blue">{{ p.views | number }}</span>
+                </td>
+                <td style="text-align:right; color:#64748b; padding-right:24px; font-size:11.5px;">
                   {{ formatAccessDate(p.lastAccessed) }}
                 </td>
               </tr>
@@ -445,13 +519,13 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
       <!-- ── MULTI-YEAR & MONTH-WISE HISTORICAL ANALYTICS VIEW ── -->
       <ng-container *ngIf="showHistoricalView()">
         <!-- Top Bar with Year Selector -->
-        <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 20px; margin-bottom:20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:14px 20px; margin-bottom:20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); flex-wrap:wrap; gap:12px;">
           <div style="display:flex; align-items:center; gap:12px;">
             <button class="btn-back" (click)="showHistoricalView.set(false)">Back to Profile</button>
             <div>
               <div style="font-size:15px; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:8px;">
                 <span>Annual &amp; Monthly Usage History</span>
-                <span class="badge-light" style="background:#fef3c7; color:#92400e; font-weight:700;">{{ selectedHistoricalYear() }}</span>
+                <span class="badge-pastel-amber">{{ selectedHistoricalYear() }}</span>
               </div>
               <div style="font-size:11.5px; color:#64748b;">Month-by-month and daily historical trends</div>
             </div>
@@ -459,8 +533,8 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
           <!-- Year Selector Dropdown -->
           <div style="display:flex; align-items:center; gap:8px;">
-            <label style="font-size:12px; font-weight:700; color:#334155;">Select Year:</label>
-            <select class="compact-select" style="font-size:13px; font-weight:700; padding:6px 14px; border-radius:8px; border:1.5px solid #cbd5e1; background:#f8fafc; color:#0f172a; cursor:pointer;"
+            <label style="font-size:12px; font-weight:600; color:#475569;">Select Year:</label>
+            <select class="table-search-input" style="font-size:12px; font-weight:600; padding:6px 12px; border-radius:8px; cursor:pointer;"
               [ngModel]="selectedHistoricalYear()" (ngModelChange)="setHistoricalYear($event)">
               <option *ngFor="let y of availableYears()" [value]="y">{{ y }}</option>
             </select>
@@ -469,35 +543,35 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
         <!-- Annual Summary Cards -->
         <div class="summary-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom:20px;">
-          <div class="sum-card" style="border-top-color: #f59e0b;">
+          <div class="sum-card pastel-amber">
             <div class="sum-label">Total Views in {{ selectedHistoricalYear() }}</div>
             <div class="sum-val">{{ yearlyTotalViews() | number }}</div>
           </div>
-          <div class="sum-card" style="border-top-color: #3b82f6;">
+          <div class="sum-card pastel-blue">
             <div class="sum-label">Active Months</div>
             <div class="sum-val">{{ yearlyActiveMonthsCount() }} <span style="font-size:14px; font-weight:500; color:#64748b;">/ 12</span></div>
           </div>
-          <div class="sum-card" style="border-top-color: #10b981;">
+          <div class="sum-card pastel-green">
             <div class="sum-label">Peak Month</div>
             <div class="sum-val" style="font-size:18px; padding-top:4px;" [title]="yearlyPeakMonth() ? yearlyPeakMonth()!.name + ' (' + (yearlyPeakMonth()!.views | number) + ' views)' : 'N/A'">
               {{ yearlyPeakMonth() ? yearlyPeakMonth()!.name + ' (' + (yearlyPeakMonth()!.views | number) + ')' : 'N/A' }}
             </div>
           </div>
-          <div class="sum-card" style="border-top-color: #8b5cf6;">
+          <div class="sum-card pastel-purple">
             <div class="sum-label">Reports Accessed in {{ selectedHistoricalYear() }}</div>
             <div class="sum-val">{{ yearlyUniqueReportsCount() }}</div>
           </div>
         </div>
 
-        <!-- 12-Month Bar Chart (Jan to Dec) -->
+        <!-- 12-Month Bar Chart (Jan to Dec) (Yellow Bars) -->
         <div class="premium-card" style="margin-bottom: 24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <div>
               <h3 style="margin:0;">Monthly Views — {{ selectedHistoricalYear() }}</h3>
               <div style="font-size:11.5px; color:#64748b; margin-top:2px;">Click on any month bar to inspect daily views, reports, and page tabs</div>
             </div>
-            <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; color:#475569;">
-              <span style="width:12px; height:12px; border-radius:3px; background:#f59e0b;"></span> Monthly Views
+            <div style="display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; color:#64748b;">
+              <span style="width:10px; height:10px; border-radius:3px; background:#f59e0b;"></span> Monthly Views
             </div>
           </div>
 
@@ -517,9 +591,9 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
                   width="44"
                   [attr.height]="Math.max(4, 180 - m.y)"
                   rx="6" ry="6"
-                  [style.fill]="m.isSelected ? '#d97706' : (m.views > 0 ? '#f59e0b' : '#e2e8f0')"
+                  [style.fill]="m.isSelected ? '#d97706' : (m.views > 0 ? '#f59e0b' : '#f1f5f9')"
                   [style.stroke]="m.isSelected ? '#78350f' : 'none'"
-                  [style.stroke-width]="m.isSelected ? '2.5px' : '0'"
+                  [style.stroke-width]="m.isSelected ? '2px' : '0'"
                   [style.opacity]="selectedHistoricalMonth() !== null && !m.isSelected ? '0.35' : '1'"
                   style="cursor: pointer; transition: all 0.2s;"
                   (click)="toggleHistoricalMonth(m.month)"
@@ -531,7 +605,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
                 <!-- Month Name Text -->
                 <text class="chart-axis-text" [attr.x]="m.x" y="200" text-anchor="middle"
                   [style.font-weight]="m.isSelected ? '700' : '600'"
-                  [style.fill]="m.isSelected ? '#d97706' : '#475569'">{{ m.monthName }}</text>
+                  [style.fill]="m.isSelected ? '#d97706' : '#64748b'">{{ m.monthName }}</text>
               </ng-container>
             </svg>
           </div>
@@ -539,13 +613,13 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
         <!-- Month Drilldown Panel (when a month is selected) -->
         <div *ngIf="selectedHistoricalMonth() !== null" class="month-drilldown-section" style="margin-bottom:24px;">
-          <div class="premium-card" style="border: 2px solid #fde68a; background: #fffdf5;">
+          <div class="premium-card" style="border: 1px solid #fde68a; background: #fffdfa;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #fef3c7; padding-bottom:12px; flex-wrap:wrap; gap:10px;">
               <div style="display:flex; align-items:center; gap:10px;">
                 <span style="font-size:15px; font-weight:700; color:#0f172a;">
                   {{ getMonthName(selectedHistoricalMonth()!) }} {{ selectedHistoricalYear() }} Usage Details
                 </span>
-                <span class="badge-light" style="background:#fef3c7; color:#92400e; font-weight:700;">
+                <span class="badge-pastel-amber">
                   {{ selectedMonthTotalViews() | number }} Views
                 </span>
               </div>
@@ -556,7 +630,7 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
             <!-- Month Daily Views Chart -->
             <div *ngIf="selectedMonthDailyViews().length" style="margin-bottom:24px;">
-              <div style="font-size:12px; font-weight:600; color:#475569; margin-bottom:8px;">Daily Views in {{ getMonthName(selectedHistoricalMonth()!) }} {{ selectedHistoricalYear() }}</div>
+              <div style="font-size:12px; font-weight:600; color:#64748b; margin-bottom:8px;">Daily Views in {{ getMonthName(selectedHistoricalMonth()!) }} {{ selectedHistoricalYear() }}</div>
               <div style="position:relative; height: 160px; width: 100%;">
                 <svg class="line-chart-svg" preserveAspectRatio="none" viewBox="0 0 1000 160" style="width:100%; height:100%;">
                   <ng-container *ngFor="let p of selectedMonthDailyChartPoints()">
@@ -589,7 +663,9 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
                     <tbody>
                       <tr *ngFor="let r of selectedMonthTopReports()">
                         <td><strong>{{ r.reportName }}</strong></td>
-                        <td style="text-align:right; font-weight:600; color:#d97706;">{{ r.views | number }}</td>
+                        <td style="text-align:right;">
+                          <span class="badge-pastel-amber">{{ r.views | number }}</span>
+                        </td>
                       </tr>
                       <tr *ngIf="!selectedMonthTopReports().length"><td colspan="2" class="empty">No reports accessed in this month.</td></tr>
                     </tbody>
@@ -613,9 +689,11 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
                     <tbody>
                       <tr *ngFor="let p of selectedMonthPageAccess()">
                         <td><strong>{{ p.pageName }}</strong></td>
-                        <td><span class="report-badge-cell">{{ p.reportName }}</span></td>
-                        <td style="text-align:right; font-weight:600; color:#d97706;">{{ p.views | number }}</td>
-                        <td style="text-align:right; color:#64748b; font-size:11px;">{{ formatAccessDate(p.lastAccessed) }}</td>
+                        <td><span style="color:#475569;">{{ p.reportName }}</span></td>
+                        <td style="text-align:right;">
+                          <span class="badge-pastel-amber">{{ p.views | number }}</span>
+                        </td>
+                        <td style="text-align:right; color:#64748b; font-size:11.5px;">{{ formatAccessDate(p.lastAccessed) }}</td>
                       </tr>
                       <tr *ngIf="!selectedMonthPageAccess().length"><td colspan="4" class="empty">No pages accessed in this month.</td></tr>
                     </tbody>
@@ -1176,7 +1254,7 @@ export class UserDetailsComponent implements OnInit {
     const top5 = sorted.slice(0, 5);
     const total = top5.reduce((acc, r) => acc + r.views, 0);
     let cumulativePercent = 0;
-    const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#93c5fd', '#bae6fd'];
+    const colors = ['#93c5fd', '#6ee7b7', '#c4b5fd', '#fde68a', '#fbcfe8'];
     
     return top5.map((r, i) => {
       const percent = total > 0 ? (r.views / total) * 100 : 0;
