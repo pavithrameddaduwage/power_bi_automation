@@ -58,13 +58,17 @@ export class JobsService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.ensureTable();
-    // Re-register schedules for all enabled jobs that have a cron.
-    const jobs = await this.list();
-    for (const j of jobs) {
-      if (j.cron && j.enabled) this.schedule(j);
+    try {
+      await this.ensureTable();
+      // Re-register schedules for all enabled jobs that have a cron.
+      const jobs = await this.list();
+      for (const j of jobs) {
+        if (j.cron && j.enabled) this.schedule(j);
+      }
+      this.logger.log(`Registered ${jobs.filter((j) => j.cron && j.enabled).length} scheduled job(s).`);
+    } catch (err: any) {
+      this.logger.error(`JobsService initialization error: ${err?.message || err}`);
     }
-    this.logger.log(`Registered ${jobs.filter((j) => j.cron && j.enabled).length} scheduled job(s).`);
   }
 
   private async ensureTable(): Promise<void> {

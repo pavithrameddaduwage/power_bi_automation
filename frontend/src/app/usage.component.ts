@@ -1,13 +1,14 @@
-import { Component, OnInit, signal, computed, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, signal, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   SyncApiService,
-  UsageReportItem,
-  WorkspaceUser,
-  UsageAnalytics,
-  GlobalDashboardStats,
-  StatItem,
+  DashboardAnalyticsResponse,
+  AccessUtilizationResponse,
+  PageUsageItem,
+  UserUsageItem,
+  TimelineItem,
+  AccessUserItem,
 } from './sync.service';
 import { ToastService } from './toast.service';
 
@@ -20,456 +21,970 @@ import { ToastService } from './toast.service';
       display: block;
       color: #0f172a;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
-    .compact-dashboard {
+    .analytics-container {
       width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      padding: 4px 0 16px 0;
+      gap: 20px;
+      padding-bottom: 36px;
+      overflow-x: hidden;
     }
 
-    /* ── Header ── */
-    .dash-header {
+    /* ── Back Navigation Header for User Detail Page ── */
+    .user-page-nav {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 2px;
+      flex-wrap: wrap;
     }
 
-    .dash-title-group {
+    .btn-back {
+      background: #ffffff;
+      color: #1d4ed8;
+      border: 1.5px solid #bfdbfe;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s;
+    }
+
+    .btn-back:hover {
+      background: #eff6ff;
+      border-color: #2563eb;
+    }
+
+    /* ── User Profile Banner (on User Detail Page) ── */
+    .user-profile-banner {
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 14px;
+      padding: 18px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 2px 8px -2px rgba(37, 99, 235, 0.05);
+      flex-wrap: wrap;
+    }
+
+    .user-profile-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .user-profile-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      font-size: 20px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .user-profile-name {
+      font-size: 17px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .user-profile-email {
+      font-size: 13.5px;
+      color: #1e40af;
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    /* ── Top Filter Bar (6 Searchable Dropdowns) ── */
+    .filter-bar-card {
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 14px;
+      padding: 18px 22px;
+      box-shadow: 0 2px 8px -2px rgba(37, 99, 235, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-sizing: border-box;
+    }
+
+    .filter-bar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .filter-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #2563eb;
-      flex-shrink: 0;
+    .filter-badge {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 12px;
+      padding: 2px 9px;
+      border-radius: 99px;
+      font-weight: 600;
+      border: 1px solid #bfdbfe;
     }
 
-    .dash-title {
-      font-size: 14.5px;
-      font-weight: 700;
-      color: #1e3a8a;
-      letter-spacing: -0.2px;
-    }
-
-    .dash-controls {
+    .btn-reset {
+      background: #ffffff;
+      color: #dc2626;
+      border: 1.5px solid #fecaca;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
+      transition: all 0.15s;
     }
 
-    .compact-select {
-      height: 32px;
+    .btn-reset:hover {
+      background: #fef2f2;
+      border-color: #f87171;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 1200px) {
+      .filter-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .filter-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .filter-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      position: relative;
+      min-width: 0;
+    }
+
+    .filter-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e3a8a;
+    }
+
+    /* Custom Searchable Select Trigger */
+    .dropdown-trigger {
+      height: 38px;
       background: #ffffff;
-      border: 1.5px solid #cbd5e1;
-      border-radius: 6px;
-      padding: 0 30px 0 10px;
-      font-size: 12.5px;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 0 28px 0 12px;
+      font-size: 13.5px;
       font-weight: 500;
       color: #0f172a;
       cursor: pointer;
-      outline: none;
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 8px center;
-      transition: border-color 0.15s;
-      width: 180px;
-      max-width: 180px;
+      display: flex;
+      align-items: center;
+      position: relative;
+      transition: all 0.15s;
+      width: 100%;
+      box-sizing: border-box;
     }
 
-    .compact-select:focus {
+    .dropdown-trigger:hover {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .dropdown-trigger.active-filter {
+      border-color: #1d4ed8;
+      background: #eff6ff;
+      color: #1e40af;
+      font-weight: 600;
+    }
+
+    .trigger-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      text-align: left;
+    }
+
+    .trigger-caret {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: #2563eb;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Floating Dropdown Menu */
+    .dropdown-menu-pop {
+      position: absolute;
+      top: calc(100% + 5px);
+      left: 0;
+      min-width: 250px;
+      width: max-content;
+      max-width: 360px;
+      background: #ffffff;
+      border: 1.5px solid #93c5fd;
+      border-radius: 10px;
+      box-shadow: 0 12px 28px -6px rgba(37, 99, 235, 0.15);
+      z-index: 1000;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 280px;
+      box-sizing: border-box;
+    }
+
+    .menu-search-input {
+      width: 100%;
+      height: 36px;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 0 10px;
+      font-size: 13px;
+      outline: none;
+      box-sizing: border-box;
+      color: #0f172a;
+    }
+
+    .menu-search-input:focus {
       border-color: #2563eb;
     }
 
-    /* ── Top KPI Cards (5 compact cards in a single row) ── */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 12px;
+    .menu-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow-y: auto;
+      max-height: 210px;
     }
 
-    @media (max-width: 1024px) {
-      .kpi-grid {
-        grid-template-columns: repeat(3, 1fr);
+    .menu-option-item {
+      padding: 9px 12px;
+      font-size: 13px;
+      line-height: 1.4;
+      min-height: 36px;
+      color: #0f172a;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.12s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+    }
+
+    .menu-option-item:hover {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .menu-option-item.selected {
+      background: #dbeafe;
+      color: #1e40af;
+      font-weight: 700;
+    }
+
+    /* ── Overview KPI Cards (Blue Shades) ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .kpi-grid.four-cols {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    @media (max-width: 1100px) {
+      .kpi-grid, .kpi-grid.four-cols {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .kpi-grid, .kpi-grid.four-cols {
+        grid-template-columns: 1fr;
       }
     }
 
     .kpi-card {
-      background: #f0f7ff;
-      border: 1.5px solid #bfdbfe;
-      border-radius: 12px;
-      padding: 12px 16px;
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 14px;
+      padding: 16px 20px;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      min-height: 70px;
-      box-shadow: 0 1px 2px rgba(37, 99, 235, 0.03);
+      min-height: 90px;
+      box-shadow: 0 2px 6px -1px rgba(37, 99, 235, 0.04);
+      transition: all 0.2s ease;
+      box-sizing: border-box;
     }
 
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.12);
+      border-color: #93c5fd;
+    }
+
+    .kpi-card.blue-1 { border-top: 4px solid #1e3a8a; }
+    .kpi-card.blue-2 { border-top: 4px solid #1d4ed8; }
+    .kpi-card.blue-3 { border-top: 4px solid #2563eb; }
+    .kpi-card.blue-4 { border-top: 4px solid #3b82f6; }
+    .kpi-card.blue-5 { border-top: 4px solid #0284c7; }
+
     .kpi-label {
-      font-size: 11.5px;
+      font-size: 13px;
       font-weight: 600;
-      color: #2563eb;
-      margin-bottom: 3px;
+      color: #1e40af;
+      margin-bottom: 4px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .kpi-value {
-      font-size: 25px;
+      font-size: 30px;
       font-weight: 800;
       color: #0f172a;
       line-height: 1.1;
-      letter-spacing: -0.4px;
+      letter-spacing: -0.6px;
     }
 
     .kpi-sub {
-      font-size: 10.5px;
-      color: #64748b;
+      font-size: 12px;
+      color: #1e40af;
       font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-top: 2px;
+      margin-top: 4px;
     }
 
-    /* ── Middle Section (2 Columns) ── */
-    .mid-grid {
+    /* ── Overview Visuals Section (Yellow Graph + Blue Pie) ── */
+    .overview-charts-grid {
       display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 14px;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
-    @media (max-width: 900px) {
-      .mid-grid {
+    @media (max-width: 1024px) {
+      .overview-charts-grid {
         grid-template-columns: 1fr;
       }
     }
 
     .card-outlined {
       background: #ffffff;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 16px 18px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      border: 1.5px solid #dbeafe;
+      border-radius: 14px;
+      padding: 18px 22px;
+      box-shadow: 0 2px 6px -1px rgba(37, 99, 235, 0.04);
       display: flex;
       flex-direction: column;
+      box-sizing: border-box;
+      min-width: 0;
     }
 
-    .card-title {
-      font-size: 13.5px;
-      font-weight: 700;
-      color: #0f172a;
-      margin: 0 0 12px 0;
+    .card-header-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-    }
-
-    /* Workspaces progress rows */
-    .ws-row {
-      margin-bottom: 10px;
-    }
-
-    .ws-info {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12.5px;
-      margin-bottom: 3px;
-    }
-
-    .ws-name {
-      font-weight: 600;
-      color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 78%;
-    }
-
-    .ws-views {
-      font-weight: 700;
-      color: #0f172a;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .bar-track {
-      width: 100%;
-      height: 6px;
-      background: #f1f5f9;
-      border-radius: 99px;
-      overflow: hidden;
-    }
-
-    .bar-fill {
-      height: 100%;
-      border-radius: 99px;
-      transition: width 0.5s ease-out;
-    }
-
-    .section-sub {
-      font-size: 11.5px;
-      font-weight: 700;
-      color: #64748b;
-      margin: 12px 0 6px 0;
-    }
-
-    .report-pills {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .report-pill {
-      background: #f8fafc;
-      border: 1px solid #eef2f6;
-      border-radius: 6px;
-      padding: 7px 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .pill-name {
-      font-size: 12px;
-      font-weight: 600;
-      color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      padding-right: 8px;
-    }
-
-    .pill-views {
-      font-size: 12.5px;
-      font-weight: 700;
-      color: #2563eb;
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* Top Users List (No internal scroll) */
-    .users-scroll {
-      display: flex;
-      flex-direction: column;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
       gap: 8px;
     }
 
-    .user-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 3px 4px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.12s;
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0;
     }
 
-    .user-item:hover {
-      background: #f8fafc;
+    /* ── Yellow Monthly Bar Graph ── */
+    .monthly-chart-wrap {
+      display: flex;
+      flex-direction: column;
+      height: 230px;
+      justify-content: flex-end;
+      padding-top: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .monthly-bars-container {
+      display: flex;
+      align-items: flex-end;
+      gap: 14px;
+      height: 180px;
+      width: 100%;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid #dbeafe;
+      box-sizing: border-box;
+    }
+
+    .monthly-bar-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 40px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .monthly-bar-val {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Clean Solid Yellow Bars */
+    .monthly-bar-pill {
+      width: 100%;
+      max-width: 46px;
+      background: #f59e0b;
+      border-radius: 6px 6px 0 0;
+      min-height: 8px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .monthly-bar-pill:hover {
+      background: #d97706;
+      transform: scaleY(1.03);
+    }
+
+    .monthly-bar-lbl {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #0f172a;
+      text-align: center;
+      margin-top: 4px;
+      white-space: nowrap;
+    }
+
+    /* ── Big Blue Pie / Donut Chart ── */
+    .donut-overview-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 26px;
+      height: 230px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 640px) {
+      .donut-overview-container {
+        flex-direction: column;
+        height: auto;
+      }
+    }
+
+    .donut-circle-wrap {
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      position: relative;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+    }
+
+    .donut-hole {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 120px;
+      height: 120px;
+      background: #ffffff;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .donut-hole-val {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1;
+      letter-spacing: -0.5px;
+    }
+
+    .donut-hole-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: #1e40af;
+      margin-top: 3px;
+    }
+
+    .donut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .legend-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .legend-name {
+      color: #0f172a;
+      font-weight: 400;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .legend-views {
+      font-weight: 700;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+
+    /* ── Details Grid (Page Breakdown vs User Activity) ── */
+    .dashboard-two-col {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 16px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Page-wise Usage List (Clean Rows Without Underline & Without Grey Badge) ── */
+    .page-diagram-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 2px;
+    }
+
+    .page-clean-row {
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 9px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: all 0.15s ease;
+    }
+
+    .page-clean-row:hover {
+      background: #eff6ff;
+      border-color: #2563eb;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+    }
+
+    .page-title-group {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .page-rank-pill {
+      font-size: 11.5px;
+      font-weight: 600;
+      background: #eff6ff;
+      color: #1d4ed8;
+      padding: 2px 8px;
+      border-radius: 5px;
+      border: 1px solid #bfdbfe;
+      flex-shrink: 0;
+    }
+
+    .page-name {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .page-stats-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .page-views-num {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .page-viewers-lbl {
+      font-size: 12.5px;
+      color: #1e40af;
+      font-weight: 500;
+    }
+
+    /* ── User-wise Analysis List Item (Click navigates to user page) ── */
+    .user-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 2px;
+    }
+
+    .user-card-item {
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 9px;
+      padding: 11px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .user-card-item:hover {
+      border-color: #2563eb;
+      background: #eff6ff;
+      box-shadow: 0 3px 10px rgba(37, 99, 235, 0.1);
+      transform: translateX(2px);
+    }
+
+    .user-meta-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
     }
 
     .user-avatar {
-      width: 30px;
-      height: 30px;
+      width: 38px;
+      height: 38px;
       border-radius: 50%;
-      background: #60a5fa;
-      color: #ffffff;
-      font-size: 12.5px;
-      font-weight: 700;
+      font-size: 13.5px;
+      font-weight: 600;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
     }
 
-    .user-info {
-      flex: 1;
+    .user-text-info {
       min-width: 0;
+      flex: 1;
     }
 
-    .user-name {
-      font-size: 12.5px;
-      font-weight: 700;
+    .user-fullname {
+      font-size: 14px;
+      font-weight: 500;
       color: #0f172a;
-      line-height: 1.2;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .user-date {
-      font-size: 11px;
-      color: #64748b;
-      font-weight: 500;
+    .user-email-txt {
+      font-size: 12px;
+      color: #1e40af;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .user-views {
-      font-size: 13px;
-      font-weight: 700;
+    .user-activity-right {
+      text-align: right;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-views-txt {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .user-date-txt {
+      font-size: 11.5px;
+      color: #1e40af;
+    }
+
+    .user-nav-arrow {
       color: #2563eb;
-      font-variant-numeric: tabular-nums;
+      font-size: 16px;
+      font-weight: 700;
+      transition: transform 0.15s;
     }
 
-    /* ── Bottom Section (3 Columns) ── */
-    .bot-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
+    .user-card-item:hover .user-nav-arrow {
+      transform: translateX(3px);
     }
 
-    @media (max-width: 900px) {
-      .bot-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .card-tinted {
-      background: #f0f7ff;
-      border: 1.5px solid #bfdbfe;
-      border-radius: 12px;
-      padding: 16px 18px;
-      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.02);
+    /* ── Pagination Controls Bar ── */
+    .pagination-bar {
       display: flex;
-      flex-direction: column;
-    }
-
-    .card-tinted .card-title {
-      color: #1e3a8a;
-    }
-
-    .page-list, .least-list {
-      display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 4px 2px 4px;
+      margin-top: 4px;
+      border-top: 1px solid #e0e7ff;
+      flex-wrap: wrap;
       gap: 8px;
     }
 
-    .page-row-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 2px 0;
-    }
-
-    .page-meta {
-      min-width: 0;
-      flex: 1;
-      padding-right: 8px;
-    }
-
-    .page-name-txt {
+    .pagination-info {
       font-size: 12.5px;
-      font-weight: 700;
-      color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.2;
+      font-weight: 600;
+      color: #1e40af;
     }
 
-    .page-sub-txt {
-      font-size: 11px;
-      color: #64748b;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .page-views-txt {
-      font-size: 12.5px;
-      font-weight: 700;
-      color: #2563eb;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .least-row-item {
+    .pagination-controls {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 2px 0;
+      gap: 8px;
     }
 
-    .least-name-txt {
+    .btn-page {
+      background: #ffffff;
+      color: #1d4ed8;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 6px;
       font-size: 12px;
-      font-weight: 500;
-      color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      padding-right: 8px;
-      flex: 1;
+      font-weight: 600;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
     }
 
-    .least-views-txt {
-      font-size: 12.5px;
+    .btn-page:hover:not(:disabled) {
+      background: #eff6ff;
+      border-color: #2563eb;
+    }
+
+    .btn-page:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .page-current-pill {
+      font-size: 12px;
       font-weight: 700;
       color: #0f172a;
-      font-variant-numeric: tabular-nums;
+      padding: 0 4px;
     }
 
-    /* ── Single Report Drilldown ── */
-    .drilldown-bar {
+    /* ── Access Level & Unused Access Audit ── */
+    .access-section-card {
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 14px;
+      padding: 18px 22px;
+      box-shadow: 0 2px 6px -1px rgba(37, 99, 235, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-sizing: border-box;
+    }
+
+    .access-header-group {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
-    .report-badge {
+    .access-tabs {
+      display: flex;
+      gap: 6px;
+      background: #eff6ff;
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid #bfdbfe;
+    }
+
+    .access-tab-btn {
+      background: transparent;
+      border: none;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e3a8a;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .access-tab-btn.active {
+      background: #ffffff;
+      color: #1d4ed8;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
+      font-weight: 700;
+    }
+
+    .access-table-wrap {
+      border: 1.5px solid #dbeafe;
+      border-radius: 10px;
+      overflow-x: auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .clean-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    .clean-table th {
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-weight: 700;
+      padding: 11px 14px;
+      font-size: 12.5px;
+      border-bottom: 1.5px solid #bfdbfe;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .clean-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid #eff6ff;
+      color: #0f172a;
+      vertical-align: middle;
+    }
+
+    .clean-table tbody tr:hover td {
+      background: #eff6ff;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .role-admin { background: #fee2e2; color: #991b1b; }
+    .role-member { background: #dbeafe; color: #1e40af; }
+    .role-contributor { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .role-viewer { background: #f0f7ff; color: #1e3a8a; border: 1px solid #dbeafe; }
+
+    .status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 3px 8px;
-      background: #eff6ff;
-      color: #2563eb;
-      border: 1px solid #bfdbfe;
-      border-radius: 6px;
-      font-size: 11.5px;
-      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
     }
 
-    .btn-back {
-      height: 28px;
-      background: #ffffff;
-      color: #2563eb;
-      border: 1.5px solid #93c5fd;
-      font-size: 11.5px;
-      font-weight: 600;
-      padding: 0 10px;
-      border-radius: 6px;
-      cursor: pointer;
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-unused { background: #fee2e2; color: #b91c1c; }
+
+    .search-mini-input {
+      height: 34px;
+      padding: 0 12px;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 7px;
+      font-size: 13px;
+      outline: none;
+      width: 180px;
+      box-sizing: border-box;
+      color: #0f172a;
     }
 
-    .btn-back:hover {
-      background: #eff6ff;
-    }
-
-    .day-btn {
-      padding: 3px 8px;
-      border-radius: 5px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1px solid #cbd5e1;
-      background: #fff;
-      color: #334155;
-    }
-
-    .day-btn.active {
-      background: #2563eb;
-      color: #fff;
+    .search-mini-input:focus {
       border-color: #2563eb;
     }
 
@@ -484,581 +999,1044 @@ import { ToastService } from './toast.service';
       vertical-align: middle;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Single Report Charts */
-    .bar-chart-wrap { overflow: visible; width: 100%; padding-top: 15px; }
-    .bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 110px; width: 100%; }
-    .bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 0; }
-    .bar-rect {
-      width: 100%; background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
-      border-radius: 4px 4px 0 0; min-height: 4px; transition: opacity 0.15s;
-    }
-    .bar-rect:hover { opacity: 0.8; }
-    .bar-lbl { font-size: 8px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .platform-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-    .platform-name { font-size: 11.5px; font-weight: 500; color: #0f172a; width: 80px; flex-shrink: 0; }
-    .platform-bar-wrap { flex: 1; background: #eff6ff; border-radius: 99px; height: 7px; overflow: hidden; }
-    .platform-bar-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #60a5fa); border-radius: 99px; }
-    .platform-count { font-size: 11.5px; font-weight: 700; color: #0f172a; width: 35px; text-align: right; }
-
-    .data-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .data-tbl th {
-      background: #f8fafc; color: #475569; font-weight: 600; padding: 6px 10px; text-align: left;
-      border-bottom: 1px solid #e2e8f0; font-size: 11px;
-    }
-    .data-tbl td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
-
-    /* Skeleton Loading State */
-    @keyframes shimmer {
-      0% { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
-    }
-    .skeleton-box {
-      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      border-radius: 12px;
-      border: 1.5px solid #e2e8f0;
-    }
   `],
   template: `
-  <div class="compact-dashboard">
-    <!-- Top Header -->
-    <div class="dash-header" style="justify-content: flex-end;">
-      <div class="dash-controls">
-        <!-- Compact Workspace dropdown -->
-        <select class="compact-select" [ngModel]="selectedGroupId()" (ngModelChange)="onWorkspaceChange($event)">
-          <option value="">Select workspace</option>
-          <option *ngFor="let ws of workspaces()" [value]="ws.groupId">{{ ws.groupName }}</option>
-        </select>
+    <div class="analytics-container">
 
-        <!-- Compact Report dropdown -->
-        <select class="compact-select" [ngModel]="selectedReportId()" (ngModelChange)="onReportChange($event)">
-          <option value="">Select report</option>
-          <option *ngFor="let r of reportsForWorkspace()" [value]="r.reportId">{{ r.reportName }}</option>
-        </select>
+      <!-- ── Optional Header for Dedicated User View ── -->
+      <div class="user-page-nav" *ngIf="selectedUserEmail()">
+        <button class="btn-back" (click)="clearSelectedUser()">
+          ← Back to Main Dashboard
+        </button>
+      </div>
+
+      <!-- ── User Profile Banner (when viewing user detail page) ── -->
+      <div class="user-profile-banner" *ngIf="selectedUserEmail()">
+        <div class="user-profile-left">
+          <div class="user-profile-avatar"
+               [style.background]="getUserAvatarStyle(currentUserObject()?.name || selectedUserEmail()).bg"
+               [style.color]="getUserAvatarStyle(currentUserObject()?.name || selectedUserEmail()).color">
+            {{ getUserInitial(currentUserObject()?.name || selectedUserEmail()) }}
+          </div>
+          <div>
+            <div class="user-profile-name">
+              {{ currentUserObject()?.name || selectedUserEmail() }}
+            </div>
+            <div class="user-profile-email">
+              {{ selectedUserEmail() }}
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span class="status-badge status-active">
+            Corporate Viewer
+          </span>
+        </div>
+      </div>
+
+      <!-- ── 1. Top Filter Bar (6 Searchable Dropdowns) ── -->
+      <div class="filter-bar-card">
+        <div class="filter-bar-header">
+          <div class="filter-title">
+            <span>Analytics Filters</span>
+            <span class="filter-badge" *ngIf="activeFilterCount() > 0">{{ activeFilterCount() }} active</span>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span *ngIf="loading()" style="font-size:12.5px; color:#1e40af; font-weight:600;">
+              <span class="spinner"></span> Updating…
+            </span>
+            <button class="btn-reset" *ngIf="activeFilterCount() > 0" (click)="resetFilters()">
+              Clear All Filters
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-grid">
+          <!-- 1. Workspace Dropdown -->
+          <div class="filter-item">
+            <label class="filter-label">Workspace</label>
+            <div class="dropdown-trigger" [class.active-filter]="filterGroupId" (click)="toggleDropdown('ws', $event)">
+              <span class="trigger-text">{{ getWorkspaceLabel() }}</span>
+              <span class="trigger-caret">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'ws'" (click)="$event.stopPropagation()">
+              <input class="menu-search-input" [(ngModel)]="searchWs" placeholder="Search workspace…" (click)="$event.stopPropagation()" />
+              <div class="menu-options-list">
+                <div class="menu-option-item" [class.selected]="!filterGroupId" (click)="selectWorkspace('')">
+                  All Workspaces
+                </div>
+                <div class="menu-option-item" *ngFor="let ws of filteredWorkspaces()" [class.selected]="filterGroupId === ws.groupId" (click)="selectWorkspace(ws.groupId)">
+                  {{ ws.groupName }}
+                </div>
+                <div *ngIf="!filteredWorkspaces().length" style="padding:8px 12px; font-size:12px; color:#1e40af;">No workspaces found</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Report / Dashboard Dropdown -->
+          <div class="filter-item">
+            <label class="filter-label">Report / Dashboard</label>
+            <div class="dropdown-trigger" [class.active-filter]="filterReportName" (click)="toggleDropdown('rep', $event)">
+              <span class="trigger-text">{{ filterReportName || 'All Reports & Dashboards' }}</span>
+              <span class="trigger-caret">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'rep'" (click)="$event.stopPropagation()">
+              <input class="menu-search-input" [(ngModel)]="searchRep" placeholder="Search report…" (click)="$event.stopPropagation()" />
+              <div class="menu-options-list">
+                <div class="menu-option-item" [class.selected]="!filterReportName" (click)="selectReport('')">
+                  All Reports &amp; Dashboards
+                </div>
+                <div class="menu-option-item" *ngFor="let r of filteredReports()" [class.selected]="filterReportName === r.reportName" (click)="selectReport(r.reportName)">
+                  {{ r.reportName }}
+                </div>
+                <div *ngIf="!filteredReports().length" style="padding:8px 12px; font-size:12px; color:#1e40af;">No reports found</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. User Dropdown -->
+          <div class="filter-item">
+            <label class="filter-label">User</label>
+            <div class="dropdown-trigger" [class.active-filter]="filterUserEmail" (click)="toggleDropdown('user', $event)">
+              <span class="trigger-text">{{ getUserLabel() }}</span>
+              <span class="trigger-caret">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'user'" (click)="$event.stopPropagation()">
+              <input class="menu-search-input" [(ngModel)]="searchUser" placeholder="Search user…" (click)="$event.stopPropagation()" />
+              <div class="menu-options-list">
+                <div class="menu-option-item" [class.selected]="!filterUserEmail" (click)="selectUser('')">
+                  All Users
+                </div>
+                <div class="menu-option-item" *ngFor="let u of filteredUsers()" [class.selected]="filterUserEmail === u.email" (click)="selectUser(u.email)">
+                  {{ u.name || u.email }}
+                </div>
+                <div *ngIf="!filteredUsers().length" style="padding:8px 12px; font-size:12px; color:#1e40af;">No users found</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Year Dropdown -->
+          <div class="filter-item">
+            <label class="filter-label">Year</label>
+            <div class="dropdown-trigger" [class.active-filter]="filterYear" (click)="toggleDropdown('year', $event)">
+              <span class="trigger-text">{{ filterYear ? filterYear : 'All Years' }}</span>
+              <span class="trigger-caret">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'year'" (click)="$event.stopPropagation()">
+              <input class="menu-search-input" [(ngModel)]="searchYear" placeholder="Search year…" (click)="$event.stopPropagation()" />
+              <div class="menu-options-list">
+                <div class="menu-option-item" [class.selected]="!filterYear" (click)="selectYear('')">
+                  All Years
+                </div>
+                <div class="menu-option-item" *ngFor="let y of filteredYears()" [class.selected]="filterYear === '' + y" (click)="selectYear('' + y)">
+                  {{ y }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Month Dropdown -->
+          <div class="filter-item">
+            <label class="filter-label">Month</label>
+            <div class="dropdown-trigger" [class.active-filter]="filterMonth" (click)="toggleDropdown('month', $event)">
+              <span class="trigger-text">{{ getMonthLabel() }}</span>
+              <span class="trigger-caret">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'month'" (click)="$event.stopPropagation()">
+              <input class="menu-search-input" [(ngModel)]="searchMonth" placeholder="Search month…" (click)="$event.stopPropagation()" />
+              <div class="menu-options-list">
+                <div class="menu-option-item" [class.selected]="!filterMonth" (click)="selectMonth('')">
+                  All Months
+                </div>
+                <div class="menu-option-item" *ngFor="let m of filteredMonths()" [class.selected]="filterMonth === m.val" (click)="selectMonth(m.val)">
+                  {{ m.name }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Date Dropdown -->
+          <div class="filter-item">
+            <label class="filter-label">Date</label>
+            <div class="dropdown-trigger" [class.active-filter]="filterDate" (click)="toggleDropdown('date', $event)">
+              <span class="trigger-text">{{ filterDate ? filterDate : 'All Dates' }}</span>
+              <span class="trigger-caret">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'date'" (click)="$event.stopPropagation()">
+              <input class="menu-search-input" [(ngModel)]="searchDate" placeholder="Search date…" (click)="$event.stopPropagation()" />
+              <div class="menu-options-list">
+                <div class="menu-option-item" [class.selected]="!filterDate" (click)="selectDate('')">
+                  All Dates
+                </div>
+                <div class="menu-option-item" *ngFor="let d of filteredDates()" [class.selected]="filterDate === d" (click)="selectDate(d)">
+                  {{ d }}
+                </div>
+                <div *ngIf="!filteredDates().length" style="padding:8px 12px; font-size:12px; color:#1e40af;">No dates found</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 2. Top Overview KPI Cards (Main Page: 5 cards | User Page: 4 cards) ── -->
+      <div class="kpi-grid" [class.four-cols]="selectedUserEmail()">
+        <div class="kpi-card blue-1">
+          <div class="kpi-label">{{ selectedUserEmail() ? 'User Total Views' : 'Total Views' }}</div>
+          <div class="kpi-value">{{ (analytics()?.kpis?.totalViews || 0) | number }}</div>
+          <div class="kpi-sub">Across filtered selection</div>
+        </div>
+
+        <div class="kpi-card blue-2" *ngIf="!selectedUserEmail()">
+          <div class="kpi-label">Active Viewers</div>
+          <div class="kpi-value">{{ (analytics()?.kpis?.totalViewers || 0) | number }}</div>
+          <div class="kpi-sub">Corporate users engaged</div>
+        </div>
+
+        <div class="kpi-card blue-3">
+          <div class="kpi-label">{{ selectedUserEmail() ? 'Reports Accessed' : 'Reports & Dashboards' }}</div>
+          <div class="kpi-value">{{ (analytics()?.kpis?.totalReports || 0) | number }}</div>
+          <div class="kpi-sub">{{ selectedUserEmail() ? 'Distinct reports viewed' : 'In ' + ((analytics()?.kpis?.totalWorkspaces || 0) | number) + ' workspaces' }}</div>
+        </div>
+
+        <div class="kpi-card blue-4">
+          <div class="kpi-label">{{ selectedUserEmail() ? 'Pages Visited' : 'Tracked Pages' }}</div>
+          <div class="kpi-value">{{ (analytics()?.kpis?.totalPages || 0) | number }}</div>
+          <div class="kpi-sub">Page &amp; tab breakdowns</div>
+        </div>
+
+        <div class="kpi-card blue-5" *ngIf="!selectedUserEmail()">
+          <div class="kpi-label">Unused Access Watchlist</div>
+          <div class="kpi-value">
+            {{ accessData()?.unusedUsers || 0 }} <span style="font-size:16px; font-weight:600; color:#1e40af;">/ {{ accessData()?.totalUsers || 0 }}</span>
+          </div>
+          <div class="kpi-sub">{{ accessData()?.unusedRate || 0 }}% inactive access rate</div>
+        </div>
+
+        <div class="kpi-card blue-5" *ngIf="selectedUserEmail()">
+          <div class="kpi-label">Most Active Report</div>
+          <div class="kpi-value" style="font-size:18px; line-height:1.2;">
+            {{ analytics()?.kpis?.topReport?.name || 'N/A' }}
+          </div>
+          <div class="kpi-sub">{{ (analytics()?.kpis?.topReport?.views || 0) | number }} views</div>
+        </div>
+      </div>
+
+      <!-- ── 3. Overview Visuals (Yellow Monthly Graph + Blue Pie) ── -->
+      <div class="overview-charts-grid">
+
+        <!-- Left: Monthly View Activity Graph (Yellow Bars) -->
+        <div class="card-outlined">
+          <div class="card-header-row">
+            <h3 class="card-title">{{ selectedUserEmail() ? 'User Monthly Activity' : 'Monthly View Activity' }}</h3>
+            <span style="font-size:13px; font-weight:600; color:#1e3a8a;">
+              {{ monthlyTimelineData().length }} Active Month{{ monthlyTimelineData().length === 1 ? '' : 's' }}
+            </span>
+          </div>
+
+          <div class="monthly-chart-wrap" *ngIf="monthlyTimelineData().length; else noMonthly">
+            <div class="monthly-bars-container">
+              <div class="monthly-bar-col" *ngFor="let m of monthlyTimelineData()" [title]="m.label + ': ' + (m.views | number) + ' views'">
+                <div class="monthly-bar-val">{{ m.views | number }}</div>
+                <div class="monthly-bar-pill" [style.height.%]="monthlyBarHeightPct(m.views)"></div>
+                <div class="monthly-bar-lbl">{{ m.label }}</div>
+              </div>
+            </div>
+          </div>
+          <ng-template #noMonthly>
+            <div style="color:#1e40af; font-size:13px; text-align:center; padding:50px 0;">
+              No monthly view activity recorded.
+            </div>
+          </ng-template>
+        </div>
+
+        <!-- Right: Big Blue Pie / Donut Chart (Without percentage) -->
+        <div class="card-outlined">
+          <div class="card-header-row">
+            <h3 class="card-title">{{ selectedUserEmail() ? 'User Page Usage Share' : 'Page Usage Distribution' }}</h3>
+            <span style="font-size:13px; font-weight:600; color:#1e3a8a;">
+              Top Pages Share
+            </span>
+          </div>
+
+          <div class="donut-overview-container" *ngIf="pieChartData().length; else noPie">
+            <div class="donut-circle-wrap" [style.background]="pieGradient()">
+              <div class="donut-hole">
+                <div class="donut-hole-val">{{ (analytics()?.kpis?.totalViews || 0) | number }}</div>
+                <div class="donut-hole-lbl">Total Views</div>
+              </div>
+            </div>
+
+            <!-- Clean legend with views in black (percentage removed) -->
+            <div class="donut-legend">
+              <div class="legend-row" *ngFor="let s of pieChartData()">
+                <div class="legend-left">
+                  <div class="legend-dot" [style.background]="s.color"></div>
+                  <span class="legend-name" [title]="s.name">{{ s.name }}</span>
+                </div>
+                <span class="legend-views">{{ s.views | number }} views</span>
+              </div>
+            </div>
+          </div>
+          <ng-template #noPie>
+            <div style="color:#1e40af; font-size:13px; text-align:center; padding:50px 0;">
+              No distribution data available.
+            </div>
+          </ng-template>
+        </div>
+
+      </div>
+
+      <!-- ── 4A. MAIN DASHBOARD DETAILED BREAKDOWN (when NO user is selected) ── -->
+      <div class="dashboard-two-col" *ngIf="!selectedUserEmail()">
+
+        <!-- Column 1: Page-wise Usage Breakdown (Clean Rows with Pagination) ── -->
+        <div class="card-outlined">
+          <div class="card-header-row">
+            <h3 class="card-title">Page &amp; Tab Usage Breakdown</h3>
+
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input class="search-mini-input" [ngModel]="pageSearchText()" (ngModelChange)="pageSearchText.set($event); pageCurrentPage.set(1);" placeholder="Search pages…" style="width:140px;" />
+              <select class="search-mini-input" [ngModel]="pageSortOrder()" (ngModelChange)="pageSortOrder.set($event); pageCurrentPage.set(1);" style="width:115px; cursor:pointer;">
+                <option value="views-desc">Top Views</option>
+                <option value="views-asc">Least Views</option>
+                <option value="name-asc">A to Z</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="page-diagram-list" *ngIf="pagedPages().length; else noPages">
+            <div class="page-clean-row" *ngFor="let p of pagedPages(); let idx = index">
+              <div class="page-title-group">
+                <span class="page-rank-pill" *ngIf="pageSortOrder() === 'views-desc'">#{{ (pageCurrentPage() - 1) * 5 + idx + 1 }}</span>
+                <span class="page-name" [title]="p.pageName">{{ p.pageName }}</span>
+              </div>
+              <div class="page-stats-right">
+                <span class="page-viewers-lbl">{{ p.viewers }} viewer{{ p.viewers === 1 ? '' : 's' }}</span>
+                <span class="page-views-num">{{ p.views | number }} views</span>
+              </div>
+            </div>
+
+            <!-- Page Pagination Controls -->
+            <div class="pagination-bar" *ngIf="filteredPageUsage().length > 5">
+              <span class="pagination-info">
+                {{ (pageCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(pageCurrentPage() * 5, filteredPageUsage().length) }} of {{ filteredPageUsage().length }} pages
+              </span>
+              <div class="pagination-controls">
+                <button class="btn-page" [disabled]="pageCurrentPage() === 1" (click)="pageCurrentPage.set(pageCurrentPage() - 1)">
+                  Previous
+                </button>
+                <span class="page-current-pill">
+                  Page {{ pageCurrentPage() }} of {{ pageTotalPages() }}
+                </span>
+                <button class="btn-page" [disabled]="pageCurrentPage() >= pageTotalPages()" (click)="pageCurrentPage.set(pageCurrentPage() + 1)">
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+          <ng-template #noPages>
+            <div style="color:#1e40af; font-size:13px; text-align:center; padding:35px 0;">
+              No pages match current filters.
+            </div>
+          </ng-template>
+        </div>
+
+        <!-- Column 2: User Activity Breakdown (Clean Rows with Pagination) ── -->
+        <div class="card-outlined">
+          <div class="card-header-row">
+            <h3 class="card-title">User Activity Breakdown</h3>
+
+            <input class="search-mini-input" [ngModel]="userSearchText()" (ngModelChange)="userSearchText.set($event); userCurrentPage.set(1);" placeholder="Search users…" style="width:140px;" />
+          </div>
+
+          <div class="user-list" *ngIf="pagedUsers().length; else noUsers">
+            <div class="user-card-item" *ngFor="let u of pagedUsers(); let i = index" (click)="navigateToUser(u.email)" title="Click to view detailed analytics for this user">
+              <div class="user-meta-group">
+                <div class="user-avatar"
+                     [style.background]="getUserAvatarStyle(u.name, i).bg"
+                     [style.color]="getUserAvatarStyle(u.name, i).color">
+                  {{ getUserInitial(u.name) }}
+                </div>
+                <div class="user-text-info">
+                  <div class="user-fullname" [title]="u.name">{{ u.name }}</div>
+                  <div class="user-email-txt" [title]="u.email">{{ u.email }}</div>
+                </div>
+              </div>
+
+              <div class="user-activity-right">
+                <div>
+                  <div class="user-views-txt">{{ u.views | number }} views</div>
+                  <div class="user-date-txt">{{ u.pagesCount }} page{{ u.pagesCount === 1 ? '' : 's' }} • {{ formatAccessDate(u.lastAccessed) }}</div>
+                </div>
+                <span class="user-nav-arrow">→</span>
+              </div>
+            </div>
+
+            <!-- User Pagination Controls -->
+            <div class="pagination-bar" *ngIf="filteredUserUsage().length > 5">
+              <span class="pagination-info">
+                {{ (userCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(userCurrentPage() * 5, filteredUserUsage().length) }} of {{ filteredUserUsage().length }} users
+              </span>
+              <div class="pagination-controls">
+                <button class="btn-page" [disabled]="userCurrentPage() === 1" (click)="userCurrentPage.set(userCurrentPage() - 1)">
+                  Previous
+                </button>
+                <span class="page-current-pill">
+                  Page {{ userCurrentPage() }} of {{ userTotalPages() }}
+                </span>
+                <button class="btn-page" [disabled]="userCurrentPage() >= userTotalPages()" (click)="userCurrentPage.set(userCurrentPage() + 1)">
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+          <ng-template #noUsers>
+            <div style="color:#1e40af; font-size:13px; text-align:center; padding:35px 0;">
+              No users match current filters.
+            </div>
+          </ng-template>
+        </div>
+      </div>
+
+      <!-- ── 4B. USER DETAIL FULL-WIDTH PAGE BREAKDOWN (with Pagination) ── -->
+      <div class="card-outlined" *ngIf="selectedUserEmail()">
+        <div class="card-header-row">
+          <div>
+            <h3 class="card-title">Pages &amp; Tabs Viewed by {{ currentUserObject()?.name || selectedUserEmail() }}</h3>
+            <div style="font-size:13px; color:#1e3a8a; margin-top:2px;">
+              {{ filteredPageUsage().length }} page{{ filteredPageUsage().length === 1 ? '' : 's' }} visited
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:10px;">
+            <input class="search-mini-input" [ngModel]="pageSearchText()" (ngModelChange)="pageSearchText.set($event); pageCurrentPage.set(1);" placeholder="Search visited pages…" style="width:200px;" />
+            <select class="search-mini-input" [ngModel]="pageSortOrder()" (ngModelChange)="pageSortOrder.set($event); pageCurrentPage.set(1);" style="width:125px; cursor:pointer;">
+              <option value="views-desc">Top Views</option>
+              <option value="views-asc">Least Views</option>
+              <option value="name-asc">A to Z</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="page-diagram-list" *ngIf="pagedPages().length; else noUserPages">
+          <div class="page-clean-row" *ngFor="let p of pagedPages(); let idx = index">
+            <div class="page-title-group">
+              <span class="page-rank-pill" *ngIf="pageSortOrder() === 'views-desc'">#{{ (pageCurrentPage() - 1) * 5 + idx + 1 }}</span>
+              <span class="page-name" [title]="p.pageName">{{ p.pageName }}</span>
+            </div>
+            <div class="page-stats-right">
+              <span class="page-views-num">{{ p.views | number }} views</span>
+            </div>
+          </div>
+
+          <!-- User Pages Pagination Controls -->
+          <div class="pagination-bar" *ngIf="filteredPageUsage().length > 5">
+            <span class="pagination-info">
+              {{ (pageCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(pageCurrentPage() * 5, filteredPageUsage().length) }} of {{ filteredPageUsage().length }} visited pages
+            </span>
+            <div class="pagination-controls">
+              <button class="btn-page" [disabled]="pageCurrentPage() === 1" (click)="pageCurrentPage.set(pageCurrentPage() - 1)">
+                Previous
+              </button>
+              <span class="page-current-pill">
+                Page {{ pageCurrentPage() }} of {{ pageTotalPages() }}
+              </span>
+              <button class="btn-page" [disabled]="pageCurrentPage() >= pageTotalPages()" (click)="pageCurrentPage.set(pageCurrentPage() + 1)">
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+        <ng-template #noUserPages>
+          <div style="color:#1e40af; font-size:13px; text-align:center; padding:35px 0;">
+            No visited pages match the search criteria.
+          </div>
+        </ng-template>
+      </div>
+
+      <!-- ── 5. Access Level & Unused Access Audit (with Pagination) ── -->
+      <div class="access-section-card" *ngIf="!selectedUserEmail()">
+        <div class="access-header-group">
+          <h3 class="card-title">Workspace &amp; Dashboard Access Audit</h3>
+
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div class="access-tabs">
+              <button class="access-tab-btn" [class.active]="accessFilterTab() === 'all'" (click)="accessFilterTab.set('all'); accessCurrentPage.set(1);">
+                All Access ({{ accessData()?.totalUsers || 0 }})
+              </button>
+              <button class="access-tab-btn" [class.active]="accessFilterTab() === 'unused'" (click)="accessFilterTab.set('unused'); accessCurrentPage.set(1);" style="color:#b45309;">
+                Unused Access ({{ accessData()?.unusedUsers || 0 }})
+              </button>
+              <button class="access-tab-btn" [class.active]="accessFilterTab() === 'active'" (click)="accessFilterTab.set('active'); accessCurrentPage.set(1);">
+                Active ({{ accessData()?.activeUsers || 0 }})
+              </button>
+            </div>
+
+            <input class="search-mini-input" [(ngModel)]="accessSearchText" (ngModelChange)="accessCurrentPage.set(1)" placeholder="Search access list…" />
+          </div>
+        </div>
+
+        <!-- Access Table -->
+        <div class="access-table-wrap">
+          <table class="clean-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Role / Permission</th>
+                <th style="text-align:right;">Views</th>
+                <th style="text-align:right;">Last Active</th>
+                <th style="text-align:center;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let u of pagedAccessList(); let i = index">
+                <td style="font-weight:500;">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <div class="user-avatar" style="width:28px; height:28px; font-size:11.5px;"
+                         [style.background]="getUserAvatarStyle(u.displayName, i).bg"
+                         [style.color]="getUserAvatarStyle(u.displayName, i).color">
+                      {{ getUserInitial(u.displayName) }}
+                    </div>
+                    <span>{{ u.displayName }}</span>
+                  </div>
+                </td>
+                <td style="color:#1e3a8a;">{{ u.email }}</td>
+                <td>
+                  <span class="role-badge" [ngClass]="getRoleBadgeClass(u.role)">
+                    {{ u.role }}
+                  </span>
+                </td>
+                <td style="text-align:right; font-weight:700; color:#0f172a;">
+                  {{ u.views | number }}
+                </td>
+                <td style="text-align:right; font-size:12.5px;">
+                  <span *ngIf="u.status === 'active'" style="color:#0f172a; font-weight:600;">
+                    {{ formatAccessDate(u.lastAccessed) }}
+                  </span>
+                  <span *ngIf="u.status !== 'active'" style="color:#dc2626; font-weight:700;">
+                    {{ u.lastAccessed ? formatAccessDate(u.lastAccessed) : 'Never' }}
+                  </span>
+                </td>
+                <td style="text-align:center;">
+                  <button *ngIf="u.views > 0" (click)="navigateToUser(u.email)"
+                          style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:5px; font-size:12px; padding:3px 10px; cursor:pointer; font-weight:600;">
+                    View Analytics
+                  </button>
+                  <span *ngIf="u.views === 0" style="color:#1e40af; font-size:12px;">—</span>
+                </td>
+              </tr>
+              <tr *ngIf="filteredAccessList().length === 0">
+                <td colspan="6" style="text-align:center; padding:30px; color:#1e40af;">
+                  No users found matching current access filter.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Access Table Pagination Controls -->
+        <div class="pagination-bar" *ngIf="filteredAccessList().length > 5">
+          <span class="pagination-info">
+            {{ (accessCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(accessCurrentPage() * 5, filteredAccessList().length) }} of {{ filteredAccessList().length }} members
+          </span>
+          <div class="pagination-controls">
+            <button class="btn-page" [disabled]="accessCurrentPage() === 1" (click)="accessCurrentPage.set(accessCurrentPage() - 1)">
+              Previous
+            </button>
+            <span class="page-current-pill">
+              Page {{ accessCurrentPage() }} of {{ accessTotalPages() }}
+            </span>
+            <button class="btn-page" [disabled]="accessCurrentPage() >= accessTotalPages()" (click)="accessCurrentPage.set(accessCurrentPage() + 1)">
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-
-    <!-- ──────────────── GLOBAL DASHBOARD OVERVIEW ──────────────── -->
-    <ng-container *ngIf="!selectedReportId()">
-      <!-- Skeleton Loading State (Only shown if totally empty and fetching for the first time) -->
-      <div *ngIf="loadingGlobal() && !globalStats()" class="skeleton-dashboard">
-        <div class="kpi-grid">
-          <div class="skeleton-box" style="height:70px;" *ngFor="let _ of [1,2,3,4,5]"></div>
-        </div>
-        <div class="mid-grid" style="margin-top:14px;">
-          <div class="skeleton-box" style="height:270px;"></div>
-          <div class="skeleton-box" style="height:270px;"></div>
-        </div>
-        <div class="bot-grid" style="margin-top:14px;">
-          <div class="skeleton-box" style="height:150px;"></div>
-          <div class="skeleton-box" style="height:150px;"></div>
-          <div class="skeleton-box" style="height:150px;"></div>
-        </div>
-      </div>
-
-      <!-- Real Loaded Dashboard (Warm start: instant 0ms render) -->
-      <ng-container *ngIf="globalStats() || !loadingGlobal()">
-        <!-- Row 1: Top 5 Meaningful KPI Cards -->
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-label">Total views</div>
-            <div class="kpi-value">{{ displayTotalViews() | number }}</div>
-            <div class="kpi-sub">Across all workspaces</div>
-          </div>
-
-        <div class="kpi-card">
-          <div class="kpi-label">Unique Viewers</div>
-          <div class="kpi-value">{{ displayTotalViewers() | number }}</div>
-          <div class="kpi-sub">Active corporate users</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-label">Active Reports</div>
-          <div class="kpi-value">{{ displayActiveReportsCount() | number }}</div>
-          <div class="kpi-sub">In {{ displayWorkspacesCount() }} workspaces</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-label">Top report views</div>
-          <div class="kpi-value">{{ displayTopReportViews() | number }}</div>
-          <div class="kpi-sub" [title]="displayTopReportName()">{{ displayTopReportName() || 'Most viewed report' }}</div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-label">Most active user</div>
-          <div class="kpi-value">{{ displayMostActiveUserViews() | number }}</div>
-          <div class="kpi-sub" [title]="displayMostActiveUserName()">{{ displayMostActiveUserName() || 'Peak viewer' }}</div>
-        </div>
-      </div>
-
-      <!-- Row 2: Middle Section (2 Columns) -->
-      <div class="mid-grid">
-        <!-- Left: Top workspaces and reports -->
-        <div class="card-outlined">
-          <div class="card-title">
-            <span>Top workspaces and reports</span>
-          </div>
-
-          <!-- Workspaces progress items -->
-          <div class="ws-row" *ngFor="let ws of displayWorkspaces(); let i = index">
-            <div class="ws-info">
-              <span class="ws-name" [title]="ws.name">{{ ws.name }}</span>
-              <span class="ws-views">{{ ws.views | number }}</span>
-            </div>
-            <div class="bar-track">
-              <div class="bar-fill" [style.width.%]="ws.percent" [style.background]="getWorkspaceBarColor(i)"></div>
-            </div>
-          </div>
-
-          <!-- Top reports sub-section -->
-          <div class="section-sub">Top reports</div>
-          <div class="report-pills">
-            <div class="report-pill" *ngFor="let rep of displayTopReports()">
-              <span class="pill-name" [title]="rep.name">{{ rep.name }}</span>
-              <span class="pill-views">{{ rep.views | number }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: Top 10 Users -->
-        <div class="card-outlined">
-          <div class="card-title">
-            <span>Top users</span>
-          </div>
-
-          <div class="users-scroll">
-            <div class="user-item" *ngFor="let u of displayTopUsers(); let i = index" (click)="navigateToUser.emit(u.email)">
-              <div class="user-avatar" [style.background]="getUserAvatarStyle(u.name, i).bg" [style.color]="getUserAvatarStyle(u.name, i).color">
-                {{ getUserInitial(u.name) }}
-              </div>
-              <div class="user-info">
-                <div class="user-name" [title]="u.name">{{ u.name }}</div>
-                <div class="user-date">{{ formatUserDate(u.lastAccessed) }}</div>
-              </div>
-              <div class="user-views">{{ u.views | number }}</div>
-            </div>
-            <div *ngIf="!displayTopUsers().length" style="color:#94a3b8; font-size:12px; text-align:center; padding:20px;">
-              No users recorded yet.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Row 3: Bottom Section (3 Columns) -->
-      <div class="bot-grid">
-        <!-- Card 1: Top pages (Outlined White) -->
-        <div class="card-outlined">
-          <div class="card-title">
-            <span>Top pages</span>
-          </div>
-          <div class="page-list">
-            <div class="page-row-item" *ngFor="let p of displayTopPages()">
-              <div class="page-meta">
-                <div class="page-name-txt" [title]="p.pageName">{{ p.pageName }}</div>
-                <div class="page-sub-txt" [title]="p.reportName">{{ p.reportName }}</div>
-              </div>
-              <div class="page-views-txt">{{ p.views | number }}</div>
-            </div>
-            <div *ngIf="!displayTopPages().length" style="color:#94a3b8; font-size:11px; text-align:center; padding:10px;">
-              No pages data.
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 2: Least used reports (Outlined Blue Tinted) -->
-        <div class="card-tinted">
-          <div class="card-title">
-            <span>Least used reports</span>
-          </div>
-          <div class="least-list">
-            <div class="least-row-item" *ngFor="let r of displayLeastReports()">
-              <span class="least-name-txt" [title]="r.name">{{ r.name }}</span>
-              <span class="least-views-txt">{{ r.views | number }}</span>
-            </div>
-            <div *ngIf="!displayLeastReports().length" style="color:#94a3b8; font-size:11px; text-align:center; padding:10px;">
-              No idle reports.
-            </div>
-          </div>
-        </div>
-
-        <!-- Card 3: Least used pages (Outlined Blue Tinted) -->
-        <div class="card-tinted">
-          <div class="card-title">
-            <span>Least used pages</span>
-          </div>
-          <div class="least-list">
-            <div class="least-row-item" *ngFor="let p of displayLeastPages()">
-              <span class="least-name-txt" [title]="p.pageName">{{ p.pageName }}</span>
-              <span class="least-views-txt">{{ p.views | number }}</span>
-            </div>
-            <div *ngIf="!displayLeastPages().length" style="color:#94a3b8; font-size:11px; text-align:center; padding:10px;">
-              No idle pages.
-            </div>
-          </div>
-        </div>
-      </div>
-      </ng-container>
-    </ng-container>
-
-    <!-- ──────────────── SINGLE REPORT DRILL-DOWN VIEW ──────────────── -->
-    <ng-container *ngIf="selectedReportId()">
-      <div class="drilldown-bar">
-        <div class="report-badge">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-          <span>{{ selectedReport()?.reportName }}</span>
-        </div>
-
-        <div style="display:flex; gap:8px; align-items:center;">
-          <div class="day-btns" *ngIf="analytics()" style="display:flex; gap:4px;">
-            <button class="day-btn" [class.active]="selectedDays() === 30" (click)="selectedDays.set(30)">1M</button>
-            <button class="day-btn" [class.active]="selectedDays() === 60" (click)="selectedDays.set(60)">2M</button>
-            <button class="day-btn" [class.active]="selectedDays() === 90" (click)="selectedDays.set(90)">3M</button>
-          </div>
-          <button class="btn-back" (click)="selectedReportId.set('')">
-            ← Global Overview
-          </button>
-        </div>
-      </div>
-
-      <div *ngIf="loadingAnalytics()" style="text-align:center; padding:30px 0; color:#64748b; font-size:13px;">
-        <span class="spinner"></span> Loading analytics…
-      </div>
-
-      <div *ngIf="analytics() && !loadingAnalytics()">
-        <!-- Summary cards for this report -->
-        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom:10px;">
-          <div class="kpi-card">
-            <div class="kpi-label">Report Views</div>
-            <div class="kpi-value">{{ filteredTotalViews() | number }}</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Unique Viewers</div>
-            <div class="kpi-value">{{ filteredTotalViewers() | number }}</div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-label">Days with Activity</div>
-            <div class="kpi-value">{{ filteredViewsByDay().length }}</div>
-          </div>
-        </div>
-
-        <div class="mid-grid">
-          <!-- Views per Day -->
-          <div class="card-outlined">
-            <div class="card-title"><span>Views per Day</span></div>
-            <div class="bar-chart-wrap" *ngIf="chartData().length; else noData">
-              <div class="bar-chart">
-                <div class="bar-col" *ngFor="let d of chartData()">
-                  <div class="bar-rect" [style.height.px]="barHeight(d.views)"></div>
-                  <div class="bar-lbl">{{ d.date | date:'M/d' }}</div>
-                </div>
-              </div>
-            </div>
-            <ng-template #noData><p style="color:#94a3b8; font-size:12px; text-align:center; padding:15px 0;">No view data.</p></ng-template>
-          </div>
-
-          <!-- Views by Platform -->
-          <div class="card-outlined">
-            <div class="card-title"><span>Views by Platform</span></div>
-            <div *ngIf="filteredViewsByPlatform().length; else noPlat">
-              <div class="platform-row" *ngFor="let p of filteredViewsByPlatform()">
-                <span class="platform-name">{{ p.platform }}</span>
-                <div class="platform-bar-wrap">
-                  <div class="platform-bar-fill" [style.width.%]="platformPct(p.views)"></div>
-                </div>
-                <span class="platform-count">{{ p.views }}</span>
-              </div>
-            </div>
-            <ng-template #noPlat><p style="color:#94a3b8; font-size:12px; text-align:center; padding:15px 0;">No platform data.</p></ng-template>
-          </div>
-        </div>
-
-        <!-- Views by User -->
-        <div class="card-outlined" style="margin-top:12px;">
-          <div class="card-title">
-            <span>Views by User</span>
-            <span style="font-size:11px; font-weight:500; color:#64748b;">Click a user to view page breakdown</span>
-          </div>
-          <div style="max-height:160px; overflow-y:auto;">
-            <table class="data-tbl">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th style="text-align:right;">Views</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let u of filteredViewsByUser()" (click)="toggleSelectedUser(u.email)" 
-                    [style.background]="selectedUserEmail() === u.email ? '#fef3c7' : ''"
-                    style="cursor:pointer; transition: background 0.15s;">
-                  <td><strong>{{ (u.givenName + ' ' + u.familyName) | titlecase }}</strong></td>
-                  <td style="color:#64748b;">{{ u.email }}</td>
-                  <td style="text-align:right; font-weight:700; color:#2563eb;">{{ u.views | number }}</td>
-                </tr>
-                <tr *ngIf="!filteredViewsByUser().length">
-                  <td colspan="3" style="text-align:center; color:#94a3b8; padding:15px;">No users found.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- User Pages Breakdown with Workspace Name & Last Accessed -->
-          <div *ngIf="selectedUserEmail() && selectedUserDetails() as u" style="margin-top: 14px; border: 1.5px solid #fcd34d; border-radius: 8px; background: #fffdfa; padding: 14px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom: 1px solid #fef3c7; padding-bottom: 8px;">
-              <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
-                <span style="font-weight:700; color:#b45309; font-size:13px;">Pages Accessed by {{ u.name | titlecase }}</span>
-                <span style="font-size:11px; font-weight:600; background:#fef3c7; color:#b45309; padding:2px 8px; border-radius:99px;">
-                  Workspace: {{ selectedWorkspaceName() || 'Selected Workspace' }}
-                </span>
-              </div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <button (click)="navigateToUser.emit(u.email)" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:5px; font-size:11px; font-weight:600; padding:3px 8px; cursor:pointer;">
-                  View Full Profile →
-                </button>
-                <button (click)="selectedUserEmail.set('')" style="background:none; border:none; color:#94a3b8; font-size:14px; cursor:pointer; font-weight:700;">✕</button>
-              </div>
-            </div>
-
-            <div style="max-height: 180px; overflow-y: auto;">
-              <table class="data-tbl">
-                <thead>
-                  <tr>
-                    <th>Workspace Name</th>
-                    <th>Report Name</th>
-                    <th>Page / Tab Name</th>
-                    <th style="text-align:right;">Views</th>
-                    <th style="text-align:right;">Last Accessed</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let p of selectedUserPageList()">
-                    <td><span style="font-weight:600; color:#1e40af;">{{ p.workspaceName }}</span></td>
-                    <td>{{ p.reportName }}</td>
-                    <td><strong style="color:#0f172a;">{{ p.pageName }}</strong></td>
-                    <td style="text-align:right; font-weight:700; color:#2563eb;">{{ p.views | number }}</td>
-                    <td style="text-align:right; color:#64748b; font-size:11px;">{{ formatAccessDate(p.lastAccessed) }}</td>
-                  </tr>
-                  <tr *ngIf="!selectedUserPageList().length">
-                    <td colspan="5" style="text-align:center; color:#94a3b8; padding:15px;">No detailed page access recorded for this user in this workspace.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </ng-container>
-  </div>
   `,
 })
 export class UsageComponent implements OnInit {
-  @Output() navigateToUser = new EventEmitter<string>();
+  analytics = signal<DashboardAnalyticsResponse | null>(null);
+  accessData = signal<AccessUtilizationResponse | null>(null);
+  loading = signal(false);
 
-  allReports = signal<UsageReportItem[]>([]);
-  analytics = signal<UsageAnalytics | null>(null);
-  globalStats = signal<GlobalDashboardStats | null>(null);
-  wsUsers = signal<WorkspaceUser[]>([]);
-  loadingReports = signal(false);
-  loadingAnalytics = signal(false);
-  loadingGlobal = signal(false);
-  errorMsg = signal('');
-
-  selectedGroupId = signal('');
-  selectedReportId = signal('');
-  selectedDays = signal<number>(30);
-
-  // Workspaces list for dropdown
-  workspaces = computed(() => {
-    const seen = new Map<string, string>();
-    for (const r of this.allReports()) {
-      if (!seen.has(r.groupId)) seen.set(r.groupId, r.groupName);
-    }
-    return Array.from(seen.entries())
-      .map(([groupId, groupName]) => ({ groupId, groupName }))
-      .sort((a, b) => a.groupName.localeCompare(b.groupName));
-  });
-
-  reportsForWorkspace = computed(() => {
-    const groupId = this.selectedGroupId();
-    if (!groupId) return this.allReports();
-    return this.allReports().filter(r => r.groupId === groupId);
-  });
-
-  selectedReport = computed(() =>
-    this.allReports().find(r => r.reportId === this.selectedReportId()) ?? null,
-  );
-
+  // Selected user for dedicated User Analytics view
   selectedUserEmail = signal<string>('');
 
-  selectedWorkspaceName = computed(() => {
-    const gid = this.selectedGroupId();
-    if (!gid) return '';
-    return this.workspaces().find(w => w.groupId === gid)?.groupName || '';
-  });
+  // 6 Filter models
+  filterGroupId: string = '';
+  filterReportName: string = '';
+  filterUserEmail: string = '';
+  filterYear: string = '';
+  filterMonth: string = '';
+  filterDate: string = '';
 
-  selectedUserDetails = computed(() => {
-    const email = (this.selectedUserEmail() || '').toLowerCase().trim();
-    if (!email) return null;
-    const user = this.filteredViewsByUser().find(u => u.email.toLowerCase().trim() === email);
-    if (user) {
-      return { name: `${user.givenName} ${user.familyName}`.trim() || user.email, email: user.email };
-    }
-    return { name: email, email };
-  });
+  // Dropdown open state
+  openDropdown = signal<string | null>(null);
 
-  selectedUserPageList = computed(() => {
-    const email = (this.selectedUserEmail() || '').toLowerCase().trim();
-    if (!email) return [];
-    const wsName = this.selectedWorkspaceName() || 'Selected Workspace';
-    const rawAccess = this.analytics()?.userPageAccess ?? [];
-    const rawReportAccess = this.analytics()?.userReportAccess ?? [];
-    const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
-    
-    const map = new Map<string, { workspaceName: string; reportName: string; pageName: string; views: number; lastAccessed: string }>();
+  // Search inside dropdowns
+  searchWs: string = '';
+  searchRep: string = '';
+  searchUser: string = '';
+  searchYear: string = '';
+  searchMonth: string = '';
+  searchDate: string = '';
 
-    // 1. Try page-level access first (case-insensitive email matching)
-    for (const a of rawAccess) {
-      if ((a.email || '').toLowerCase().trim() === email && (activeDates.size === 0 || activeDates.has(a.date))) {
-        const key = `${a.reportName}|${a.pageName}`;
-        const existing = map.get(key);
-        if (existing) {
-          if (a.date && a.date > existing.lastAccessed) {
-            existing.lastAccessed = a.date;
-            existing.views = a.views;
-          } else if (a.date === existing.lastAccessed) {
-            existing.views += a.views;
-          }
-        } else {
-          map.set(key, {
-            workspaceName: wsName,
-            reportName: a.reportName,
-            pageName: a.pageName,
-            views: a.views,
-            lastAccessed: a.date
-          });
-        }
-      }
-    }
+  // In-page search & sorting as reactive signals
+  pageSearchText = signal<string>('');
+  pageSortOrder = signal<'views-desc' | 'views-asc' | 'name-asc'>('views-desc');
+  userSearchText = signal<string>('');
+  accessFilterTab = signal<'all' | 'unused' | 'active'>('all');
+  accessSearchText: string = '';
 
-    // 2. Fallback to report-level access if no page-level entries matched
-    if (map.size === 0) {
-      for (const a of rawReportAccess) {
-        if ((a.email || '').toLowerCase().trim() === email && (activeDates.size === 0 || activeDates.has(a.date))) {
-          const key = `${a.reportName}|${a.reportName}`;
-          const existing = map.get(key);
-          if (existing) {
-            if (a.date && a.date > existing.lastAccessed) {
-              existing.lastAccessed = a.date;
-              existing.views = a.views;
-            } else if (a.date === existing.lastAccessed) {
-              existing.views += a.views;
-            }
-          } else {
-            map.set(key, {
-              workspaceName: wsName,
-              reportName: a.reportName,
-              pageName: a.reportName,
-              views: a.views,
-              lastAccessed: a.date
-            });
-          }
-        }
-      }
-    }
+  // Pagination states (5 items per page)
+  pageCurrentPage = signal<number>(1);
+  userCurrentPage = signal<number>(1);
+  accessCurrentPage = signal<number>(1);
 
-    return Array.from(map.values()).sort((a, b) => b.views - a.views);
-  });
+  // Expose Math for template
+  Math = Math;
 
-  toggleSelectedUser(email: string) {
-    if (this.selectedUserEmail() === email) {
-      this.selectedUserEmail.set('');
+  // Close dropdowns on outside click
+  @HostListener('document:click', ['$event'])
+  onDocumentClick() {
+    this.openDropdown.set(null);
+  }
+
+  toggleDropdown(name: string, event: MouseEvent) {
+    event.stopPropagation();
+    if (this.openDropdown() === name) {
+      this.openDropdown.set(null);
     } else {
-      this.selectedUserEmail.set(email);
+      this.openDropdown.set(name);
     }
   }
 
-  // ── Dynamic Display Computed Properties for Global Dashboard ──
-  displayTotalViews = computed(() => this.globalStats()?.totalViews || 0);
-  displayTotalViewers = computed(() => this.globalStats()?.totalViewers || 0);
-  displayActiveReportsCount = computed(() => {
-    const count = this.globalStats()?.totalReportsCount;
-    if (count !== undefined && count > 0) return count;
-    return this.globalStats()?.topReports?.length || 0;
-  });
-  displayWorkspacesCount = computed(() => {
-    const count = this.globalStats()?.totalWorkspacesCount;
-    if (count !== undefined && count > 0) return count;
-    return this.globalStats()?.topWorkspaces?.length || 0;
+  isServicePrincipal(displayName: string = '', email: string = ''): boolean {
+    const disp = (displayName || '').toLowerCase();
+    const em = (email || '').toLowerCase();
+    const isGuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
+    return (
+      disp.includes('serviceprincipal') ||
+      disp.includes('powerbi-api') ||
+      em.includes('powerbi-api') ||
+      em.includes('serviceprincipal') ||
+      isGuid(disp) ||
+      isGuid(em) ||
+      isGuid(em.split('@')[0])
+    );
+  }
+
+  // Filter options derived from analytics
+  availableWorkspaces = computed(() => this.analytics()?.filterOptions?.workspaces || []);
+  availableReports = computed(() => this.analytics()?.filterOptions?.reports || []);
+  availableUsers = computed(() => (this.analytics()?.filterOptions?.users || []).filter(u => !this.isServicePrincipal(u.name, u.email)));
+  availableYears = computed(() => this.analytics()?.filterOptions?.years || []);
+  availableDates = computed(() => this.analytics()?.filterOptions?.dates || []);
+
+  currentUserObject = computed(() => {
+    const email = this.selectedUserEmail();
+    if (!email) return null;
+    return this.availableUsers().find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
   });
 
-  displayTopReportViews = computed(() => {
-    const stats = this.globalStats();
-    if (stats?.topReportViews && stats.topReportViews > 0) return stats.topReportViews;
-    return stats?.topReports?.[0]?.views || 0;
+  // Filtered dropdown lists based on user search in dropdown
+  filteredWorkspaces = computed(() => {
+    const raw = this.availableWorkspaces();
+    const s = (this.searchWs || '').toLowerCase().trim();
+    return s ? raw.filter(w => w.groupName.toLowerCase().includes(s)) : raw;
   });
 
-  displayTopReportName = computed(() => {
-    const stats = this.globalStats();
-    if (stats?.topReportName) return stats.topReportName;
-    return stats?.topReports?.[0]?.name || '';
+  filteredReports = computed(() => {
+    const raw = this.availableReports();
+    const s = (this.searchRep || '').toLowerCase().trim();
+    return s ? raw.filter(r => r.reportName.toLowerCase().includes(s)) : raw;
   });
 
-  displayMostActiveUserViews = computed(() => {
-    const stats = this.globalStats();
-    if (stats?.mostActiveUserViews && stats.mostActiveUserViews > 0) return stats.mostActiveUserViews;
-    return stats?.topUsers?.[0]?.views || 0;
+  filteredUsers = computed(() => {
+    const raw = this.availableUsers();
+    const s = (this.searchUser || '').toLowerCase().trim();
+    return s ? raw.filter(u => (u.name || '').toLowerCase().includes(s) || u.email.toLowerCase().includes(s)) : raw;
   });
 
-  displayMostActiveUserName = computed(() => {
-    const stats = this.globalStats();
-    if (stats?.mostActiveUserName) return stats.mostActiveUserName;
-    return stats?.topUsers?.[0]?.name || '';
+  filteredYears = computed(() => {
+    const raw = this.availableYears();
+    const s = (this.searchYear || '').trim();
+    return s ? raw.filter(y => String(y).includes(s)) : raw;
   });
 
-  displayWorkspaces = computed(() => {
-    const raw = this.globalStats()?.topWorkspaces || [];
-    const list = raw.slice(0, 3);
-    const max = Math.max(...list.map(w => w.views || 1), 1);
-    return list.map(w => ({
-      name: w.name || 'Workspace',
-      views: w.views,
-      percent: Math.max(6, Math.round((w.views / max) * 100)),
+  allMonthsList = [
+    { val: '1', name: 'January' },
+    { val: '2', name: 'February' },
+    { val: '3', name: 'March' },
+    { val: '4', name: 'April' },
+    { val: '5', name: 'May' },
+    { val: '6', name: 'June' },
+    { val: '7', name: 'July' },
+    { val: '8', name: 'August' },
+    { val: '9', name: 'September' },
+    { val: '10', name: 'October' },
+    { val: '11', name: 'November' },
+    { val: '12', name: 'December' },
+  ];
+
+  filteredMonths = computed(() => {
+    const s = (this.searchMonth || '').toLowerCase().trim();
+    return s ? this.allMonthsList.filter(m => m.name.toLowerCase().includes(s)) : this.allMonthsList;
+  });
+
+  filteredDates = computed(() => {
+    const raw = this.availableDates();
+    const s = (this.searchDate || '').trim();
+    return s ? raw.filter(d => d.includes(s)) : raw;
+  });
+
+  // Dropdown Label Helpers
+  getWorkspaceLabel(): string {
+    if (!this.filterGroupId) return 'All Workspaces';
+    return this.availableWorkspaces().find(w => w.groupId === this.filterGroupId)?.groupName || 'Selected Workspace';
+  }
+
+  getUserLabel(): string {
+    if (!this.filterUserEmail) return 'All Users';
+    const match = this.availableUsers().find(u => u.email.toLowerCase() === this.filterUserEmail.toLowerCase());
+    return match ? (match.name || match.email) : this.filterUserEmail;
+  }
+
+  getMonthLabel(): string {
+    if (!this.filterMonth) return 'All Months';
+    return this.allMonthsList.find(m => m.val === this.filterMonth)?.name || 'Selected Month';
+  }
+
+  // Selection handlers
+  selectWorkspace(id: string) {
+    this.filterGroupId = id;
+    this.openDropdown.set(null);
+    this.onFilterChanged();
+  }
+
+  selectReport(name: string) {
+    this.filterReportName = name;
+    this.openDropdown.set(null);
+    this.onFilterChanged();
+  }
+
+  selectUser(email: string) {
+    this.filterUserEmail = email;
+    this.selectedUserEmail.set(email);
+    this.openDropdown.set(null);
+    this.onFilterChanged();
+  }
+
+  selectYear(yr: string) {
+    this.filterYear = yr;
+    this.openDropdown.set(null);
+    this.onFilterChanged();
+  }
+
+  selectMonth(m: string) {
+    this.filterMonth = m;
+    this.openDropdown.set(null);
+    this.onFilterChanged();
+  }
+
+  selectDate(d: string) {
+    this.filterDate = d;
+    this.openDropdown.set(null);
+    this.onFilterChanged();
+  }
+
+  navigateToUser(email: string) {
+    this.selectedUserEmail.set(email);
+    this.filterUserEmail = email;
+    this.pageCurrentPage.set(1);
+    this.onFilterChanged();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  clearSelectedUser() {
+    this.selectedUserEmail.set('');
+    this.filterUserEmail = '';
+    this.pageCurrentPage.set(1);
+    this.onFilterChanged();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  activeFilterCount = computed(() => {
+    let count = 0;
+    if (this.filterGroupId) count++;
+    if (this.filterReportName) count++;
+    if (this.filterUserEmail) count++;
+    if (this.filterYear) count++;
+    if (this.filterMonth) count++;
+    if (this.filterDate) count++;
+    if (this.selectedUserEmail()) count++;
+    return count;
+  });
+
+  // Monthly aggregated timeline data
+  monthlyTimelineData = computed(() => {
+    const raw = this.analytics()?.viewsTimeline || [];
+    if (!raw.length) return [];
+
+    const monthMap = new Map<string, { label: string; yearMonth: string; views: number }>();
+    const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    for (const item of raw) {
+      if (!item.date) continue;
+      const parts = item.date.split('-');
+      if (parts.length === 3) {
+        const year = parts[0];
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const key = `${year}-${parts[1]}`;
+        const label = `${shortMonths[monthIdx] || parts[1]} ${year}`;
+        const existing = monthMap.get(key);
+        if (existing) {
+          existing.views += item.views;
+        } else {
+          monthMap.set(key, { label, yearMonth: key, views: item.views });
+        }
+      }
+    }
+
+    return Array.from(monthMap.values()).sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
+  });
+
+  maxMonthlyViews = computed(() => {
+    const data = this.monthlyTimelineData();
+    return Math.max(...(data.map(d => d.views) || [1]), 1);
+  });
+
+  monthlyBarHeightPct(views: number): number {
+    return Math.max(8, Math.round((views / this.maxMonthlyViews()) * 100));
+  }
+
+  // Big Pie / Donut Chart Data in Blue Shades
+  pieChartData = computed(() => {
+    const pages = this.analytics()?.pageUsage || [];
+    if (!pages.length) return [];
+
+    const total = pages.reduce((sum, p) => sum + p.views, 0) || 1;
+    const topPages = pages.slice(0, 5);
+    const otherViews = pages.slice(5).reduce((sum, p) => sum + p.views, 0);
+
+    const blueShades = ['#1e3a8a', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
+
+    const slices = topPages.map((p, idx) => ({
+      name: p.pageName,
+      views: p.views,
+      percent: Math.round((p.views / total) * 100),
+      color: blueShades[idx % blueShades.length]
     }));
+
+    if (otherViews > 0) {
+      slices.push({
+        name: 'Other Pages',
+        views: otherViews,
+        percent: Math.max(1, Math.round((otherViews / total) * 100)),
+        color: blueShades[5]
+      });
+    }
+
+    return slices;
   });
 
-  displayTopReports = computed(() => {
-    const raw = this.globalStats()?.topReports || [];
-    return raw.slice(0, 3);
+  pieGradient = computed(() => {
+    const slices = this.pieChartData();
+    if (!slices.length) return 'conic-gradient(#eff6ff 0deg 360deg)';
+
+    const total = slices.reduce((sum, s) => sum + s.views, 0) || 1;
+    let currentAngle = 0;
+    const gradientParts: string[] = [];
+
+    for (const s of slices) {
+      const angle = (s.views / total) * 360;
+      const endAngle = currentAngle + angle;
+      gradientParts.push(`${s.color} ${currentAngle.toFixed(1)}deg ${endAngle.toFixed(1)}deg`);
+      currentAngle = endAngle;
+    }
+
+    return `conic-gradient(${gradientParts.join(', ')})`;
   });
 
-  // Top Users dynamically (top 5 to balance middle section height)
-  displayTopUsers = computed(() => {
-    const raw = this.globalStats()?.topUsers || [];
-    return raw.slice(0, 5);
+  // Filtered Page Usage with working dynamic sort reactivity
+  filteredPageUsage = computed(() => {
+    const raw = this.analytics()?.pageUsage || [];
+    const search = (this.pageSearchText() || '').toLowerCase().trim();
+    const sort = this.pageSortOrder();
+
+    let filtered = raw.filter(p =>
+      (!search || p.pageName.toLowerCase().includes(search) || p.reportName.toLowerCase().includes(search))
+    );
+
+    if (sort === 'views-asc') {
+      filtered = [...filtered].sort((a, b) => a.views - b.views);
+    } else if (sort === 'name-asc') {
+      filtered = [...filtered].sort((a, b) => a.pageName.localeCompare(b.pageName));
+    } else {
+      filtered = [...filtered].sort((a, b) => b.views - a.views);
+    }
+
+    return filtered;
   });
 
-  displayTopPages = computed(() => {
-    const raw = this.globalStats()?.topPages || [];
-    return raw.slice(0, 4);
+  // Page Pagination
+  pageTotalPages = computed(() => Math.max(1, Math.ceil(this.filteredPageUsage().length / 5)));
+  pagedPages = computed(() => {
+    const p = this.pageCurrentPage();
+    return this.filteredPageUsage().slice((p - 1) * 5, p * 5);
   });
 
-  displayLeastReports = computed(() => {
-    const raw = this.globalStats()?.leastReports || [];
-    return raw.slice(0, 4);
+  // Filtered User Usage for User-wise Analysis
+  filteredUserUsage = computed(() => {
+    const raw = this.analytics()?.userUsage || [];
+    const search = (this.userSearchText() || '').toLowerCase().trim();
+    return raw
+      .filter(u => !this.isServicePrincipal(u.name, u.email))
+      .filter(u =>
+        (!search || u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search))
+      );
   });
 
-  displayLeastPages = computed(() => {
-    const raw = this.globalStats()?.leastPages || [];
-    return raw.slice(0, 4);
+  // User Pagination
+  userTotalPages = computed(() => Math.max(1, Math.ceil(this.filteredUserUsage().length / 5)));
+  pagedUsers = computed(() => {
+    const p = this.userCurrentPage();
+    return this.filteredUserUsage().slice((p - 1) * 5, p * 5);
   });
+
+  // Filtered Access List
+  filteredAccessList = computed(() => {
+    const raw = (this.accessData()?.users || []).filter(u => !this.isServicePrincipal(u.displayName, u.email));
+    const tab = this.accessFilterTab();
+    const search = (this.accessSearchText || '').toLowerCase().trim();
+
+    const filtered = raw.filter(u => {
+      if (tab === 'unused' && u.status !== 'unused') return false;
+      if (tab === 'active' && u.status !== 'active') return false;
+      if (search) {
+        return u.displayName.toLowerCase().includes(search) || u.email.toLowerCase().includes(search) || u.role.toLowerCase().includes(search);
+      }
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (a.status !== b.status) {
+        return a.status === 'active' ? -1 : 1;
+      }
+      return b.views - a.views;
+    });
+  });
+
+  // Access Pagination
+  accessTotalPages = computed(() => Math.max(1, Math.ceil(this.filteredAccessList().length / 5)));
+  pagedAccessList = computed(() => {
+    const p = this.accessCurrentPage();
+    return this.filteredAccessList().slice((p - 1) * 5, p * 5);
+  });
+
+  constructor(private api: SyncApiService, private toast: ToastService) {}
+
+  ngOnInit(): void {
+    this.loadAnalytics();
+    this.loadAccessUtilization();
+  }
+
+  onFilterChanged(): void {
+    this.loadAnalytics();
+    this.loadAccessUtilization();
+  }
+
+  resetFilters(): void {
+    this.filterGroupId = '';
+    this.filterReportName = '';
+    this.filterUserEmail = '';
+    this.selectedUserEmail.set('');
+    this.filterYear = '';
+    this.filterMonth = '';
+    this.filterDate = '';
+    this.searchWs = '';
+    this.searchRep = '';
+    this.searchUser = '';
+    this.searchYear = '';
+    this.searchMonth = '';
+    this.searchDate = '';
+    this.pageSearchText.set('');
+    this.pageSortOrder.set('views-desc');
+    this.userSearchText.set('');
+    this.pageCurrentPage.set(1);
+    this.userCurrentPage.set(1);
+    this.accessCurrentPage.set(1);
+    this.openDropdown.set(null);
+    this.onFilterChanged();
+  }
+
+  private loadAnalytics(): void {
+    this.loading.set(true);
+    this.api.getDashboardAnalytics({
+      groupId: this.filterGroupId || undefined,
+      reportName: this.filterReportName || undefined,
+      email: this.filterUserEmail || undefined,
+      year: this.filterYear || undefined,
+      month: this.filterMonth || undefined,
+      date: this.filterDate || undefined,
+    }).subscribe({
+      next: (data) => {
+        this.analytics.set(data);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.toast.error('Failed to load analytics: ' + (err?.message || 'error'));
+      },
+    });
+  }
+
+  private loadAccessUtilization(): void {
+    this.api.getAccessUtilization(
+      this.filterGroupId || undefined,
+      this.filterReportName || undefined,
+    ).subscribe({
+      next: (res) => {
+        this.accessData.set(res);
+      },
+      error: () => {},
+    });
+  }
 
   // Helpers
-  getWorkspaceBarColor(index: number): string {
-    const colors = ['#1d6ef5', '#60a5fa', '#bfdbfe'];
-    return colors[index % colors.length];
+  getStatusBadgeText(u: any): string {
+    if (u.status === 'active') {
+      return 'Active';
+    }
+    if (u.lastAccessed) {
+      const yr = u.lastAccessed.slice(0, 4);
+      return yr === '2026' ? 'Active' : `Inactive (${yr})`;
+    }
+    return 'Unused Access';
+  }
+
+  getRoleBadgeClass(role: string): string {
+    const r = (role || '').toLowerCase();
+    if (r.includes('admin')) return 'role-admin';
+    if (r.includes('member')) return 'role-member';
+    if (r.includes('contributor')) return 'role-contributor';
+    return 'role-viewer';
   }
 
   getUserInitial(name?: string): string {
@@ -1069,220 +2047,21 @@ export class UsageComponent implements OnInit {
 
   getUserAvatarStyle(name?: string, index: number = 0): { bg: string; color: string } {
     const pastels = [
-      { bg: '#dbeafe', color: '#1d4ed8' }, // Soft Sky Blue
-      { bg: '#ede9fe', color: '#6d28d9' }, // Lavender / Violet
-      { bg: '#dcfce7', color: '#15803d' }, // Mint / Soft Emerald
-      { bg: '#ffe4e6', color: '#be123c' }, // Soft Rose
-      { bg: '#fef3c7', color: '#b45309' }, // Soft Amber / Peach
-      { bg: '#ccfbf1', color: '#0f766e' }, // Soft Aqua / Teal
-      { bg: '#fce7f3', color: '#be185d' }, // Soft Pink
-      { bg: '#ffedd5', color: '#c2410c' }, // Warm Apricot
-      { bg: '#e0e7ff', color: '#4338ca' }, // Soft Indigo
-      { bg: '#ecfccb', color: '#3f6212' }, // Soft Sage / Lime
+      { bg: '#dbeafe', color: '#1e40af' }, // Blue
+      { bg: '#dcfce7', color: '#166534' }, // Emerald
+      { bg: '#fef3c7', color: '#92400e' }, // Amber
+      { bg: '#ede9fe', color: '#5b21b6' }, // Violet
+      { bg: '#ffe4e6', color: '#9f1239' }, // Rose
+      { bg: '#ccfbf1', color: '#115e59' }, // Teal
+      { bg: '#ffedd5', color: '#9a3412' }, // Orange
+      { bg: '#e0e7ff', color: '#3730a3' }, // Indigo
     ];
-
     if (!name) return pastels[index % pastels.length];
     let hash = 0;
     for (let j = 0; j < name.length; j++) {
       hash = name.charCodeAt(j) + ((hash << 5) - hash);
     }
-    const colorIndex = Math.abs(hash) % pastels.length;
-    return pastels[colorIndex];
-  }
-
-  formatUserDate(dateStr?: string): string {
-    if (!dateStr) return '';
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return '';
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    } catch {
-      return '';
-    }
-  }
-
-  filteredViewsByDay = computed(() => {
-    const data = this.analytics()?.viewsByDay ?? [];
-    if (!data.length) return [];
-    const limit = this.selectedDays();
-    const sorted = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const latestDate = new Date(sorted[sorted.length - 1].date);
-    const cutoffDate = new Date(latestDate);
-    cutoffDate.setDate(cutoffDate.getDate() - limit);
-    cutoffDate.setHours(0, 0, 0, 0);
-    return sorted.filter(d => new Date(d.date) >= cutoffDate);
-  });
-
-  chartData = computed(() => {
-    const dailyData = this.filteredViewsByDay();
-    if (this.selectedDays() <= 30) return dailyData;
-
-    const weeklyMap = new Map<string, number>();
-    for (const d of dailyData) {
-      const dateObj = new Date(d.date);
-      const day = dateObj.getDay();
-      const diff = dateObj.getDate() - day;
-      const weekStart = new Date(dateObj);
-      weekStart.setDate(diff);
-
-      const y = weekStart.getFullYear();
-      const m = String(weekStart.getMonth() + 1).padStart(2, '0');
-      const dayStr = String(weekStart.getDate()).padStart(2, '0');
-      const weekKey = `${y}-${m}-${dayStr}`;
-      weeklyMap.set(weekKey, (weeklyMap.get(weekKey) || 0) + d.views);
-    }
-    return Array.from(weeklyMap.keys()).sort().map(w => ({ date: w, views: weeklyMap.get(w)! }));
-  });
-
-  filteredTotalViews = computed(() =>
-    this.filteredViewsByDay().reduce((sum, d) => sum + d.views, 0)
-  );
-
-  filteredViewsByUser = computed(() => {
-    const rawUsers = this.analytics()?.viewsByUser ?? [];
-    const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
-    const userMap = new Map<string, { givenName: string; familyName: string; email: string; views: number }>();
-
-    for (const u of rawUsers) {
-      if (activeDates.has(u.date)) {
-        const emailKey = (u.email || '').toLowerCase().trim();
-        if (!emailKey) continue;
-        const existing = userMap.get(emailKey);
-        if (existing) {
-          existing.views += u.views;
-          // Prefer full names if available
-          if ((!existing.givenName || existing.givenName === existing.email) && u.givenName && u.givenName !== u.email) {
-            existing.givenName = u.givenName;
-            existing.familyName = u.familyName;
-          }
-        } else {
-          userMap.set(emailKey, {
-            givenName: u.givenName,
-            familyName: u.familyName,
-            email: emailKey,
-            views: u.views,
-          });
-        }
-      }
-    }
-    return Array.from(userMap.values())
-      .filter(u => u.views > 0)
-      .sort((a, b) => b.views - a.views);
-  });
-
-  filteredTotalViewers = computed(() => this.filteredViewsByUser().length);
-
-  filteredViewsByPlatform = computed(() => {
-    const rawPlatforms = this.analytics()?.viewsByPlatform ?? [];
-    if (!rawPlatforms.length) return [];
-    const activeDates = new Set(this.filteredViewsByDay().map(d => d.date));
-    const platformMap = new Map<string, number>();
-
-    for (const p of rawPlatforms) {
-      if (!p.date || activeDates.has(p.date) || activeDates.size === 0) {
-        platformMap.set(p.platform, (platformMap.get(p.platform) || 0) + p.views);
-      }
-    }
-
-    return Array.from(platformMap.entries())
-      .map(([platform, views]) => ({ platform, views }))
-      .sort((a, b) => b.views - a.views);
-  });
-
-  maxViews = computed(() => Math.max(...(this.chartData().map(d => d.views) ?? [0]), 1));
-  barHeight(views: number): number {
-    return Math.max(3, Math.round((views / this.maxViews()) * 100));
-  }
-
-  maxPlatformViews = computed(() => Math.max(...(this.filteredViewsByPlatform().map(p => p.views) ?? [0]), 1));
-  platformPct(views: number): number {
-    return Math.round((views / this.maxPlatformViews()) * 100);
-  }
-
-  constructor(private api: SyncApiService, private toast: ToastService) {}
-
-  ngOnInit(): void {
-    // 1. Instant Warm Start: Render from local cache immediately (0ms lag)
-    const cachedStats = this.api.getCachedGlobalStats();
-    if (cachedStats) {
-      this.globalStats.set(cachedStats);
-    } else {
-      this.loadingGlobal.set(true);
-    }
-
-    const cachedReports = this.api.getCachedUsageReports();
-    if (cachedReports && cachedReports.length) {
-      this.allReports.set(cachedReports);
-    } else {
-      this.loadingReports.set(true);
-    }
-
-    // 2. Fetch fresh usage reports
-    this.api.listUsageReports().subscribe({
-      next: (reports) => {
-        this.allReports.set(reports);
-        this.api.setCachedUsageReports(reports);
-        this.loadingReports.set(false);
-      },
-      error: () => {
-        this.loadingReports.set(false);
-      },
-    });
-
-    // 3. Silently revalidate dashboard metrics from backend
-    this.loadGlobalStats();
-  }
-
-  loadGlobalStats(groupId?: string) {
-    if (!this.globalStats()) {
-      this.loadingGlobal.set(true);
-    }
-    this.api.getGlobalDashboardStats(groupId).subscribe({
-      next: (stats) => {
-        this.globalStats.set(stats);
-        if (!groupId) {
-          this.api.setCachedGlobalStats(stats);
-        }
-        this.loadingGlobal.set(false);
-      },
-      error: () => {
-        this.loadingGlobal.set(false);
-      },
-    });
-  }
-
-  onWorkspaceChange(groupId: string) {
-    this.selectedGroupId.set(groupId);
-    this.selectedReportId.set('');
-    this.analytics.set(null);
-    this.loadGlobalStats(groupId || undefined);
-  }
-
-  onReportChange(reportId: string) {
-    this.selectedReportId.set(reportId);
-    if (!reportId) {
-      this.analytics.set(null);
-      return;
-    }
-    const r = this.allReports().find(x => x.reportId === reportId);
-    if (r) {
-      this.loadReport(r);
-    }
-  }
-
-  private loadReport(r: UsageReportItem) {
-    this.analytics.set(null);
-    this.loadingAnalytics.set(true);
-    this.api.getUsageAnalytics(r.groupId, r.datasetId).subscribe({
-      next: (a) => {
-        this.analytics.set(a);
-        this.loadingAnalytics.set(false);
-      },
-      error: (e) => {
-        this.loadingAnalytics.set(false);
-        this.errorMsg.set('Failed to load analytics: ' + (e?.message ?? 'error'));
-      },
-    });
+    return pastels[Math.abs(hash) % pastels.length];
   }
 
   formatAccessDate(val?: string | null): string {

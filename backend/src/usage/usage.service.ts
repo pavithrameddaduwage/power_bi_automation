@@ -1019,4 +1019,490 @@ export class UsageService {
 
     this.logger.log(`Successfully persisted ${records.length} activity records to unified table usage_user_activity for dataset ${datasetId}.`);
   }
+
+  /** Unified multi-dimensional analytics for the dashboard */
+  async getDashboardAnalytics(filters: {
+    groupId?: string;
+    reportName?: string;
+    email?: string;
+    year?: string | number;
+    month?: string | number;
+    date?: string;
+  } = {}) {
+    await this.ensureTablesExist();
+
+    let workspaceMap = new Map<string, string>();
+    try {
+      const reports = await this.listUsageReports();
+      for (const r of reports) {
+        workspaceMap.set(r.groupId, r.groupName);
+      }
+    } catch {}
+
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIdx = 1;
+
+    // Filter out internal usage metric report names from standard reporting
+    conditions.push(`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%')`);
+
+    if (filters.groupId && filters.groupId.trim() !== '') {
+      conditions.push(`group_id = $${paramIdx++}`);
+      params.push(filters.groupId.trim());
+    }
+
+    if (filters.reportName && filters.reportName.trim() !== '') {
+      conditions.push(`report_name = $${paramIdx++}`);
+      params.push(filters.reportName.trim());
+    }
+
+    if (filters.email && filters.email.trim() !== '') {
+      conditions.push(`LOWER(TRIM(email)) = LOWER(TRIM($${paramIdx++}))`);
+      params.push(filters.email.trim());
+    }
+
+    if (filters.year && String(filters.year).trim() !== '') {
+      conditions.push(`EXTRACT(YEAR FROM date) = $${paramIdx++}`);
+      params.push(Number(filters.year));
+    }
+
+    if (filters.month && String(filters.month).trim() !== '') {
+      conditions.push(`EXTRACT(MONTH FROM date) = $${paramIdx++}`);
+      params.push(Number(filters.month));
+    }
+
+    if (filters.date && filters.date.trim() !== '') {
+      conditions.push(`TO_CHAR(date, 'YYYY-MM-DD') = $${paramIdx++}`);
+      params.push(filters.date.trim());
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // 1. Overall KPIs
+    const kpiQuery = await this.pool.query(`
+      SELECT 
+        COALESCE(SUM(views), 0) as total_views,
+        COUNT(DISTINCT LOWER(TRIM(email))) as total_viewers,
+        COUNT(DISTINCT report_name) as total_reports,
+        COUNT(DISTINCT page_name) as total_pages,
+        COUNT(DISTINCT group_id) as total_workspaces
+      FROM usage_user_activity
+      ${whereClause}
+    `, params);
+
+    const totalViews = Number(kpiQuery.rows[0]?.total_views || 0);
+    const totalViewers = Number(kpiQuery.rows[0]?.total_viewers || 0);
+    const totalReports = Number(kpiQuery.rows[0]?.total_reports || 0);
+    const totalPages = Number(kpiQuery.rows[0]?.total_pages || 0);
+    const totalWorkspaces = Number(kpiQuery.rows[0]?.total_workspaces || 0);
+
+    // 2. Top Report
+    const topReportQuery = await this.pool.query(`
+      SELECT report_name, SUM(views) as views
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY report_name
+      ORDER BY views DESC
+      LIMIT 1
+    `, params);
+    const topReport = topReportQuery.rows[0] ? {
+      name: topReportQuery.rows[0].report_name,
+      views: Number(topReportQuery.rows[0].views)
+    } : null;
+
+    // 3. Most Active User
+    const topUserQuery = await this.pool.query(`
+      SELECT 
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name,
+        SUM(views) as views
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY LOWER(TRIM(email))
+      ORDER BY views DESC
+      LIMIT 1
+    `, params);
+    const mostActiveUser = topUserQuery.rows[0] ? {
+      name: topUserQuery.rows[0].name,
+      email: topUserQuery.rows[0].email,
+      views: Number(topUserQuery.rows[0].views)
+    } : null;
+
+    // 4. Page-wise / Tab-wise Usage (Single diagram)
+    const pageUsageQuery = await this.pool.query(`
+      SELECT 
+        page_name,
+        report_name,
+        SUM(views) as views,
+        COUNT(DISTINCT LOWER(TRIM(email))) as viewers,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY page_name, report_name
+      ORDER BY views DESC
+    `, params);
+
+    const maxPageViews = pageUsageQuery.rows.length > 0 ? Number(pageUsageQuery.rows[0].views) : 1;
+    const pageUsage = pageUsageQuery.rows.map(r => {
+      const views = Number(r.views);
+      return {
+        pageName: r.page_name,
+        reportName: r.report_name,
+        views,
+        viewers: Number(r.viewers),
+        lastAccessed: r.last_accessed,
+        percent: totalViews > 0 ? Math.round((views / totalViews) * 100) : 0,
+        relativePercent: maxPageViews > 0 ? Math.round((views / maxPageViews) * 100) : 0
+      };
+    });
+
+    // 5. User-wise Analysis & Activity
+    const userUsageQuery = await this.pool.query(`
+      SELECT 
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name,
+        SUM(views) as views,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed,
+        COUNT(DISTINCT report_name) as reports_count,
+        COUNT(DISTINCT page_name) as pages_count
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY LOWER(TRIM(email))
+      ORDER BY views DESC
+    `, params);
+
+    const userPagesQuery = await this.pool.query(`
+      SELECT 
+        LOWER(TRIM(email)) as email,
+        page_name,
+        report_name,
+        SUM(views) as views,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY LOWER(TRIM(email)), page_name, report_name
+      ORDER BY views DESC
+    `, params);
+
+    const userPagesMap = new Map<string, Array<{ pageName: string; reportName: string; views: number; lastAccessed: string }>>();
+    for (const row of userPagesQuery.rows) {
+      const em = row.email;
+      if (!userPagesMap.has(em)) {
+        userPagesMap.set(em, []);
+      }
+      userPagesMap.get(em)!.push({
+        pageName: row.page_name,
+        reportName: row.report_name,
+        views: Number(row.views),
+        lastAccessed: row.last_accessed
+      });
+    }
+
+    const userUsage = userUsageQuery.rows.map(r => ({
+      email: r.email,
+      name: r.name,
+      views: Number(r.views),
+      lastAccessed: r.last_accessed,
+      reportsCount: Number(r.reports_count),
+      pagesCount: Number(r.pages_count),
+      pages: userPagesMap.get(r.email) || []
+    }));
+
+    // 6. Views Timeline (Daily trend)
+    const timelineQuery = await this.pool.query(`
+      SELECT TO_CHAR(date, 'YYYY-MM-DD') as date, SUM(views) as views
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY date
+      ORDER BY date ASC
+    `, params);
+    const viewsTimeline = timelineQuery.rows.map(r => ({
+      date: r.date,
+      views: Number(r.views)
+    }));
+
+    // 7. Dynamic Filter Options (populated from DB + live workspaces)
+    const wsFilterQuery = await this.pool.query(`
+      SELECT DISTINCT group_id, COALESCE(MAX(group_name), '') as group_name
+      FROM usage_user_activity
+      GROUP BY group_id
+      ORDER BY group_name ASC
+    `);
+    const availableWorkspaces = wsFilterQuery.rows.map(r => ({
+      groupId: r.group_id,
+      groupName: workspaceMap.get(r.group_id) || (r.group_name && r.group_name.trim() !== '' ? r.group_name : r.group_id)
+    }));
+
+    const reportFilterWhere = filters.groupId ? `WHERE group_id = '${filters.groupId}' AND report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%'` : `WHERE report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%'`;
+    const repFilterQuery = await this.pool.query(`
+      SELECT DISTINCT report_name, group_id
+      FROM usage_user_activity
+      ${reportFilterWhere}
+      ORDER BY report_name ASC
+    `);
+    const availableReports = repFilterQuery.rows.map(r => ({
+      reportName: r.report_name,
+      groupId: r.group_id
+    }));
+
+    const userFilterConditions = [`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%')`];
+    if (filters.groupId) userFilterConditions.push(`group_id = '${filters.groupId}'`);
+    if (filters.reportName) userFilterConditions.push(`report_name = '${filters.reportName}'`);
+    const userFilterWhere = `WHERE ${userFilterConditions.join(' AND ')}`;
+
+    const usersFilterQuery = await this.pool.query(`
+      SELECT 
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name
+      FROM usage_user_activity
+      ${userFilterWhere}
+      GROUP BY LOWER(TRIM(email))
+      ORDER BY name ASC
+    `);
+    const isServicePrincipal = (displayName: string = '', email: string = '', principalType: string = '') => {
+      const pType = (principalType || '').toLowerCase();
+      const disp = (displayName || '').toLowerCase();
+      const em = (email || '').toLowerCase();
+      const isGuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
+      return (
+        pType === 'app' ||
+        pType === 'serviceprincipal' ||
+        disp.includes('serviceprincipal') ||
+        disp.includes('powerbi-api') ||
+        em.includes('powerbi-api') ||
+        em.includes('serviceprincipal') ||
+        isGuid(disp) ||
+        isGuid(em) ||
+        isGuid(em.split('@')[0])
+      );
+    };
+
+    const availableUsers = usersFilterQuery.rows
+      .filter(r => !isServicePrincipal(r.name, r.email))
+      .map(r => ({
+        email: r.email,
+        name: r.name
+      }));
+
+    const yearsQuery = await this.pool.query(`
+      SELECT DISTINCT EXTRACT(YEAR FROM date)::integer as year
+      FROM usage_user_activity
+      ORDER BY year DESC
+    `);
+    const availableYears = yearsQuery.rows.map(r => r.year);
+
+    const dateConditions = [];
+    if (filters.year) dateConditions.push(`EXTRACT(YEAR FROM date) = ${Number(filters.year)}`);
+    if (filters.month) dateConditions.push(`EXTRACT(MONTH FROM date) = ${Number(filters.month)}`);
+    const dateWhere = dateConditions.length > 0 ? `WHERE ${dateConditions.join(' AND ')}` : '';
+    const datesQuery = await this.pool.query(`
+      SELECT DISTINCT TO_CHAR(date, 'YYYY-MM-DD') as date
+      FROM usage_user_activity
+      ${dateWhere}
+      ORDER BY date DESC
+    `);
+    const availableDates = datesQuery.rows.map(r => r.date);
+
+    return {
+      kpis: {
+        totalViews,
+        totalViewers,
+        totalReports,
+        totalPages,
+        totalWorkspaces,
+        topReport,
+        mostActiveUser
+      },
+      pageUsage,
+      userUsage,
+      viewsTimeline,
+      filterOptions: {
+        workspaces: availableWorkspaces,
+        reports: availableReports,
+        users: availableUsers,
+        years: availableYears,
+        dates: availableDates
+      }
+    };
+  }
+
+  /** Access Level and Unused Access Audit */
+  async getAccessUtilization(groupId?: string, reportName?: string) {
+    await this.ensureTablesExist();
+
+    const isServicePrincipal = (displayName: string = '', email: string = '', principalType: string = '') => {
+      const pType = (principalType || '').toLowerCase();
+      const disp = (displayName || '').toLowerCase();
+      const em = (email || '').toLowerCase();
+      const isGuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
+      return (
+        pType === 'app' ||
+        pType === 'serviceprincipal' ||
+        disp.includes('serviceprincipal') ||
+        disp.includes('powerbi-api') ||
+        em.includes('powerbi-api') ||
+        em.includes('serviceprincipal') ||
+        isGuid(disp) ||
+        isGuid(em) ||
+        isGuid(em.split('@')[0])
+      );
+    };
+
+    let workspaceName = '';
+    let rawAccessUsers: WorkspaceUser[] = [];
+
+    if (groupId && groupId.trim() !== '') {
+      try {
+        rawAccessUsers = await this.getWorkspaceUsers(groupId);
+        const reports = await this.listUsageReports();
+        const match = reports.find(r => r.groupId === groupId);
+        if (match) workspaceName = match.groupName;
+      } catch (err: any) {
+        this.logger.warn(`Could not fetch group users for ${groupId}: ${err?.message}`);
+      }
+    } else {
+      try {
+        const reports = await this.listUsageReports();
+        const seenWorkspaces = new Set<string>();
+        for (const r of reports) {
+          if (!seenWorkspaces.has(r.groupId)) {
+            seenWorkspaces.add(r.groupId);
+            try {
+              const uList = await this.getWorkspaceUsers(r.groupId);
+              rawAccessUsers.push(...uList);
+            } catch {}
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Could not fetch all group users: ${err?.message}`);
+      }
+    }
+
+    const accessUserMap = new Map<string, WorkspaceUser>();
+    for (const u of rawAccessUsers) {
+      if (isServicePrincipal(u.displayName, u.email, u.principalType)) {
+        continue;
+      }
+      const em = (u.email || '').toLowerCase().trim();
+      if (em) {
+        if (!accessUserMap.has(em) || (u.role && u.role !== 'Unknown' && accessUserMap.get(em)?.role === 'Unknown')) {
+          accessUserMap.set(em, u);
+        }
+      }
+    }
+
+    const conditions = [`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%')`];
+    const params: any[] = [];
+    let pIdx = 1;
+    if (groupId && groupId.trim() !== '') {
+      conditions.push(`group_id = $${pIdx++}`);
+      params.push(groupId.trim());
+    }
+    if (reportName && reportName.trim() !== '') {
+      conditions.push(`report_name = $${pIdx++}`);
+      params.push(reportName.trim());
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const activityQuery = await this.pool.query(`
+      SELECT 
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name,
+        SUM(views) as views,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY LOWER(TRIM(email))
+    `, params);
+
+    const activityMap = new Map<string, { name: string; views: number; lastAccessed: string }>();
+    for (const row of activityQuery.rows) {
+      if (isServicePrincipal(row.name, row.email)) {
+        continue;
+      }
+      activityMap.set(row.email, {
+        name: row.name,
+        views: Number(row.views),
+        lastAccessed: row.last_accessed
+      });
+    }
+
+    for (const [em, act] of activityMap.entries()) {
+      if (!accessUserMap.has(em)) {
+        accessUserMap.set(em, {
+          displayName: act.name || em,
+          email: em,
+          role: 'Viewer',
+          principalType: 'User'
+        });
+      }
+    }
+
+    const annotatedUsers = [];
+    for (const [em, u] of accessUserMap.entries()) {
+      if (isServicePrincipal(u.displayName, u.email, u.principalType)) {
+        continue;
+      }
+      const act = activityMap.get(em);
+      const views = act ? act.views : 0;
+      const lastAccessed = act ? act.lastAccessed : null;
+      // Active user criteria: must have views and last accessed in current year 2026
+      const isActiveIn2026 = Boolean(
+        views > 0 && 
+        lastAccessed && 
+        lastAccessed.startsWith('2026')
+      );
+      annotatedUsers.push({
+        displayName: u.displayName && u.displayName !== u.email ? u.displayName : (act?.name || u.displayName || em),
+        email: em,
+        role: u.role || 'Viewer',
+        principalType: u.principalType || 'User',
+        views,
+        lastAccessed,
+        status: isActiveIn2026 ? 'active' : 'unused'
+      });
+    }
+
+    annotatedUsers.sort((a, b) => {
+      if (a.status !== b.status) {
+        return a.status === 'active' ? -1 : 1;
+      }
+      return b.views - a.views;
+    });
+
+    const totalUsers = annotatedUsers.length;
+    const activeUsers = annotatedUsers.filter(u => u.status === 'active').length;
+    const unusedUsers = annotatedUsers.filter(u => u.status === 'unused').length;
+    const unusedRate = totalUsers > 0 ? Math.round((unusedUsers / totalUsers) * 100) : 0;
+
+    return {
+      totalUsers,
+      activeUsers,
+      unusedUsers,
+      unusedRate,
+      users: annotatedUsers,
+      workspaceName,
+      reportName
+    };
+  }
 }

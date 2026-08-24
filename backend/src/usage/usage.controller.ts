@@ -57,4 +57,36 @@ export class UsageController {
   getUserDetails(@Param('email') email: string) {
     return this.usage.getUserDetails(email);
   }
+
+  /** Multi-dimensional filtered analytics */
+  @Public()
+  @Get('dashboard-analytics')
+  getDashboardAnalytics(
+    @Query('groupId') groupId?: string,
+    @Query('reportName') reportName?: string,
+    @Query('email') email?: string,
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+    @Query('date') date?: string,
+  ) {
+    return this.usage.getDashboardAnalytics({
+      groupId,
+      reportName,
+      email,
+      year,
+      month,
+      date,
+    });
+  }
+
+  /** Access Level & Inactive / Unused Access Audit */
+  @Public()
+  @Get('access-utilization')
+  getAccessUtilization(
+    @Query('groupId') groupId?: string,
+    @Query('reportName') reportName?: string,
+  ) {
+    return this.usage.getAccessUtilization(groupId, reportName);
+  }
 }
+

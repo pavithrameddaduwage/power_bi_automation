@@ -352,6 +352,26 @@ export class SyncApiService {
     return this.http.get<any[]>(url);
   }
 
+  getDashboardAnalytics(filters: UsageFilterDto = {}): Observable<DashboardAnalyticsResponse> {
+    let params = new HttpParams();
+    if (filters.groupId) params = params.set('groupId', filters.groupId);
+    if (filters.reportName) params = params.set('reportName', filters.reportName);
+    if (filters.email) params = params.set('email', filters.email);
+    if (filters.year) params = params.set('year', String(filters.year));
+    if (filters.month) params = params.set('month', String(filters.month));
+    if (filters.date) params = params.set('date', filters.date);
+
+    return this.http.get<DashboardAnalyticsResponse>(`${API}/usage/dashboard-analytics`, { params });
+  }
+
+  getAccessUtilization(groupId?: string, reportName?: string): Observable<AccessUtilizationResponse> {
+    let params = new HttpParams();
+    if (groupId) params = params.set('groupId', groupId);
+    if (reportName) params = params.set('reportName', reportName);
+
+    return this.http.get<AccessUtilizationResponse>(`${API}/usage/access-utilization`, { params });
+  }
+
   // ── Instant Cache for Dashboard Warm Start ──
   getCachedGlobalStats(): GlobalDashboardStats | null {
     try {
@@ -385,6 +405,84 @@ export class SyncApiService {
 }
 
 // ── Usage Report interfaces ──────────────────────────────────────
+export interface UsageFilterDto {
+  groupId?: string;
+  reportName?: string;
+  email?: string;
+  year?: string | number;
+  month?: string | number;
+  date?: string;
+}
+
+export interface PageUsageItem {
+  pageName: string;
+  reportName: string;
+  views: number;
+  viewers: number;
+  lastAccessed?: string;
+  percent: number;
+  relativePercent: number;
+}
+
+export interface UserUsageItem {
+  email: string;
+  name: string;
+  views: number;
+  lastAccessed: string;
+  reportsCount: number;
+  pagesCount: number;
+  pages: { pageName: string; reportName: string; views: number; lastAccessed: string }[];
+}
+
+export interface TimelineItem {
+  date: string;
+  views: number;
+}
+
+export interface FilterOptions {
+  workspaces: { groupId: string; groupName: string }[];
+  reports: { reportName: string; groupId: string }[];
+  users: { email: string; name: string }[];
+  years: number[];
+  dates: string[];
+}
+
+export interface DashboardAnalyticsResponse {
+  kpis: {
+    totalViews: number;
+    totalViewers: number;
+    totalReports: number;
+    totalPages: number;
+    totalWorkspaces: number;
+    topReport: { name: string; views: number } | null;
+    mostActiveUser: { name: string; email: string; views: number } | null;
+  };
+  pageUsage: PageUsageItem[];
+  userUsage: UserUsageItem[];
+  viewsTimeline: TimelineItem[];
+  filterOptions: FilterOptions;
+}
+
+export interface AccessUserItem {
+  displayName: string;
+  email: string;
+  role: string;
+  principalType: string;
+  views: number;
+  lastAccessed: string | null;
+  status: 'active' | 'unused';
+}
+
+export interface AccessUtilizationResponse {
+  totalUsers: number;
+  activeUsers: number;
+  unusedUsers: number;
+  unusedRate: number;
+  users: AccessUserItem[];
+  workspaceName?: string;
+  reportName?: string;
+}
+
 export interface UsageReportItem {
   reportId: string;
   reportName: string;
@@ -473,5 +571,6 @@ export interface UserDetailsBreakdown {
   topReports: { reportName: string; views: number }[];
   leastReports: { reportName: string; views: number }[];
 }
+
 
 
