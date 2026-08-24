@@ -177,13 +177,19 @@ import { ToastService } from './toast.service';
       box-sizing: border-box;
     }
 
-    @media (max-width: 1200px) {
+    @media (max-width: 1280px) {
       .filter-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
+      .filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 480px) {
       .filter-grid {
         grid-template-columns: 1fr;
       }
@@ -198,19 +204,19 @@ import { ToastService } from './toast.service';
     }
 
     .filter-label {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 600;
       color: #1e3a8a;
     }
 
     /* Custom Searchable Select Trigger */
     .dropdown-trigger {
-      height: 38px;
+      height: 36px;
       background: #ffffff;
       border: 1.5px solid #bfdbfe;
       border-radius: 8px;
-      padding: 0 28px 0 12px;
-      font-size: 13.5px;
+      padding: 0 28px 0 10px;
+      font-size: 13px;
       font-weight: 500;
       color: #0f172a;
       cursor: pointer;
@@ -258,9 +264,9 @@ import { ToastService } from './toast.service';
       position: absolute;
       top: calc(100% + 5px);
       left: 0;
-      min-width: 250px;
+      min-width: 220px;
       width: max-content;
-      max-width: 360px;
+      max-width: min(340px, 90vw);
       background: #ffffff;
       border: 1.5px solid #93c5fd;
       border-radius: 10px;
@@ -276,11 +282,11 @@ import { ToastService } from './toast.service';
 
     .menu-search-input {
       width: 100%;
-      height: 36px;
+      height: 34px;
       border: 1.5px solid #bfdbfe;
       border-radius: 6px;
       padding: 0 10px;
-      font-size: 13px;
+      font-size: 12.5px;
       outline: none;
       box-sizing: border-box;
       color: #0f172a;
@@ -299,10 +305,10 @@ import { ToastService } from './toast.service';
     }
 
     .menu-option-item {
-      padding: 9px 12px;
-      font-size: 13px;
+      padding: 8px 10px;
+      font-size: 12.5px;
       line-height: 1.4;
-      min-height: 36px;
+      min-height: 34px;
       color: #0f172a;
       border-radius: 6px;
       cursor: pointer;
@@ -331,7 +337,7 @@ import { ToastService } from './toast.service';
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 14px;
+      gap: 12px;
       width: 100%;
       box-sizing: border-box;
     }
@@ -340,13 +346,22 @@ import { ToastService } from './toast.service';
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 1200px) {
+      .kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .kpi-grid.four-cols {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
       .kpi-grid, .kpi-grid.four-cols {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
-    @media (max-width: 640px) {
+    @media (max-width: 480px) {
       .kpi-grid, .kpi-grid.four-cols {
         grid-template-columns: 1fr;
       }
@@ -863,6 +878,87 @@ import { ToastService } from './toast.service';
       font-size: 11.5px;
       color: #1e3a8a;
       font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      .breakdown-top-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .segmented-tabs {
+        width: 100%;
+        display: flex;
+        box-sizing: border-box;
+      }
+
+      .segmented-tab {
+        flex: 1;
+        text-align: center;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+
+      .breakdown-search-input {
+        width: 100% !important;
+      }
+
+      .access-sub-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .access-pill-tabs {
+        width: 100%;
+        display: flex;
+        box-sizing: border-box;
+      }
+
+      .access-pill-btn {
+        flex: 1;
+        text-align: center;
+        padding: 4px 6px;
+        font-size: 11px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .unified-breakdown-card {
+        padding: 12px 14px;
+      }
+
+      .breakdown-row-item {
+        padding: 8px 2px;
+        gap: 8px;
+      }
+
+      .row-primary-title {
+        font-size: 12.5px;
+        max-width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .row-secondary-info {
+        font-size: 11px;
+        max-width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .row-metric-val {
+        font-size: 12.5px;
+      }
+
+      .breakdown-bottom-pagination {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
     }
 
     /* ── Page-wise Usage List (Clean Rows Without Underline & Without Grey Badge) ── */
