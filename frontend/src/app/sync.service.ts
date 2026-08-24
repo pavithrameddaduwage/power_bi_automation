@@ -179,10 +179,11 @@ export class SyncApiService {
   datasetColumns(
     datasetId: string,
     finalOnly = false,
+    includeHidden = false,
   ): Observable<DatasetColumn[]> {
-    const params = finalOnly
-      ? new HttpParams().set('finalOnly', 'true')
-      : undefined;
+    let params = new HttpParams();
+    if (finalOnly) params = params.set('finalOnly', 'true');
+    if (includeHidden) params = params.set('includeHidden', 'true');
     return this.http.get<DatasetColumn[]>(
       `${API}/catalog/datasets/${datasetId}/columns`,
       { params },

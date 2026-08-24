@@ -362,28 +362,27 @@ export class PowerBiService {
    * Columns of a dataset (table + name + data type), via the DAX INFO function.
    * Hidden and internal RowNumber columns are dropped.
    */
-  async getDatasetColumns(datasetId: string): Promise<
+  async getDatasetColumns(datasetId: string, includeHidden = false): Promise<
     {
       table: string;
       name: string;
       dataType: string;
       isKey: boolean;
+      isHidden?: boolean;
     }[]
   > {
     const rows = await this.executeQueryByDataset(
       datasetId,
       'EVALUATE INFO.VIEW.COLUMNS()',
     );
-    // Power BI auto-creates hidden date tables behind every date column; drop
-    // those (and other internal tables) so the user only sees real tables.
+    // Power BI auto-creates internal date hierarchy tables; drop those
     const isInternalTable = (t: string) =>
       /^LocalDateTable_/.test(t) ||
-      /^DateTableTemplate_/.test(t) ||
-      t.startsWith('_');
+      /^DateTableTemplate_/.test(t);
     return rows
       .filter(
         (r) =>
-          r.IsHidden !== true &&
+          (includeHidden || r.IsHidden !== true) &&
           !String(r.Name ?? '').startsWith('RowNumber') &&
           !isInternalTable(String(r.Table ?? '')),
       )
@@ -394,6 +393,7 @@ export class PowerBiService {
         // The model marks identifying columns as key/unique — use them to
         // suggest business keys so recurring syncs upsert instead of duplicate.
         isKey: r.IsKey === true || r.IsUnique === true,
+        isHidden: r.IsHidden === true,
       }))
       .filter((c) => c.table && c.name);
   }

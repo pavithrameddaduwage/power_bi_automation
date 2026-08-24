@@ -43,12 +43,13 @@ export class CatalogController {
   async columns(
     @Param('datasetId') datasetId: string,
     @Query('finalOnly') finalOnly?: string,
+    @Query('includeHidden') includeHidden?: string,
   ) {
-    const cols = await this.powerbi.getDatasetColumns(datasetId);
-    if (finalOnly === 'true') {
+    const isIncludeHidden = includeHidden === 'true';
+    const cols = await this.powerbi.getDatasetColumns(datasetId, isIncludeHidden);
+    if (finalOnly === 'true' && !isIncludeHidden) {
       const curated = cols.filter((c) => !this.isSourceTable(c.table));
-      // Keep tables that have at least 1 real column (removed the 4-col minimum
-      // that was hiding small but valid tables).
+      // Keep tables that have at least 1 real column
       const counts = new Map<string, number>();
       for (const c of curated) {
         counts.set(c.table, (counts.get(c.table) ?? 0) + 1);

@@ -915,7 +915,7 @@ export class UploadComponent implements OnInit {
       error: () => this.measures.set([]),
     });
     this.loadingCols.set(true);
-    this.api.datasetColumns(r.datasetId, this.finalOnly && !this.showAllTables).subscribe({
+    this.api.datasetColumns(r.datasetId, this.finalOnly && !this.showAllTables, this.showAllTables).subscribe({
       next: (cols) => {
         this.columns.set(cols);
         const counts = new Map<string, number>();
