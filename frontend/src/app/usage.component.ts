@@ -32,8 +32,8 @@ import { ToastService } from './toast.service';
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      padding-bottom: 36px;
+      gap: 14px;
+      padding-bottom: 24px;
       overflow-x: hidden;
     }
 
@@ -116,11 +116,11 @@ import { ToastService } from './toast.service';
       background: #ffffff;
       border: 1.5px solid #dbeafe;
       border-radius: 14px;
-      padding: 18px 22px;
+      padding: 14px 18px;
       box-shadow: 0 2px 8px -2px rgba(37, 99, 235, 0.05);
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 10px;
       box-sizing: border-box;
     }
 
@@ -355,12 +355,11 @@ import { ToastService } from './toast.service';
     .kpi-card {
       background: #ffffff;
       border: 1.5px solid #dbeafe;
-      border-radius: 14px;
-      padding: 16px 20px;
+      border-radius: 12px;
+      padding: 12px 18px;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      min-height: 90px;
       box-shadow: 0 2px 6px -1px rgba(37, 99, 235, 0.04);
       transition: all 0.2s ease;
       box-sizing: border-box;
@@ -379,17 +378,17 @@ import { ToastService } from './toast.service';
     .kpi-card.blue-5 { border-top: 4px solid #0284c7; }
 
     .kpi-label {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 600;
       color: #1e40af;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .kpi-value {
-      font-size: 30px;
+      font-size: 28px;
       font-weight: 800;
       color: #0f172a;
       line-height: 1.1;
@@ -410,7 +409,7 @@ import { ToastService } from './toast.service';
     .overview-charts-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 14px;
       width: 100%;
       box-sizing: border-box;
     }
@@ -425,7 +424,7 @@ import { ToastService } from './toast.service';
       background: #ffffff;
       border: 1.5px solid #dbeafe;
       border-radius: 14px;
-      padding: 18px 22px;
+      padding: 16px 18px;
       box-shadow: 0 2px 6px -1px rgba(37, 99, 235, 0.04);
       display: flex;
       flex-direction: column;
@@ -437,7 +436,7 @@ import { ToastService } from './toast.service';
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
       gap: 8px;
     }
@@ -645,7 +644,7 @@ import { ToastService } from './toast.service';
       background: #ffffff;
       border: 1.5px solid #dbeafe;
       border-radius: 9px;
-      padding: 12px 16px;
+      padding: 9px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -711,7 +710,7 @@ import { ToastService } from './toast.service';
     .user-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 7px;
       padding-right: 2px;
     }
 
@@ -719,7 +718,7 @@ import { ToastService } from './toast.service';
       background: #ffffff;
       border: 1.5px solid #dbeafe;
       border-radius: 9px;
-      padding: 11px 16px;
+      padding: 9px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -780,9 +779,6 @@ import { ToastService } from './toast.service';
     .user-activity-right {
       text-align: right;
       flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      gap: 12px;
     }
 
     .user-views-txt {
@@ -796,16 +792,6 @@ import { ToastService } from './toast.service';
       color: #1e40af;
     }
 
-    .user-nav-arrow {
-      color: #2563eb;
-      font-size: 16px;
-      font-weight: 700;
-      transition: transform 0.15s;
-    }
-
-    .user-card-item:hover .user-nav-arrow {
-      transform: translateX(3px);
-    }
 
     /* ── Pagination Controls Bar ── */
     .pagination-bar {
@@ -1037,9 +1023,8 @@ import { ToastService } from './toast.service';
 
       <!-- ── 1. Top Filter Bar (6 Searchable Dropdowns) ── -->
       <div class="filter-bar-card">
-        <div class="filter-bar-header">
+        <div class="filter-bar-header" *ngIf="activeFilterCount() > 0 || loading()">
           <div class="filter-title">
-            <span>Analytics Filters</span>
             <span class="filter-badge" *ngIf="activeFilterCount() > 0">{{ activeFilterCount() }} active</span>
           </div>
 
@@ -1197,25 +1182,21 @@ import { ToastService } from './toast.service';
         <div class="kpi-card blue-1">
           <div class="kpi-label">{{ selectedUserEmail() ? 'User Total Views' : 'Total Views' }}</div>
           <div class="kpi-value">{{ (analytics()?.kpis?.totalViews || 0) | number }}</div>
-          <div class="kpi-sub">Across filtered selection</div>
         </div>
 
         <div class="kpi-card blue-2" *ngIf="!selectedUserEmail()">
           <div class="kpi-label">Active Viewers</div>
           <div class="kpi-value">{{ (analytics()?.kpis?.totalViewers || 0) | number }}</div>
-          <div class="kpi-sub">Corporate users engaged</div>
         </div>
 
         <div class="kpi-card blue-3">
           <div class="kpi-label">{{ selectedUserEmail() ? 'Reports Accessed' : 'Reports & Dashboards' }}</div>
           <div class="kpi-value">{{ (analytics()?.kpis?.totalReports || 0) | number }}</div>
-          <div class="kpi-sub">{{ selectedUserEmail() ? 'Distinct reports viewed' : 'In ' + ((analytics()?.kpis?.totalWorkspaces || 0) | number) + ' workspaces' }}</div>
         </div>
 
         <div class="kpi-card blue-4">
           <div class="kpi-label">{{ selectedUserEmail() ? 'Pages Visited' : 'Tracked Pages' }}</div>
           <div class="kpi-value">{{ (analytics()?.kpis?.totalPages || 0) | number }}</div>
-          <div class="kpi-sub">Page &amp; tab breakdowns</div>
         </div>
 
         <div class="kpi-card blue-5" *ngIf="!selectedUserEmail()">
@@ -1223,7 +1204,6 @@ import { ToastService } from './toast.service';
           <div class="kpi-value">
             {{ accessData()?.unusedUsers || 0 }} <span style="font-size:16px; font-weight:600; color:#1e40af;">/ {{ accessData()?.totalUsers || 0 }}</span>
           </div>
-          <div class="kpi-sub">{{ accessData()?.unusedRate || 0 }}% inactive access rate</div>
         </div>
 
         <div class="kpi-card blue-5" *ngIf="selectedUserEmail()">
@@ -1382,7 +1362,6 @@ import { ToastService } from './toast.service';
                   <div class="user-views-txt">{{ u.views | number }} views</div>
                   <div class="user-date-txt">{{ u.pagesCount }} page{{ u.pagesCount === 1 ? '' : 's' }} • {{ formatAccessDate(u.lastAccessed) }}</div>
                 </div>
-                <span class="user-nav-arrow">→</span>
               </div>
             </div>
 
