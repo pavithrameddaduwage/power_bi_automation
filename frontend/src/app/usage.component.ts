@@ -992,7 +992,7 @@ import { ToastService } from './toast.service';
       <!-- ── Optional Header for Dedicated User View ── -->
       <div class="user-page-nav" *ngIf="selectedUserEmail()">
         <button class="btn-back" (click)="clearSelectedUser()">
-          ← Back to Main Dashboard
+          Back to Main Dashboard
         </button>
       </div>
 
