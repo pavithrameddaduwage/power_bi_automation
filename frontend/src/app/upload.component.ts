@@ -689,7 +689,11 @@ export class UploadComponent implements OnInit {
   filterSig = signal('');
   filteredReports = computed(() => {
     const f = this.filterSig().trim().toLowerCase();
-    const list = this.reports();
+    const isUsage = (name: string) => {
+      const lower = (name || '').toLowerCase();
+      return lower.includes('usage metric') || lower.includes('report usage') || lower.includes('usage metrics');
+    };
+    const list = this.reports().filter((r) => !isUsage(r.name));
     if (!f) return list;
     return list.filter(
       (r) =>

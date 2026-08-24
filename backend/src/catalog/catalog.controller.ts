@@ -23,10 +23,15 @@ export class CatalogController {
   @Get('reports')
   async reports(@Query('downloadableOnly') downloadableOnly?: string) {
     const all = await this.powerbi.reportsWithAccess();
+    const isUsage = (name: string) => {
+      const lower = (name || '').toLowerCase();
+      return lower.includes('usage metric') || lower.includes('report usage') || lower.includes('usage metrics');
+    };
+    const nonUsage = all.filter((r) => !isUsage(r.name));
     if (downloadableOnly === 'true') {
-      return all.filter((r) => r.downloadable);
+      return nonUsage.filter((r) => r.downloadable);
     }
-    return all;
+    return nonUsage;
   }
 
   /**

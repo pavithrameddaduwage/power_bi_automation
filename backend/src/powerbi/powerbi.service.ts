@@ -151,6 +151,14 @@ export class PowerBiService {
           try {
             const { data } = await http.get(`/groups/${g.id}/reports`);
             for (const r of data.value || []) {
+              const lowerName = (r.name || '').toLowerCase();
+              if (
+                lowerName.includes('usage metric') ||
+                lowerName.includes('report usage') ||
+                lowerName.includes('usage metrics')
+              ) {
+                continue;
+              }
               out.push({
                 id: r.id,
                 name: r.name,
