@@ -617,19 +617,252 @@ import { ToastService } from './toast.service';
       flex-shrink: 0;
     }
 
-    /* ── Details Grid (Page Breakdown vs User Activity) ── */
-    .dashboard-two-col {
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 16px;
-      width: 100%;
+    /* ── Unified Tabbed Breakdown Card (Pages / People / Access) ── */
+    .unified-breakdown-card {
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 12px;
+      padding: 14px 18px;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.03);
+      display: flex;
+      flex-direction: column;
       box-sizing: border-box;
+      width: 100%;
     }
 
-    @media (max-width: 1024px) {
-      .dashboard-two-col {
-        grid-template-columns: 1fr;
-      }
+    .breakdown-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .segmented-tabs {
+      display: inline-flex;
+      background: #eff6ff;
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid #bfdbfe;
+      gap: 2px;
+    }
+
+    .segmented-tab {
+      background: transparent;
+      border: none;
+      padding: 5px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #1e3a8a;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .segmented-tab:hover {
+      color: #1d4ed8;
+    }
+
+    .segmented-tab.active {
+      background: #ffffff;
+      color: #1d4ed8;
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .breakdown-search-input {
+      background: #f8fafc;
+      border: 1.5px solid #dbeafe;
+      border-radius: 6px;
+      height: 32px;
+      padding: 0 10px;
+      font-size: 12px;
+      color: #0f172a;
+      outline: none;
+      width: 150px;
+      transition: border-color 0.15s, background 0.15s;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    .breakdown-search-input:focus {
+      border-color: #2563eb;
+      background: #ffffff;
+    }
+
+    .access-sub-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #eff6ff;
+    }
+
+    .access-pill-tabs {
+      display: inline-flex;
+      gap: 3px;
+      background: #eff6ff;
+      padding: 2.5px;
+      border-radius: 6px;
+      border: 1px solid #bfdbfe;
+    }
+
+    .access-pill-btn {
+      background: transparent;
+      border: none;
+      padding: 3.5px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #1e3a8a;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+
+    .access-pill-btn.active {
+      background: #ffffff;
+      color: #1d4ed8;
+      box-shadow: 0 1px 2px rgba(37, 99, 235, 0.08);
+      font-weight: 700;
+    }
+
+    .breakdown-subtitle {
+      font-size: 11.5px;
+      color: #1e3a8a;
+      font-weight: 500;
+      margin-top: 6px;
+      margin-bottom: 2px;
+    }
+
+    .breakdown-list-container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .breakdown-row-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 4px;
+      border-bottom: 1px solid #eff6ff;
+      transition: background 0.12s;
+    }
+
+    .breakdown-row-item:last-child {
+      border-bottom: none;
+    }
+
+    .breakdown-row-item.interactive {
+      cursor: pointer;
+    }
+
+    .breakdown-row-item.interactive:hover {
+      background: #eff6ff;
+      border-radius: 6px;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+
+    .row-rank-tag {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1d4ed8;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 4px;
+      padding: 1px 6px;
+      flex-shrink: 0;
+    }
+
+    .row-primary-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.25;
+    }
+
+    .row-secondary-info {
+      font-size: 11.5px;
+      color: #1e3a8a;
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    .row-metric-box {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .row-metric-val {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .row-metric-sub {
+      font-size: 11px;
+      color: #1e3a8a;
+      margin-top: 1px;
+      font-weight: 500;
+    }
+
+    .breakdown-bottom-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 8px;
+      margin-top: 2px;
+      border-top: 1px solid #eff6ff;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .footer-range-txt {
+      font-size: 11.5px;
+      color: #1e3a8a;
+      font-weight: 500;
+    }
+
+    .footer-nav-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-card-nav {
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #1e3a8a;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-card-nav:hover:not(:disabled) {
+      background: #eff6ff;
+      border-color: #2563eb;
+      color: #1d4ed8;
+    }
+
+    .btn-card-nav:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .footer-page-indicator {
+      font-size: 11.5px;
+      color: #1e3a8a;
+      font-weight: 600;
     }
 
     /* ── Page-wise Usage List (Clean Rows Without Underline & Without Grey Badge) ── */
@@ -869,23 +1102,24 @@ import { ToastService } from './toast.service';
 
     .access-tabs {
       display: flex;
-      gap: 6px;
+      gap: 3px;
       background: #eff6ff;
-      padding: 4px;
-      border-radius: 8px;
+      padding: 3px;
+      border-radius: 7px;
       border: 1px solid #bfdbfe;
     }
 
     .access-tab-btn {
       background: transparent;
       border: none;
-      padding: 6px 14px;
-      font-size: 13px;
+      padding: 4px 8px;
+      font-size: 11px;
       font-weight: 600;
       color: #1e3a8a;
-      border-radius: 6px;
+      border-radius: 5px;
       cursor: pointer;
       transition: all 0.15s;
+      white-space: nowrap;
     }
 
     .access-tab-btn.active {
@@ -897,7 +1131,7 @@ import { ToastService } from './toast.service';
 
     .access-table-wrap {
       border: 1.5px solid #dbeafe;
-      border-radius: 10px;
+      border-radius: 9px;
       overflow-x: auto;
       width: 100%;
       box-sizing: border-box;
@@ -906,7 +1140,7 @@ import { ToastService } from './toast.service';
     .clean-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12px;
       text-align: left;
     }
 
@@ -914,16 +1148,17 @@ import { ToastService } from './toast.service';
       background: #eff6ff;
       color: #1e3a8a;
       font-weight: 700;
-      padding: 11px 14px;
-      font-size: 12.5px;
+      padding: 8px 10px;
+      font-size: 11.5px;
       border-bottom: 1.5px solid #bfdbfe;
       position: sticky;
       top: 0;
       z-index: 2;
+      white-space: nowrap;
     }
 
     .clean-table td {
-      padding: 11px 14px;
+      padding: 8px 10px;
       border-bottom: 1px solid #eff6ff;
       color: #0f172a;
       vertical-align: middle;
@@ -935,10 +1170,11 @@ import { ToastService } from './toast.service';
 
     .role-badge {
       display: inline-block;
-      padding: 3px 9px;
+      padding: 2px 7px;
       border-radius: 99px;
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 700;
+      white-space: nowrap;
     }
 
     .role-admin { background: #fee2e2; color: #991b1b; }
@@ -1280,115 +1516,213 @@ import { ToastService } from './toast.service';
 
       </div>
 
-      <!-- ── 4A. MAIN DASHBOARD DETAILED BREAKDOWN (when NO user is selected) ── -->
-      <div class="dashboard-two-col" *ngIf="!selectedUserEmail()">
+      <!-- ── 4A. MAIN DASHBOARD DETAILED BREAKDOWN: TABBED CARD (when NO user is selected) ── -->
+      <div class="unified-breakdown-card" *ngIf="!selectedUserEmail()">
 
-        <!-- Column 1: Page-wise Usage Breakdown (Clean Rows with Pagination) ── -->
-        <div class="card-outlined">
-          <div class="card-header-row">
-            <h3 class="card-title">Page &amp; Tab Usage Breakdown</h3>
-
-            <div style="display:flex; align-items:center; gap:8px;">
-              <input class="search-mini-input" [ngModel]="pageSearchText()" (ngModelChange)="pageSearchText.set($event); pageCurrentPage.set(1);" placeholder="Search pages…" style="width:140px;" />
-              <select class="search-mini-input" [ngModel]="pageSortOrder()" (ngModelChange)="pageSortOrder.set($event); pageCurrentPage.set(1);" style="width:115px; cursor:pointer;">
-                <option value="views-desc">Top Views</option>
-                <option value="views-asc">Least Views</option>
-                <option value="name-asc">A to Z</option>
-              </select>
-            </div>
+        <!-- Top Bar: Segmented Tabs [ Pages | People | Access ] + Search & Sub-filters -->
+        <div class="breakdown-top-bar">
+          <div class="segmented-tabs">
+            <button class="segmented-tab" [class.active]="activeBreakdownTab() === 'pages'" (click)="activeBreakdownTab.set('pages'); pageCurrentPage.set(1);">
+              Pages
+            </button>
+            <button class="segmented-tab" [class.active]="activeBreakdownTab() === 'people'" (click)="activeBreakdownTab.set('people'); userCurrentPage.set(1);">
+              People
+            </button>
+            <button class="segmented-tab" [class.active]="activeBreakdownTab() === 'access'" (click)="activeBreakdownTab.set('access'); accessCurrentPage.set(1);">
+              Access
+            </button>
           </div>
 
-          <div class="page-diagram-list" *ngIf="pagedPages().length; else noPages">
-            <div class="page-clean-row" *ngFor="let p of pagedPages(); let idx = index">
-              <div class="page-title-group">
-                <span class="page-rank-pill" *ngIf="pageSortOrder() === 'views-desc'">#{{ (pageCurrentPage() - 1) * 5 + idx + 1 }}</span>
-                <span class="page-name" [title]="p.pageName">{{ p.pageName }}</span>
-              </div>
-              <div class="page-stats-right">
-                <span class="page-viewers-lbl">{{ p.viewers }} viewer{{ p.viewers === 1 ? '' : 's' }}</span>
-                <span class="page-views-num">{{ p.views | number }} views</span>
-              </div>
-            </div>
+          <!-- Controls for Pages tab -->
+          <div style="display:flex; align-items:center; gap:8px;" *ngIf="activeBreakdownTab() === 'pages'">
+            <select class="breakdown-search-input" [ngModel]="pageSortOrder()" (ngModelChange)="pageSortOrder.set($event); pageCurrentPage.set(1);" style="width:115px; cursor:pointer;">
+              <option value="views-desc">Top Views</option>
+              <option value="views-asc">Least Views</option>
+              <option value="name-asc">A to Z</option>
+            </select>
+            <input class="breakdown-search-input" [ngModel]="pageSearchText()" (ngModelChange)="pageSearchText.set($event); pageCurrentPage.set(1);" placeholder="Search..." style="width:160px;" />
+          </div>
 
-            <!-- Page Pagination Controls -->
-            <div class="pagination-bar" *ngIf="filteredPageUsage().length > 5">
-              <span class="pagination-info">
-                {{ (pageCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(pageCurrentPage() * 5, filteredPageUsage().length) }} of {{ filteredPageUsage().length }} pages
-              </span>
-              <div class="pagination-controls">
-                <button class="btn-page" [disabled]="pageCurrentPage() === 1" (click)="pageCurrentPage.set(pageCurrentPage() - 1)">
-                  Previous
-                </button>
-                <span class="page-current-pill">
-                  Page {{ pageCurrentPage() }} of {{ pageTotalPages() }}
-                </span>
-                <button class="btn-page" [disabled]="pageCurrentPage() >= pageTotalPages()" (click)="pageCurrentPage.set(pageCurrentPage() + 1)">
-                  Next
-                </button>
+          <!-- Controls for People tab -->
+          <div *ngIf="activeBreakdownTab() === 'people'">
+            <input class="breakdown-search-input" [ngModel]="userSearchText()" (ngModelChange)="userSearchText.set($event); userCurrentPage.set(1);" placeholder="Search..." style="width:160px;" />
+          </div>
+
+          <!-- Controls for Access tab -->
+          <div *ngIf="activeBreakdownTab() === 'access'">
+            <input class="breakdown-search-input" [(ngModel)]="accessSearchText" (ngModelChange)="accessCurrentPage.set(1)" placeholder="Search..." style="width:190px;" />
+          </div>
+        </div>
+
+        <!-- ── TAB 1: PAGES VIEW ── -->
+        <ng-container *ngIf="activeBreakdownTab() === 'pages'">
+          <div class="breakdown-subtitle">
+            {{ filteredPageUsage().length }} pages tracked, ranked by views
+          </div>
+
+          <div class="breakdown-list-container" *ngIf="pagedPages().length; else noPages">
+            <div class="breakdown-row-item" *ngFor="let p of pagedPages(); let idx = index">
+              <div style="display:flex; align-items:center; gap:16px; min-width:0; flex:1;">
+                <span class="row-rank-tag">#{{ (pageCurrentPage() - 1) * 5 + idx + 1 }}</span>
+                <div style="min-width:0; flex:1;">
+                  <div class="row-primary-title" [title]="p.pageName">{{ p.pageName }}</div>
+                  <div class="row-secondary-info">{{ p.viewers }} viewer{{ p.viewers === 1 ? '' : 's' }}</div>
+                </div>
+              </div>
+
+              <div class="row-metric-box">
+                <div class="row-metric-val">{{ p.views | number }}</div>
+                <div class="row-metric-sub">views</div>
               </div>
             </div>
           </div>
           <ng-template #noPages>
-            <div style="color:#1e40af; font-size:13px; text-align:center; padding:35px 0;">
-              No pages match current filters.
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:35px 0;">
+              No pages match current search.
             </div>
           </ng-template>
-        </div>
 
-        <!-- Column 2: User Activity Breakdown (Clean Rows with Pagination) ── -->
-        <div class="card-outlined">
-          <div class="card-header-row">
-            <h3 class="card-title">User Activity Breakdown</h3>
+          <!-- Pages Pagination -->
+          <div class="breakdown-bottom-pagination" *ngIf="filteredPageUsage().length > 5">
+            <span class="footer-range-txt">
+              {{ (pageCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(pageCurrentPage() * 5, filteredPageUsage().length) }} of {{ filteredPageUsage().length }}
+            </span>
+            <div class="footer-nav-group">
+              <button class="btn-card-nav" [disabled]="pageCurrentPage() === 1" (click)="pageCurrentPage.set(pageCurrentPage() - 1)">
+                Prev
+              </button>
+              <span class="footer-page-indicator">
+                Page {{ pageCurrentPage() }} of {{ pageTotalPages() }}
+              </span>
+              <button class="btn-card-nav" [disabled]="pageCurrentPage() >= pageTotalPages()" (click)="pageCurrentPage.set(pageCurrentPage() + 1)">
+                Next
+              </button>
+            </div>
+          </div>
+        </ng-container>
 
-            <input class="search-mini-input" [ngModel]="userSearchText()" (ngModelChange)="userSearchText.set($event); userCurrentPage.set(1);" placeholder="Search users…" style="width:140px;" />
+        <!-- ── TAB 2: PEOPLE VIEW ── -->
+        <ng-container *ngIf="activeBreakdownTab() === 'people'">
+          <div class="breakdown-subtitle">
+            {{ filteredUserUsage().length }} users, most active first
           </div>
 
-          <div class="user-list" *ngIf="pagedUsers().length; else noUsers">
-            <div class="user-card-item" *ngFor="let u of pagedUsers(); let i = index" (click)="navigateToUser(u.email)" title="Click to view detailed analytics for this user">
-              <div class="user-meta-group">
+          <div class="breakdown-list-container" *ngIf="pagedUsers().length; else noUsers">
+            <div class="breakdown-row-item interactive" *ngFor="let u of pagedUsers(); let i = index" (click)="navigateToUser(u.email)" title="Click to view detailed analytics for {{ u.name }}">
+              <div style="display:flex; align-items:center; gap:14px; min-width:0; flex:1;">
                 <div class="user-avatar"
                      [style.background]="getUserAvatarStyle(u.name, i).bg"
                      [style.color]="getUserAvatarStyle(u.name, i).color">
                   {{ getUserInitial(u.name) }}
                 </div>
-                <div class="user-text-info">
-                  <div class="user-fullname" [title]="u.name">{{ u.name }}</div>
-                  <div class="user-email-txt" [title]="u.email">{{ u.email }}</div>
+                <div style="min-width:0; flex:1;">
+                  <div class="row-primary-title" [title]="u.name">{{ u.name }}</div>
+                  <div class="row-secondary-info">{{ u.email }} · {{ u.pagesCount }} page{{ u.pagesCount === 1 ? '' : 's' }}</div>
                 </div>
               </div>
 
-              <div class="user-activity-right">
-                <div>
-                  <div class="user-views-txt">{{ u.views | number }} views</div>
-                  <div class="user-date-txt">{{ u.pagesCount }} page{{ u.pagesCount === 1 ? '' : 's' }} • {{ formatAccessDate(u.lastAccessed) }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- User Pagination Controls -->
-            <div class="pagination-bar" *ngIf="filteredUserUsage().length > 5">
-              <span class="pagination-info">
-                {{ (userCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(userCurrentPage() * 5, filteredUserUsage().length) }} of {{ filteredUserUsage().length }} users
-              </span>
-              <div class="pagination-controls">
-                <button class="btn-page" [disabled]="userCurrentPage() === 1" (click)="userCurrentPage.set(userCurrentPage() - 1)">
-                  Previous
-                </button>
-                <span class="page-current-pill">
-                  Page {{ userCurrentPage() }} of {{ userTotalPages() }}
-                </span>
-                <button class="btn-page" [disabled]="userCurrentPage() >= userTotalPages()" (click)="userCurrentPage.set(userCurrentPage() + 1)">
-                  Next
-                </button>
+              <div class="row-metric-box">
+                <div class="row-metric-val">{{ u.views | number }}</div>
+                <div class="row-metric-sub">{{ formatAccessDate(u.lastAccessed) }}</div>
               </div>
             </div>
           </div>
           <ng-template #noUsers>
-            <div style="color:#1e40af; font-size:13px; text-align:center; padding:35px 0;">
-              No users match current filters.
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:35px 0;">
+              No users match current search.
             </div>
           </ng-template>
-        </div>
+
+          <!-- People Pagination -->
+          <div class="breakdown-bottom-pagination" *ngIf="filteredUserUsage().length > 5">
+            <span class="footer-range-txt">
+              {{ (userCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(userCurrentPage() * 5, filteredUserUsage().length) }} of {{ filteredUserUsage().length }}
+            </span>
+            <div class="footer-nav-group">
+              <button class="btn-card-nav" [disabled]="userCurrentPage() === 1" (click)="userCurrentPage.set(userCurrentPage() - 1)">
+                Prev
+              </button>
+              <span class="footer-page-indicator">
+                Page {{ userCurrentPage() }} of {{ userTotalPages() }}
+              </span>
+              <button class="btn-card-nav" [disabled]="userCurrentPage() >= userTotalPages()" (click)="userCurrentPage.set(userCurrentPage() + 1)">
+                Next
+              </button>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── TAB 3: ACCESS AUDIT VIEW ── -->
+        <ng-container *ngIf="activeBreakdownTab() === 'access'">
+          <div class="access-sub-bar">
+            <div class="access-pill-tabs">
+              <button class="access-pill-btn" [class.active]="accessFilterTab() === 'all'" (click)="accessFilterTab.set('all'); accessCurrentPage.set(1);" title="All Members">
+                All ({{ accessData()?.totalUsers || 0 }})
+              </button>
+              <button class="access-pill-btn" [class.active]="accessFilterTab() === 'unused'" (click)="accessFilterTab.set('unused'); accessCurrentPage.set(1);" style="color:#b45309;" title="Unused Access">
+                Unused ({{ accessData()?.unusedUsers || 0 }})
+              </button>
+              <button class="access-pill-btn" [class.active]="accessFilterTab() === 'active'" (click)="accessFilterTab.set('active'); accessCurrentPage.set(1);" title="Active Members">
+                Active ({{ accessData()?.activeUsers || 0 }})
+              </button>
+            </div>
+
+            <span style="font-size:12.5px; color:#64748b; font-weight:500;">
+              {{ filteredAccessList().length }} members audited
+            </span>
+          </div>
+
+          <div class="breakdown-list-container" *ngIf="pagedAccessList().length; else noAccessUsers">
+            <div class="breakdown-row-item" [class.interactive]="u.views > 0" *ngFor="let u of pagedAccessList(); let i = index" (click)="u.views > 0 ? navigateToUser(u.email) : null" [title]="u.views > 0 ? 'Click to view analytics for ' + u.displayName : ''">
+              <div style="display:flex; align-items:center; gap:14px; min-width:0; flex:1;">
+                <div class="user-avatar"
+                     [style.background]="getUserAvatarStyle(u.displayName, i).bg"
+                     [style.color]="getUserAvatarStyle(u.displayName, i).color">
+                  {{ getUserInitial(u.displayName) }}
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="row-primary-title" [title]="u.displayName">{{ u.displayName }}</div>
+                    <span class="role-badge" [ngClass]="getRoleBadgeClass(u.role)">{{ u.role }}</span>
+                  </div>
+                  <div class="row-secondary-info">{{ u.email }}</div>
+                </div>
+              </div>
+
+              <div class="row-metric-box">
+                <div class="row-metric-val">{{ u.views | number }}</div>
+                <div class="row-metric-sub">
+                  <span *ngIf="u.status === 'active'">{{ formatAccessDate(u.lastAccessed) }}</span>
+                  <span *ngIf="u.status !== 'active'" style="color:#dc2626; font-weight:600;">{{ u.lastAccessed ? formatAccessDate(u.lastAccessed) : 'Never active' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ng-template #noAccessUsers>
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:35px 0;">
+              No members match current access filters.
+            </div>
+          </ng-template>
+
+          <!-- Access Pagination -->
+          <div class="breakdown-bottom-pagination" *ngIf="filteredAccessList().length > 5">
+            <span class="footer-range-txt">
+              {{ (accessCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(accessCurrentPage() * 5, filteredAccessList().length) }} of {{ filteredAccessList().length }}
+            </span>
+            <div class="footer-nav-group">
+              <button class="btn-card-nav" [disabled]="accessCurrentPage() === 1" (click)="accessCurrentPage.set(accessCurrentPage() - 1)">
+                Prev
+              </button>
+              <span class="footer-page-indicator">
+                Page {{ accessCurrentPage() }} of {{ accessTotalPages() }}
+              </span>
+              <button class="btn-card-nav" [disabled]="accessCurrentPage() >= accessTotalPages()" (click)="accessCurrentPage.set(accessCurrentPage() + 1)">
+                Next
+              </button>
+            </div>
+          </div>
+        </ng-container>
+
       </div>
 
       <!-- ── 4B. USER DETAIL FULL-WIDTH PAGE BREAKDOWN (with Pagination) ── -->
@@ -1446,106 +1780,6 @@ import { ToastService } from './toast.service';
           </div>
         </ng-template>
       </div>
-
-      <!-- ── 5. Access Level & Unused Access Audit (with Pagination) ── -->
-      <div class="access-section-card" *ngIf="!selectedUserEmail()">
-        <div class="access-header-group">
-          <h3 class="card-title">Workspace &amp; Dashboard Access Audit</h3>
-
-          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-            <div class="access-tabs">
-              <button class="access-tab-btn" [class.active]="accessFilterTab() === 'all'" (click)="accessFilterTab.set('all'); accessCurrentPage.set(1);">
-                All Access ({{ accessData()?.totalUsers || 0 }})
-              </button>
-              <button class="access-tab-btn" [class.active]="accessFilterTab() === 'unused'" (click)="accessFilterTab.set('unused'); accessCurrentPage.set(1);" style="color:#b45309;">
-                Unused Access ({{ accessData()?.unusedUsers || 0 }})
-              </button>
-              <button class="access-tab-btn" [class.active]="accessFilterTab() === 'active'" (click)="accessFilterTab.set('active'); accessCurrentPage.set(1);">
-                Active ({{ accessData()?.activeUsers || 0 }})
-              </button>
-            </div>
-
-            <input class="search-mini-input" [(ngModel)]="accessSearchText" (ngModelChange)="accessCurrentPage.set(1)" placeholder="Search access list…" />
-          </div>
-        </div>
-
-        <!-- Access Table -->
-        <div class="access-table-wrap">
-          <table class="clean-table">
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Email</th>
-                <th>Role / Permission</th>
-                <th style="text-align:right;">Views</th>
-                <th style="text-align:right;">Last Active</th>
-                <th style="text-align:center;">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let u of pagedAccessList(); let i = index">
-                <td style="font-weight:500;">
-                  <div style="display:flex; align-items:center; gap:9px;">
-                    <div class="user-avatar" style="width:28px; height:28px; font-size:11.5px;"
-                         [style.background]="getUserAvatarStyle(u.displayName, i).bg"
-                         [style.color]="getUserAvatarStyle(u.displayName, i).color">
-                      {{ getUserInitial(u.displayName) }}
-                    </div>
-                    <span>{{ u.displayName }}</span>
-                  </div>
-                </td>
-                <td style="color:#1e3a8a;">{{ u.email }}</td>
-                <td>
-                  <span class="role-badge" [ngClass]="getRoleBadgeClass(u.role)">
-                    {{ u.role }}
-                  </span>
-                </td>
-                <td style="text-align:right; font-weight:700; color:#0f172a;">
-                  {{ u.views | number }}
-                </td>
-                <td style="text-align:right; font-size:12.5px;">
-                  <span *ngIf="u.status === 'active'" style="color:#0f172a; font-weight:600;">
-                    {{ formatAccessDate(u.lastAccessed) }}
-                  </span>
-                  <span *ngIf="u.status !== 'active'" style="color:#dc2626; font-weight:700;">
-                    {{ u.lastAccessed ? formatAccessDate(u.lastAccessed) : 'Never' }}
-                  </span>
-                </td>
-                <td style="text-align:center;">
-                  <button *ngIf="u.views > 0" (click)="navigateToUser(u.email)"
-                          style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:5px; font-size:12px; padding:3px 10px; cursor:pointer; font-weight:600;">
-                    View Analytics
-                  </button>
-                  <span *ngIf="u.views === 0" style="color:#1e40af; font-size:12px;">—</span>
-                </td>
-              </tr>
-              <tr *ngIf="filteredAccessList().length === 0">
-                <td colspan="6" style="text-align:center; padding:30px; color:#1e40af;">
-                  No users found matching current access filter.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Access Table Pagination Controls -->
-        <div class="pagination-bar" *ngIf="filteredAccessList().length > 5">
-          <span class="pagination-info">
-            {{ (accessCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(accessCurrentPage() * 5, filteredAccessList().length) }} of {{ filteredAccessList().length }} members
-          </span>
-          <div class="pagination-controls">
-            <button class="btn-page" [disabled]="accessCurrentPage() === 1" (click)="accessCurrentPage.set(accessCurrentPage() - 1)">
-              Previous
-            </button>
-            <span class="page-current-pill">
-              Page {{ accessCurrentPage() }} of {{ accessTotalPages() }}
-            </span>
-            <button class="btn-page" [disabled]="accessCurrentPage() >= accessTotalPages()" (click)="accessCurrentPage.set(accessCurrentPage() + 1)">
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   `,
 })
@@ -1575,6 +1809,9 @@ export class UsageComponent implements OnInit {
   searchYear: string = '';
   searchMonth: string = '';
   searchDate: string = '';
+
+  // Breakdown active tab ('pages' | 'people' | 'access')
+  activeBreakdownTab = signal<'pages' | 'people' | 'access'>('pages');
 
   // In-page search & sorting as reactive signals
   pageSearchText = signal<string>('');
