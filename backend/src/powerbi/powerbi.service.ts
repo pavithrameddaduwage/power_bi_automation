@@ -760,6 +760,69 @@ export class PowerBiService {
     } catch (e) {}
     return null;
   }
+
+  /**
+   * Retrieves all directory users across all workspaces in the tenant.
+   * De-duplicated by email, with service principals filtered out.
+   */
+  async listDirectoryUsers(): Promise<PbiDirectoryUser[]> {
+    const groups = await this.listGroups();
+    const userMap = new Map<string, PbiDirectoryUser>();
+
+    const isServicePrincipal = (disp = '', em = '', pType = '') => {
+      const d = (disp || '').toLowerCase();
+      const e = (em || '').toLowerCase();
+      const pt = (pType || '').toLowerCase();
+      const isGuid = (s: string) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
+      return (
+        pt === 'app' ||
+        pt === 'serviceprincipal' ||
+        d.includes('serviceprincipal') ||
+        d.includes('powerbi-api') ||
+        e.includes('powerbi-api') ||
+        e.includes('serviceprincipal') ||
+        isGuid(d) ||
+        isGuid(e) ||
+        isGuid(e.split('@')[0])
+      );
+    };
+
+    const CHUNK_SIZE = 5;
+    for (let i = 0; i < groups.length; i += CHUNK_SIZE) {
+      const chunk = groups.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (g) => {
+          try {
+            const users = await this.listGroupUsers(g.id);
+            for (const u of users) {
+              if (isServicePrincipal(u.name, u.email, u.principalType)) continue;
+              const em = (u.email || '').toLowerCase().trim();
+              if (em && !userMap.has(em)) {
+                userMap.set(em, {
+                  name: u.name && u.name !== u.email ? u.name : em,
+                  email: em,
+                  role: u.role || 'Member',
+                  principalType: u.principalType || 'User',
+                  workspaceName: g.name,
+                });
+              }
+            }
+          } catch (e) {}
+        }),
+      );
+    }
+
+    return Array.from(userMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+}
+
+export interface PbiDirectoryUser {
+  name: string;
+  email: string;
+  role?: string;
+  workspaceName?: string;
+  principalType?: string;
 }
 
 export interface PbiDatasetRefreshInfo {

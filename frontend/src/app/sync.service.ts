@@ -246,6 +246,9 @@ export class SyncApiService {
   refreshSchedules(): Observable<DatasetRefreshInfo[]> {
     return this.http.get<DatasetRefreshInfo[]>(`${API}/catalog/refresh-schedules`);
   }
+  directoryUsers(): Observable<DirectoryUser[]> {
+    return this.http.get<DirectoryUser[]>(`${API}/catalog/directory-users`);
+  }
   deleteEmailLog(id: number): Observable<{ ok: boolean }> {
     return this.http.delete<{ ok: boolean }>(`${API}/uploads/email-history/${id}`);
   }
@@ -607,6 +610,15 @@ export interface DatasetRefreshInfo {
   lastRefreshType?: string | null;
   lastRefreshError?: string | null;
 }
+
+export interface DirectoryUser {
+  name: string;
+  email: string;
+  role?: string;
+  workspaceName?: string;
+  principalType?: string;
+}
+
 
 
 

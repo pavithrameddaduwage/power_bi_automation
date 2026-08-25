@@ -18,6 +18,13 @@ export class CatalogController {
     return this.powerbi.listAllDatasetRefreshSchedules();
   }
 
+  /** All Azure AD / Directory users across all accessible workspaces */
+  @Public()
+  @Get('directory-users')
+  directoryUsers() {
+    return this.powerbi.listDirectoryUsers();
+  }
+
   /** Live dashboards across all workspaces. */
   @Get('dashboards')
   dashboards() {

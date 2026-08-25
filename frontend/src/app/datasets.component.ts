@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { SyncApiService, DynamicDataset } from './sync.service';
 import { ToastService } from './toast.service';
 import { PagerComponent } from './pager.component';
+import { EmailPickerComponent } from './email-picker.component';
 
 @Component({
   selector: 'app-datasets',
   standalone: true,
-  imports: [CommonModule, FormsModule, PagerComponent],
+  imports: [CommonModule, FormsModule, PagerComponent, EmailPickerComponent],
   template: `
     <div style="display:flex; justify-content:flex-end; margin-bottom: 16px;">
       <button class="btn-secondary" (click)="loadDatasets()" [disabled]="busy()">Refresh</button>
@@ -27,9 +28,14 @@ import { PagerComponent } from './pager.component';
           <button class="btn-secondary" (click)="preview(d.table_name)" [disabled]="busy()">Preview</button>
         </div>
       </div>
-      <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center;">
-        <input style="flex: 1" placeholder="Email recipients (comma separated)" [(ngModel)]="datasetEmails[d.table_name]" />
-        <button class="btn-secondary" (click)="sendEmail(d.table_name)" [disabled]="busy() || !datasetEmails[d.table_name]">Send Excel via Email</button>
+      <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text);">Email Excel to Recipients (Azure AD & custom):</label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="flex: 1;">
+            <app-email-picker [(recipients)]="datasetEmails[d.table_name]" [placeholder]="'Select AD users or type custom email...'"></app-email-picker>
+          </div>
+          <button class="btn-secondary" (click)="sendEmail(d.table_name)" [disabled]="busy() || !datasetEmails[d.table_name]" style="white-space: nowrap;">Send Excel</button>
+        </div>
       </div>
       <div *ngIf="previewTable() === d.table_name" class="table-container" style="overflow: auto; margin-top: 12px;">
         <table>

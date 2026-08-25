@@ -13,11 +13,12 @@ import {
 } from './sync.service';
 import { ToastService } from './toast.service';
 import { PagerComponent } from './pager.component';
+import { EmailPickerComponent } from './email-picker.component';
 
 @Component({
   selector: 'app-upload',
   standalone: true,
-  imports: [CommonModule, FormsModule, PagerComponent],
+  imports: [CommonModule, FormsModule, PagerComponent, EmailPickerComponent],
   template: `
     <div class="wizard-header">
       <div class="step" [class.active]="currentStep() === 1" (click)="setStep(1)">
@@ -481,9 +482,12 @@ import { PagerComponent } from './pager.component';
             <p class="muted" style="margin-top:2px; font-size:12px;">
               Dispatch this Excel spreadsheet directly to recipients now.
             </p>
-            <label style="margin-top:8px;">Recipients (comma-separated)
-              <input [(ngModel)]="recipients" placeholder="user@company.com, team@company.com" />
-            </label>
+            <label style="margin-top:8px;">Recipients (Azure AD & custom emails)</label>
+            <app-email-picker
+              [(recipients)]="recipients"
+              [selectedReport]="selectedReport()"
+              [placeholder]="'Select AD users or type custom email...'"
+            ></app-email-picker>
             <label style="margin-top:8px;">Email subject (optional)
               <input [(ngModel)]="emailSubject" placeholder="Excel Report Export" />
             </label>
