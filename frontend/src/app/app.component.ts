@@ -1,9 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { UploadComponent } from './upload.component';
 import { JobsComponent } from './jobs.component';
 import { DatasetsComponent } from './datasets.component';
+import { PagerComponent } from './pager.component';
 import { ToastService } from './toast.service';
 import { AuthService } from './auth/auth.service';
 import { LoginComponent } from './auth/login/login.component';
@@ -17,7 +18,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadComponent, JobsComponent, DatasetsComponent, LoginComponent, UsageComponent, UserDetailsComponent],
+  imports: [CommonModule, FormsModule, UploadComponent, JobsComponent, DatasetsComponent, PagerComponent, LoginComponent, UsageComponent, UserDetailsComponent],
   template: `
     <app-login *ngIf="!(auth.isAuthenticated$() | async)"></app-login>
 
@@ -106,27 +107,58 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
             <app-usage *ngIf="tab() === 'usage'"></app-usage>
             <div *ngIf="tab() === 'email-history'">
               <!-- Email Delivery Logs Card -->
-              <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
-                <h3 style="margin: 0;">Email Delivery Logs</h3>
-                <button class="btn-secondary" (click)="loadEmailLogs()" [disabled]="loadingEmailLogs()">
-                  <span *ngIf="loadingEmailLogs()" class="spinner"></span> Refresh
-                </button>
+              <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <h3 style="margin: 0;">Email Delivery Logs</h3>
+                  <span class="tag" *ngIf="emailLogs().length > 0">{{ emailLogs().length }} total</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <button class="btn-secondary btn-danger-outline"
+                          *ngIf="selectedEmailIds().size > 0"
+                          (click)="deleteSelectedEmails()"
+                          [disabled]="deletingLogs()"
+                          style="font-size: 12px; padding: 6px 12px;">
+                    <span *ngIf="deletingLogs()" class="spinner"></span>
+                    Delete Selected ({{ selectedEmailIds().size }})
+                  </button>
+                  <button class="btn-secondary btn-danger-outline"
+                          *ngIf="emailLogs().length > 0 && selectedEmailIds().size === 0"
+                          (click)="clearAllEmails()"
+                          [disabled]="deletingLogs()"
+                          style="font-size: 12px; padding: 6px 12px;">
+                    Clear All
+                  </button>
+                  <button class="btn-secondary" (click)="loadEmailLogs()" [disabled]="loadingEmailLogs()" style="font-size: 12px; padding: 6px 12px;">
+                    <span *ngIf="loadingEmailLogs()" class="spinner"></span> Refresh
+                  </button>
+                </div>
               </div>
 
               <div class="card" style="padding: 0; overflow: hidden;">
                 <table style="margin: 0;">
                   <thead>
                     <tr>
+                      <th style="width: 44px; text-align: center;">
+                        <input type="checkbox"
+                               [checked]="isAllEmailsSelected()"
+                               (change)="toggleSelectAllEmails()"
+                               [disabled]="pagedEmailLogs().length === 0" />
+                      </th>
                       <th>Recipients</th>
                       <th>Subject &amp; File</th>
                       <th>Size</th>
                       <th>Status</th>
                       <th>Sent At</th>
-                      <th>Action</th>
+                      <th style="text-align: right; width: 140px;">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let log of emailLogs()">
+                    <tr *ngFor="let log of pagedEmailLogs()">
+                      <td style="text-align: center;">
+                        <input type="checkbox"
+                               [checked]="isEmailSelected(log.id)"
+                               (change)="toggleSelectEmail(log.id)" />
+                      </td>
                       <td style="font-weight: 600; font-size: 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         {{ log.recipients }}
                       </td>
@@ -144,23 +176,32 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
                           </span>
                         </div>
                         <div *ngIf="log.error" style="color: var(--red); font-size: 11px; margin-top: 3px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="log.error">
-                          ⚠️ {{ log.error }}
+                          {{ log.error }}
                         </div>
                       </td>
                       <td class="muted" style="white-space:nowrap;">
                         {{ log.sent_at | date: 'short' }}
                       </td>
-                      <td>
-                        <a *ngIf="log.preview_url" [href]="log.preview_url" target="_blank" class="btn-secondary" style="text-decoration:none; padding:4px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px;">
-                          View Email ↗
-                        </a>
+                      <td style="text-align: right;">
+                        <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+                          <a *ngIf="log.preview_url" [href]="log.preview_url" target="_blank" class="btn-secondary" style="text-decoration:none; padding:4px 8px; font-size:11px;">
+                            View ↗
+                          </a>
+                          <button class="btn-secondary btn-danger-outline" (click)="deleteEmailLog(log.id)" [disabled]="deletingLogs()" style="padding: 4px 8px; font-size: 11px;">
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     <tr *ngIf="emailLogs().length === 0">
-                      <td colspan="6" class="placeholder" style="padding: 24px;">No email history recorded yet.</td>
+                      <td colspan="7" class="placeholder" style="padding: 24px;">No email history recorded yet.</td>
                     </tr>
                   </tbody>
                 </table>
+                <div style="padding: 16px 24px;" *ngIf="emailLogs().length > emailPageSize">
+                  <app-pager [page]="emailPage()" [total]="emailLogs().length" [pageSize]="emailPageSize"
+                             (go)="emailPage.set($event)"></app-pager>
+                </div>
               </div>
             </div>
           </main>
@@ -384,6 +425,112 @@ export class AppComponent {
         this.loadingEmailLogs.set(false);
       },
       error: () => this.loadingEmailLogs.set(false),
+    });
+  }
+
+  // Email Logs Pagination & Selection
+  emailPage = signal(0);
+  emailPageSize = 10;
+  selectedEmailIds = signal<Set<number>>(new Set());
+  deletingLogs = signal(false);
+
+  pagedEmailLogs = computed(() => {
+    const logs = this.emailLogs();
+    const start = this.emailPage() * this.emailPageSize;
+    return logs.slice(start, start + this.emailPageSize);
+  });
+
+  isAllEmailsSelected(): boolean {
+    const paged = this.pagedEmailLogs();
+    if (paged.length === 0) return false;
+    const sel = this.selectedEmailIds();
+    return paged.every((l) => l.id && sel.has(l.id));
+  }
+
+  isEmailSelected(id?: number): boolean {
+    return !!(id && this.selectedEmailIds().has(id));
+  }
+
+  toggleSelectAllEmails() {
+    const paged = this.pagedEmailLogs();
+    const sel = new Set(this.selectedEmailIds());
+    const allSelected = this.isAllEmailsSelected();
+    for (const log of paged) {
+      if (log.id) {
+        if (allSelected) {
+          sel.delete(log.id);
+        } else {
+          sel.add(log.id);
+        }
+      }
+    }
+    this.selectedEmailIds.set(sel);
+  }
+
+  toggleSelectEmail(id?: number) {
+    if (!id) return;
+    const sel = new Set(this.selectedEmailIds());
+    if (sel.has(id)) {
+      sel.delete(id);
+    } else {
+      sel.add(id);
+    }
+    this.selectedEmailIds.set(sel);
+  }
+
+  deleteEmailLog(id?: number) {
+    if (!id) return;
+    this.deletingLogs.set(true);
+    this.api.deleteEmailLog(id).subscribe({
+      next: () => {
+        this.deletingLogs.set(false);
+        this.toast.success('Deleted email log entry.');
+        const sel = new Set(this.selectedEmailIds());
+        sel.delete(id);
+        this.selectedEmailIds.set(sel);
+        this.loadEmailLogs();
+      },
+      error: (e) => {
+        this.deletingLogs.set(false);
+        this.toast.error(e?.error?.message || e?.message || 'Failed to delete log entry.');
+      },
+    });
+  }
+
+  deleteSelectedEmails() {
+    const ids = Array.from(this.selectedEmailIds());
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} selected email log(s)?`)) return;
+    this.deletingLogs.set(true);
+    this.api.deleteEmailLogs(ids).subscribe({
+      next: (res) => {
+        this.deletingLogs.set(false);
+        this.toast.success(`Deleted ${res.count || ids.length} email log(s).`);
+        this.selectedEmailIds.set(new Set());
+        this.loadEmailLogs();
+      },
+      error: (e) => {
+        this.deletingLogs.set(false);
+        this.toast.error(e?.error?.message || e?.message || 'Failed to delete selected logs.');
+      },
+    });
+  }
+
+  clearAllEmails() {
+    if (this.emailLogs().length === 0) return;
+    if (!confirm('Are you sure you want to clear all email delivery logs? This cannot be undone.')) return;
+    this.deletingLogs.set(true);
+    this.api.clearAllEmailLogs().subscribe({
+      next: () => {
+        this.deletingLogs.set(false);
+        this.toast.success('Cleared all email logs.');
+        this.selectedEmailIds.set(new Set());
+        this.loadEmailLogs();
+      },
+      error: (e) => {
+        this.deletingLogs.set(false);
+        this.toast.error(e?.error?.message || e?.message || 'Failed to clear email logs.');
+      },
     });
   }
 

@@ -243,6 +243,15 @@ export class SyncApiService {
   emailHistory(): Observable<EmailLog[]> {
     return this.http.get<EmailLog[]>(`${API}/uploads/email-history`);
   }
+  deleteEmailLog(id: number): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`${API}/uploads/email-history/${id}`);
+  }
+  deleteEmailLogs(ids: number[]): Observable<{ ok: boolean; count: number }> {
+    return this.http.post<{ ok: boolean; count: number }>(`${API}/uploads/email-history/delete-batch`, { ids });
+  }
+  clearAllEmailLogs(): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`${API}/uploads/email-history`);
+  }
   sendEmailReport(input: {
     reportName: string;
     rows: any[];

@@ -566,12 +566,48 @@ Power BI Automated Reporting Portal
 
     try {
       const res = await this.pool.query(
-        `SELECT * FROM email_history ORDER BY sent_at DESC LIMIT 100`,
+        `SELECT * FROM email_history ORDER BY sent_at DESC LIMIT 500`,
       );
       return res.rows;
     } catch (err: any) {
       this.logger.error(`Failed to fetch email history: ${err.message}`);
       return [];
+    }
+  }
+
+  async deleteEmailLog(id: number): Promise<{ ok: boolean }> {
+    await this.ensureTables();
+    if (!this.pool) return { ok: false };
+    try {
+      await this.pool.query(`DELETE FROM email_history WHERE id = $1`, [id]);
+      return { ok: true };
+    } catch (err: any) {
+      this.logger.error(`Failed to delete email history entry ${id}: ${err.message}`);
+      throw err;
+    }
+  }
+
+  async deleteEmailLogs(ids: number[]): Promise<{ ok: boolean; count: number }> {
+    await this.ensureTables();
+    if (!this.pool || !ids || ids.length === 0) return { ok: false, count: 0 };
+    try {
+      const res = await this.pool.query(`DELETE FROM email_history WHERE id = ANY($1::int[])`, [ids]);
+      return { ok: true, count: res.rowCount || 0 };
+    } catch (err: any) {
+      this.logger.error(`Failed to batch delete email history entries: ${err.message}`);
+      throw err;
+    }
+  }
+
+  async clearAllEmailLogs(): Promise<{ ok: boolean }> {
+    await this.ensureTables();
+    if (!this.pool) return { ok: false };
+    try {
+      await this.pool.query(`TRUNCATE TABLE email_history`);
+      return { ok: true };
+    } catch (err: any) {
+      this.logger.error(`Failed to clear email history: ${err.message}`);
+      throw err;
     }
   }
 }

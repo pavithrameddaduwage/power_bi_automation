@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Res,
@@ -23,6 +25,34 @@ export class UploadsController {
   @Post('report')
   uploadReport(@Body() dto: UploadReportDto) {
     return this.uploads.uploadReport(dto);
+  }
+
+  /** Email delivery logs history */
+  @Public()
+  @Get('email-history')
+  emailHistory() {
+    return this.uploads.getEmailHistory();
+  }
+
+  /** Delete single email log entry */
+  @Public()
+  @Delete('email-history/:id')
+  deleteEmailLog(@Param('id', ParseIntPipe) id: number) {
+    return this.uploads.deleteEmailLog(id);
+  }
+
+  /** Batch delete email log entries */
+  @Public()
+  @Post('email-history/delete-batch')
+  deleteEmailLogs(@Body() body: { ids: number[] }) {
+    return this.uploads.deleteEmailLogs(body.ids || []);
+  }
+
+  /** Clear all email log entries */
+  @Public()
+  @Delete('email-history')
+  clearAllEmailLogs() {
+    return this.uploads.clearAllEmailLogs();
   }
 
   /** Upload / append custom principals (dynamic schema). */
@@ -63,12 +93,6 @@ export class UploadsController {
   @Post('datasets/:table/email')
   emailDataset(@Param('table') table: string, @Body() body: { recipients: string[], subject: string }) {
     return this.uploads.emailDataset(table, body.recipients, body.subject);
-  }
-
-  /** Email delivery logs history */
-  @Get('email-history')
-  emailHistory() {
-    return this.uploads.getEmailHistory();
   }
 
   /** Get current SMTP config status */

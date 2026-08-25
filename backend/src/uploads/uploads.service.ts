@@ -80,6 +80,18 @@ export class UploadsService {
     return this.emailService.getEmailHistory();
   }
 
+  async deleteEmailLog(id: number) {
+    return this.emailService.deleteEmailLog(id);
+  }
+
+  async deleteEmailLogs(ids: number[]) {
+    return this.emailService.deleteEmailLogs(ids);
+  }
+
+  async clearAllEmailLogs() {
+    return this.emailService.clearAllEmailLogs();
+  }
+
   async getSmtpConfig() {
     return this.emailService.getSmtpConfig();
   }
