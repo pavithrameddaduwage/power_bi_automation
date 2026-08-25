@@ -8,6 +8,7 @@ import {
   computed,
   HostListener,
   ElementRef,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -56,10 +57,11 @@ import { SyncApiService, DirectoryUser, ReportWithAccess } from './sync.service'
       font-size: 12px;
       font-weight: 500;
       line-height: 1.4;
+      user-select: none;
     }
 
     .chip-name {
-      max-width: 170px;
+      max-width: 180px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -99,7 +101,7 @@ import { SyncApiService, DirectoryUser, ReportWithAccess } from './sync.service'
       top: calc(100% + 4px);
       left: 0;
       right: 0;
-      max-height: 260px;
+      max-height: 290px;
       background: var(--card, #ffffff);
       border: 1px solid var(--border, #cbd5e1);
       border-radius: var(--radius-sm, 6px);
@@ -141,9 +143,29 @@ import { SyncApiService, DirectoryUser, ReportWithAccess } from './sync.service'
       color: #1d4ed8;
     }
 
+    .dropdown-search-row {
+      padding: 6px 10px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border, #e2e8f0);
+    }
+
+    .dropdown-search-box {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 5px 8px;
+      font-size: 12px;
+      border: 1px solid var(--border, #cbd5e1);
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .dropdown-search-box:focus {
+      border-color: var(--accent, #2563eb);
+    }
+
     .dropdown-list {
       overflow-y: auto;
-      max-height: 215px;
+      max-height: 220px;
     }
 
     .user-option {
@@ -228,10 +250,11 @@ import { SyncApiService, DirectoryUser, ReportWithAccess } from './sync.service'
 
       <!-- Search / Custom email input -->
       <input
-        #inputEl
+        #chipInput
         class="chip-input"
         [placeholder]="selectedList().length === 0 ? (placeholder || 'Select AD users or type email...') : 'Add more...'"
-        [(ngModel)]="searchQuery"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearchInput($event)"
         (focus)="openDropdown()"
         (keydown)="onKeydown($event)"
       />
@@ -240,13 +263,16 @@ import { SyncApiService, DirectoryUser, ReportWithAccess } from './sync.service'
     <!-- Dropdown List -->
     <div class="picker-dropdown" *ngIf="isOpen()" (click)="$event.stopPropagation()">
       <div class="dropdown-header-bar">
-        <span>Active Directory Users ({{ filteredUsers().length }})</span>
+        <span>Directory Users ({{ filteredUsers().length }} of {{ directoryUsers().length }})</span>
         <div class="dropdown-actions">
           <button type="button" class="dropdown-link-btn" *ngIf="reportMembers().length" (click)="addAllReportMembers()">
-            + Workspace Members ({{ reportMembers().length }})
+            + Workspace ({{ reportMembers().length }})
+          </button>
+          <button type="button" class="dropdown-link-btn" *ngIf="filteredUsers().length > 0 && filteredUsers().length <= 50" (click)="selectAllFiltered()">
+            Select All
           </button>
           <button type="button" class="dropdown-link-btn" *ngIf="selectedList().length" (click)="clearAll()">
-            Clear All
+            Clear
           </button>
         </div>
       </div>
@@ -254,7 +280,7 @@ import { SyncApiService, DirectoryUser, ReportWithAccess } from './sync.service'
       <div class="dropdown-list">
         <!-- Add custom email action if typed query is an email not currently selected -->
         <div class="custom-add-item" *ngIf="isCustomEmailQuery()" (click)="addCustomQueryEmail()">
-          + Add custom recipient: <strong>{{ searchQuery.trim() }}</strong>
+          + Add custom recipient: <strong>{{ searchQuery().trim() }}</strong>
         </div>
 
         <div
@@ -272,12 +298,12 @@ import { SyncApiService, DirectoryUser, ReportWithAccess } from './sync.service'
           <div class="user-avatar-mini">{{ getInitial(u.name) }}</div>
           <div class="user-meta">
             <div class="user-name">{{ u.name }}</div>
-            <div class="user-email">{{ u.email }} <span *ngIf="u.role">· {{ u.role }}</span></div>
+            <div class="user-email">{{ u.email }} <span *ngIf="u.workspaceName">· {{ u.workspaceName }}</span></div>
           </div>
         </div>
 
-        <div *ngIf="filteredUsers().length === 0 && !isCustomEmailQuery()" style="padding:14px; text-align:center; color:var(--muted); font-size:12px;">
-          No matching AD users found. Type an email address and press Enter.
+        <div *ngIf="filteredUsers().length === 0 && !isCustomEmailQuery()" style="padding:16px; text-align:center; color:var(--muted); font-size:12px;">
+          No matching AD users found for "{{ searchQuery() }}". Press Enter to add custom email.
         </div>
       </div>
     </div>
@@ -296,19 +322,21 @@ export class EmailPickerComponent implements OnInit {
 
   @Output() recipientsChange = new EventEmitter<string>();
 
-  searchQuery = '';
+  @ViewChild('chipInput') chipInputRef?: ElementRef<HTMLInputElement>;
+
+  searchQuery = signal<string>('');
   isOpen = signal<boolean>(false);
   directoryUsers = signal<DirectoryUser[]>([]);
   selectedList = signal<string[]>([]);
 
   filteredUsers = computed(() => {
-    const q = this.searchQuery.trim().toLowerCase();
+    const q = this.searchQuery().trim().toLowerCase();
     const all = this.directoryUsers();
     if (!q) return all;
     return all.filter(
       (u) =>
-        u.name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
         (u.workspaceName && u.workspaceName.toLowerCase().includes(q)),
     );
   });
@@ -350,9 +378,15 @@ export class EmailPickerComponent implements OnInit {
   }
 
   focusInput() {
-    const input = this.el.nativeElement.querySelector('input');
-    if (input) input.focus();
+    if (this.chipInputRef) {
+      this.chipInputRef.nativeElement.focus();
+    }
     this.openDropdown();
+  }
+
+  onSearchInput(val: string) {
+    this.searchQuery.set(val || '');
+    this.isOpen.set(true);
   }
 
   isSelected(email: string): boolean {
@@ -384,31 +418,37 @@ export class EmailPickerComponent implements OnInit {
     this.emitChange(Array.from(set));
   }
 
+  selectAllFiltered() {
+    const emails = this.filteredUsers().map((u) => u.email.toLowerCase());
+    const set = new Set([...this.selectedList(), ...emails]);
+    this.emitChange(Array.from(set));
+  }
+
   clearAll() {
     this.emitChange([]);
   }
 
   isCustomEmailQuery(): boolean {
-    const q = this.searchQuery.trim().toLowerCase();
+    const q = this.searchQuery().trim().toLowerCase();
     if (!q || !q.includes('@')) return false;
     return !this.selectedList().includes(q);
   }
 
   addCustomQueryEmail() {
-    const q = this.searchQuery.trim().toLowerCase();
+    const q = this.searchQuery().trim().toLowerCase();
     if (q && q.includes('@')) {
       if (!this.selectedList().includes(q)) {
         this.emitChange([...this.selectedList(), q]);
       }
-      this.searchQuery = '';
+      this.searchQuery.set('');
     }
   }
 
   onKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault();
-      if (this.searchQuery.trim()) {
-        const q = this.searchQuery.trim().toLowerCase();
+      const q = this.searchQuery().trim().toLowerCase();
+      if (q) {
         // Check if query matches top filtered user
         const topUser = this.filteredUsers()[0];
         if (topUser && topUser.name.toLowerCase() === q) {
@@ -420,9 +460,9 @@ export class EmailPickerComponent implements OnInit {
             this.emitChange([...this.selectedList(), q]);
           }
         }
-        this.searchQuery = '';
+        this.searchQuery.set('');
       }
-    } else if (event.key === 'Backspace' && !this.searchQuery) {
+    } else if (event.key === 'Backspace' && !this.searchQuery()) {
       const curr = [...this.selectedList()];
       if (curr.length > 0) {
         curr.pop();

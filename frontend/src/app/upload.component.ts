@@ -468,6 +468,17 @@ import { EmailPickerComponent } from './email-picker.component';
               </button>
             </div>
 
+            <!-- Optional Email on Schedule -->
+            <label style="margin-top:10px;">Email on schedule (optional, Azure AD multi-select)</label>
+            <app-email-picker
+              [(recipients)]="jobRecipients"
+              [selectedReport]="selectedReport()"
+              [placeholder]="'Select AD users to email on schedule...'"
+            ></app-email-picker>
+            <label style="margin-top:8px;" *ngIf="jobRecipients">Email subject for schedule (optional)
+              <input [(ngModel)]="jobEmailSubject" placeholder="Scheduled Report Export" />
+            </label>
+
             <div class="row-between" style="margin-top:12px;">
               <span class="muted" style="font-size:11px;">e.g. <code>0 6 * * *</code> daily</span>
               <button class="btn-secondary" (click)="saveJob()" [disabled]="busy() || targetLocked() || !jobName.trim()">
@@ -476,11 +487,11 @@ import { EmailPickerComponent } from './email-picker.component';
             </div>
           </div>
 
-          <!-- Email Export Card -->
+          <!-- Instant Email Export Card -->
           <div class="card">
-            <strong>Send Report via Email</strong>
+            <strong>Send Report via Email Now</strong>
             <p class="muted" style="margin-top:2px; font-size:12px;">
-              Dispatch this Excel spreadsheet directly to recipients now.
+              Dispatch this Excel spreadsheet directly to recipients now (does not write to database).
             </p>
             <label style="margin-top:8px;">Recipients (Azure AD & custom emails)</label>
             <app-email-picker
@@ -492,7 +503,7 @@ import { EmailPickerComponent } from './email-picker.component';
               <input [(ngModel)]="emailSubject" placeholder="Excel Report Export" />
             </label>
             <div class="row-between" style="margin-top:12px;">
-              <span class="muted" style="font-size:11px;">Sends Excel attachment</span>
+              <span class="muted" style="font-size:11px;">Direct email only</span>
               <button class="btn-secondary" (click)="sendReportEmail()" [disabled]="busy() || writeRows().length === 0 || !recipients.trim()">
                 Send Email Now
               </button>
@@ -639,6 +650,8 @@ export class UploadComponent implements OnInit {
 
   jobName = '';
   cron = '';
+  jobRecipients = '';
+  jobEmailSubject = '';
   recipients = '';
   emailSubject = '';
 
@@ -1467,8 +1480,8 @@ export class UploadComponent implements OnInit {
         dateColumn: this.dateColumn() || undefined,
         dateFrom: (this.dateColumn() && this.dateFrom()) || undefined,
         dateTo: (this.dateColumn() && this.dateTo()) || undefined,
-        recipients: this.recipients.trim() || undefined,
-        emailSubject: this.emailSubject.trim() || undefined,
+        recipients: this.jobRecipients.trim() || undefined,
+        emailSubject: this.jobEmailSubject.trim() || undefined,
       })
       .subscribe({
         next: () => {
@@ -1480,6 +1493,8 @@ export class UploadComponent implements OnInit {
           );
           this.jobName = '';
           this.cron = '';
+          this.jobRecipients = '';
+          this.jobEmailSubject = '';
         },
         error: (e) => this.fail(e),
       });
