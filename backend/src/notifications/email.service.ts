@@ -446,7 +446,8 @@ Power BI Automated Reporting Portal
     if (this.smtpTransporter) {
       try {
         const info = await this.smtpTransporter.sendMail({
-          from: this.currentFromAddress,
+          from: this.currentFromAddress || `"Pavithra Meddaduwage (Power BI Portal)" <pavithrameddaduwage@gmail.com>`,
+          replyTo: 'pmeddaduwage@hgusa.com',
           to,
           subject,
           text,
