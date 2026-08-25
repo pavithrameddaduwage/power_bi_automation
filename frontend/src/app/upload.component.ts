@@ -42,7 +42,7 @@ import { EmailPickerComponent } from './email-picker.component';
     <div class="wizard-body">
       <!-- STEP 1 -->
       <ng-container *ngIf="currentStep() === 1">
-        <h2>1 Pick a report</h2>
+        <h2>Pick a report</h2>
         <div class="card">
           <input class="search" placeholder="Search reports by name or workspace…" [ngModel]="filter" (ngModelChange)="onFilterChange($event)" />
           <div class="report-list">
@@ -77,7 +77,7 @@ import { EmailPickerComponent } from './email-picker.component';
 
       <!-- STEP 2 -->
       <ng-container *ngIf="currentStep() === 2 && selectedReport() as rep">
-        <h2>2 Choose tables &amp; columns</h2>
+        <h2>Choose tables &amp; columns</h2>
         <div class="card">
           <div *ngIf="loadingCols()" class="muted"><span class="spinner"></span> Loading columns…</div>
           <div *ngIf="colError()" class="status-error">{{ colError() }}</div>
@@ -198,7 +198,7 @@ import { EmailPickerComponent } from './email-picker.component';
       <!-- STEP 3 — Data with column filters -->
       <ng-container *ngIf="currentStep() === 3 && (loadedRows().length || loadedCols().length)">
         <div class="row-between" style="margin-bottom:12px;">
-          <h2>3 Synced data
+          <h2>Synced data
             <span class="tag" style="font-size:13px; margin-left:8px;">
               {{ filteredLoadedRows().length }} of {{ loadedRows().length }} rows
               <ng-container *ngIf="hasActiveColFilters()"> (filtered)</ng-container>
@@ -307,17 +307,17 @@ import { EmailPickerComponent } from './email-picker.component';
       <!-- STEP 4 — Schedule & Database (Optional) -->
       <ng-container *ngIf="currentStep() === 4 && (loadedRows().length || loadedCols().length)">
         <div class="row-between" style="margin-bottom:16px;">
-          <h2>4 Database &amp; Schedule Options</h2>
+          <h2>Database &amp; Schedule Options</h2>
           <span class="tag" style="font-size:13px;">{{ writeRows().length }} rows ready</span>
         </div>
 
         <!-- Step 4 Top Section: 2 Side-by-Side Instant Action Cards -->
         <div class="grid2" style="margin-bottom:20px;">
-          <!-- 1. Database Destination & One-Time Upload -->
+          <!-- Database Destination & One-Time Upload -->
           <div class="card">
             <div class="row-between" style="margin-bottom:8px;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <strong>1. Database Table Destination</strong>
+                <strong>Database Table Destination</strong>
                 <span class="badge badge-ok" style="font-size:11px;">DB Config</span>
               </div>
               <button class="btn-secondary" style="font-size:11px; padding:3px 8px;" (click)="showDbForm.set(!showDbForm())">
@@ -397,11 +397,11 @@ import { EmailPickerComponent } from './email-picker.component';
             </div>
           </div>
 
-          <!-- 2. Email Distribution & One-Time Send -->
+          <!-- Email Distribution & One-Time Send -->
           <div class="card">
             <div class="row-between" style="margin-bottom:8px;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <strong>2. Email Distribution</strong>
+                <strong>Email Distribution</strong>
                 <span class="badge" style="font-size:11px; background:#eff6ff; color:#1d4ed8;">Optional</span>
               </div>
             </div>
@@ -429,11 +429,11 @@ import { EmailPickerComponent } from './email-picker.component';
           </div>
         </div>
 
-        <!-- 3. Automated Recurring Schedule (Applies Both Database & Email on Timer) -->
+        <!-- Automated Recurring Schedule (Applies Both Database & Email on Timer) -->
         <div class="card" style="margin-bottom:20px;">
           <div class="row-between" style="margin-bottom:6px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <strong style="font-size:14px;">3. Schedule Recurring Automation</strong>
+              <strong style="font-size:14px;">Schedule Recurring Automation</strong>
               <span class="badge" style="font-size:11px; background:#f0fdf4; color:#166534;">Automates Pipeline</span>
             </div>
           </div>
