@@ -156,11 +156,13 @@ import { PagerComponent } from './pager.component';
               <div class="muted" *ngIf="!j.last_run_at">Never</div>
             </td>
             <td>
-              <div style="display:flex;gap:6px;">
-                <button (click)="run(j)" [disabled]="busy()">
+              <div style="display:flex; gap:6px; justify-content:flex-end;">
+                <button class="btn-action-mini" (click)="run(j)" [disabled]="busy()">
                   <span *ngIf="running() === j.id" class="spinner"></span> Run
                 </button>
-                <button class="btn-secondary danger" (click)="remove(j)" [disabled]="busy()">Delete</button>
+                <button class="btn-action-mini" (click)="remove(j)" [disabled]="busy()" style="color:var(--red); border-color:#fca5a5;">
+                  Delete
+                </button>
               </div>
             </td>
           </tr>

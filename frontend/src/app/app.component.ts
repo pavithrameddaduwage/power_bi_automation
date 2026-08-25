@@ -186,10 +186,10 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
                       </td>
                       <td style="text-align: right;">
                         <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
-                          <a *ngIf="log.preview_url" [href]="log.preview_url" target="_blank" class="btn-secondary" style="text-decoration:none; padding:4px 8px; font-size:11px;">
+                          <a *ngIf="log.preview_url" [href]="log.preview_url" target="_blank" class="btn-action-mini" style="font-size:11.5px; padding:4px 10px;">
                             View ↗
                           </a>
-                          <button class="btn-secondary btn-danger-outline" (click)="deleteEmailLog(log.id)" [disabled]="deletingLogs()" style="padding: 4px 8px; font-size: 11px;">
+                          <button class="btn-action-mini" (click)="deleteEmailLog(log.id)" [disabled]="deletingLogs()" style="color:var(--red); border-color:#fca5a5; font-size:11.5px; padding:4px 10px;">
                             Delete
                           </button>
                         </div>
