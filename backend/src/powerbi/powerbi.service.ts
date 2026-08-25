@@ -523,6 +523,25 @@ export class PowerBiService {
     return `EVALUATE TOPN(${cap}, ${inner})`;
   }
 
+  /**
+   * Helper to extract a broken column name from Power BI DAX calculation error messages.
+   */
+  private extractBrokenColumnName(errMsg: string): string | null {
+    if (!errMsg) return null;
+    // Strip XML tags like <oii>
+    const clean = errMsg.replace(/<\/?oii>/gi, '');
+    const m1 = clean.match(/calculated column\s+['"]?[^'"\]\[]+['"]?\s*\[([^\]]+)\]/i);
+    if (m1 && m1[1]) return m1[1].trim();
+
+    const m2 = clean.match(/referenced (?:calculated )?column\s+['"]?[^'"\]\[]+['"]?\s*\[([^\]]+)\]/i);
+    if (m2 && m2[1]) return m2[1].trim();
+
+    const m3 = clean.match(/column\s+['"]?[^'"\]\[]+['"]?\s*\[([^\]]+)\]\s+which (?:does not hold any data|depends on)/i);
+    if (m3 && m3[1]) return m3[1].trim();
+
+    return null;
+  }
+
   /** Pull the selected columns of one table from a dataset (the "sync" step). */
   async getReportData(
     datasetId: string,
@@ -532,18 +551,47 @@ export class PowerBiService {
     filter?: DataFilter,
     measures: string[] = [],
   ): Promise<Record<string, any>[]> {
-    const cols = Array.isArray(columns) ? columns : [];
-    const meas = Array.isArray(measures) ? measures : [];
+    let cols = Array.isArray(columns) ? [...columns] : [];
+    const meas = Array.isArray(measures) ? [...measures] : [];
     if (!table) throw new Error('table is required.');
     if (cols.length === 0 && meas.length === 0) {
       throw new Error('Select at least one column or measure.');
     }
-    // Measures must be grouped → SUMMARIZECOLUMNS. Plain columns → SELECTCOLUMNS.
-    const dax =
-      meas.length > 0
-        ? this.buildMeasureQuery(table, cols, meas, limit, filter)
-        : this.buildProjection(table, cols, limit, filter);
-    return this.executeQueryByDataset(datasetId, dax);
+
+    const maxAttempts = 15;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Measures must be grouped → SUMMARIZECOLUMNS. Plain columns → SELECTCOLUMNS.
+      const dax =
+        meas.length > 0
+          ? this.buildMeasureQuery(table, cols, meas, limit, filter)
+          : this.buildProjection(table, cols, limit, filter);
+
+      try {
+        return await this.executeQueryByDataset(datasetId, dax);
+      } catch (err: any) {
+        const errMsg = String(err?.message || '');
+        const brokenCol = this.extractBrokenColumnName(errMsg);
+
+        if (brokenCol) {
+          const beforeLen = cols.length;
+          cols = cols.filter(
+            (c) => c.trim().toLowerCase() !== brokenCol.toLowerCase(),
+          );
+
+          if (cols.length < beforeLen && (cols.length > 0 || meas.length > 0)) {
+            this.logger.warn(
+              `[PowerBiService] Omitted broken calculated column "${brokenCol}" from dataset "${datasetId}" table "${table}" (Power BI model expression error). Retrying query with remaining ${cols.length} column(s)...`,
+            );
+            continue;
+          }
+        }
+        throw err;
+      }
+    }
+
+    throw new Error(
+      `Failed to query dataset "${datasetId}" table "${table}" after retrying without broken calculated columns.`,
+    );
   }
 
   /**
