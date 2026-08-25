@@ -277,9 +277,9 @@ export class EmailService {
         <table width="600" border="0" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:12px; border:1px solid #dde3ec; box-shadow:0 4px 16px rgba(0,0,0,0.06); overflow:hidden;">
           <!-- Header Banner -->
           <tr>
-            <td style="background-color:#1d6ef5; padding:24px 32px; color:#ffffff;">
-              <h1 style="margin:0; font-size:20px; font-weight:700; color:#ffffff; letter-spacing:-0.3px;">Power BI Portal</h1>
-              <div style="font-size:13px; color:#eff5ff; margin-top:4px; opacity:0.9;">Automated Report Delivery</div>
+            <td align="center" style="background-color:#1d6ef5; padding:24px 32px; color:#ffffff; text-align:center;">
+              <h1 style="margin:0; font-size:20px; font-weight:700; color:#ffffff; letter-spacing:-0.3px; text-align:center;">Power BI Portal</h1>
+              <div style="font-size:13px; color:#eff5ff; margin-top:4px; opacity:0.9; text-align:center;">Automated Report Delivery</div>
             </td>
           </tr>
 
@@ -291,19 +291,19 @@ export class EmailService {
               <!-- Report Details Table -->
               <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:24px;">
                 <tr>
-                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#64748b; width:35%;">Report / Dataset:</td>
+                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#64748b; width:35%;">Report / Dataset -</td>
                   <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:700; color:#0f172a;">${params.reportName}</td>
                 </tr>
                 <tr>
-                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#64748b;">Total Rows Exported:</td>
+                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#64748b;">Total Rows Exported -</td>
                   <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#0f172a;">${rowCountStr}</td>
                 </tr>
                 <tr>
-                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#64748b;">Attachment:</td>
-                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#0f172a;">📎 ${params.fileName} (${sizeKb} KB)</td>
+                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#64748b;">Attachment -</td>
+                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#0f172a;">${params.fileName} (${sizeKb} KB)</td>
                 </tr>
                 <tr>
-                  <td style="padding:12px 16px; font-size:13px; font-weight:600; color:#64748b;">Generated At:</td>
+                  <td style="padding:12px 16px; font-size:13px; font-weight:600; color:#64748b;">Generated At -</td>
                   <td style="padding:12px 16px; font-size:13px; font-weight:500; color:#475569;">${formattedDate}</td>
                 </tr>
               </table>

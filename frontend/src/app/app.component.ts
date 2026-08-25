@@ -245,11 +245,13 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
       box-sizing: border-box;
       display: flex;
       align-items: center;
+      justify-content: center;
       padding: 0 20px;
       font-weight: 700;
       font-size: 15px;
       color: var(--text);
       border-bottom: 1px solid var(--border);
+      text-align: center;
     }
 
     .sidebar-nav {
