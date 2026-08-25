@@ -277,6 +277,17 @@ import { SyncApiService, DirectoryUser, ReportWithAccess } from './sync.service'
         </div>
       </div>
 
+      <!-- Dedicated search row inside dropdown -->
+      <div class="dropdown-search-row">
+        <input
+          class="dropdown-search-box"
+          placeholder="Filter by name, email, or workspace..."
+          [ngModel]="searchQuery()"
+          (ngModelChange)="onSearchInput($event)"
+          (click)="$event.stopPropagation()"
+        />
+      </div>
+
       <div class="dropdown-list">
         <!-- Add custom email action if typed query is an email not currently selected -->
         <div class="custom-add-item" *ngIf="isCustomEmailQuery()" (click)="addCustomQueryEmail()">

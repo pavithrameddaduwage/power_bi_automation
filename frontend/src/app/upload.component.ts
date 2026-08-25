@@ -305,14 +305,20 @@ import { EmailPickerComponent } from './email-picker.component';
           <span class="tag" style="font-size:13px;">{{ writeRows().length }} rows ready</span>
         </div>
 
-        <!-- Main Database Upload Card -->
+        <!-- Option 1: Database Upload Card -->
         <div class="card" style="margin-bottom:20px;">
           <div class="row-between" style="margin-bottom:12px;">
-            <strong>Database Destination</strong>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong>1. Upload to Database</strong>
+              <span class="badge badge-ok" style="font-size:11px;">Database Storage</span>
+            </div>
             <button class="btn-secondary" style="font-size:12px; padding:4px 10px;" (click)="showDbForm.set(!showDbForm())">
               {{ showDbForm() ? 'Hide DB Connections' : 'Manage DB Connections' }}
             </button>
           </div>
+          <p class="muted" style="margin-top:-6px; margin-bottom:14px; font-size:12px;">
+            Uploads rows directly to a database table. No email will be sent.
+          </p>
 
           <!-- Collapsible Database Connections Panel -->
           <div *ngIf="showDbForm()" style="margin-bottom:16px; padding:12px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm);">
@@ -410,13 +416,16 @@ import { EmailPickerComponent } from './email-picker.component';
           </div>
         </div>
 
-        <!-- Automation & Notification (Side-by-Side Clean Grid) -->
+        <!-- Automation & Instant Email (Separate Side-by-Side Cards) -->
         <div class="grid2" style="margin-bottom:20px;">
-          <!-- Job Schedule Card -->
+          <!-- Option 2: Job Schedule Card -->
           <div class="card">
-            <strong>Schedule Recurring Job</strong>
-            <p class="muted" style="margin-top:2px; font-size:12px;">
-              Automatically sync this report on a schedule.
+            <div class="row-between" style="margin-bottom:4px;">
+              <strong>2. Schedule Recurring Automation</strong>
+              <span class="badge" style="font-size:10px; background:#eff6ff; color:#1d4ed8;">Optional</span>
+            </div>
+            <p class="muted" style="margin-top:0; font-size:12px;">
+              Automatically pull and save this report on a recurring cron timer.
             </p>
             <label style="margin-top:8px;">Job name
               <input [(ngModel)]="jobName" placeholder="e.g. Daily Sales Sync" />
@@ -487,11 +496,14 @@ import { EmailPickerComponent } from './email-picker.component';
             </div>
           </div>
 
-          <!-- Instant Email Export Card -->
+          <!-- Option 3: Instant Email Export Card -->
           <div class="card">
-            <strong>Send Report via Email Now</strong>
-            <p class="muted" style="margin-top:2px; font-size:12px;">
-              Dispatch this Excel spreadsheet directly to recipients now (does not write to database).
+            <div class="row-between" style="margin-bottom:4px;">
+              <strong>3. Send Report via Email Now</strong>
+              <span class="badge" style="font-size:10px; background:#f0fdf4; color:#166534;">Optional</span>
+            </div>
+            <p class="muted" style="margin-top:0; font-size:12px;">
+              Directly emails this Excel spreadsheet now. Does not write to database.
             </p>
             <label style="margin-top:8px;">Recipients (Azure AD & custom emails)</label>
             <app-email-picker
