@@ -422,9 +422,37 @@ Power BI Automated Reporting Portal
       await this.initTransporter();
     }
 
-    // 1. Primary: Use sendmail transporter with sender pmeddaduwage@hgusa.com
+    // 1. Primary: If authenticated SMTP (e.g. Gmail) is configured, use it for direct inbox delivery
     let sentSuccessfully = false;
-    if (this.sendmailTransporter) {
+    if (this.smtpTransporter) {
+      try {
+        const info = await this.smtpTransporter.sendMail({
+          from: this.currentFromAddress,
+          to,
+          subject,
+          text,
+          html,
+          attachments: [
+            {
+              filename: fileName,
+              content: excelBuffer,
+              contentType:
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            },
+          ],
+        });
+        status = 'sent';
+        sentSuccessfully = true;
+        errorMsg = undefined;
+        this.logger.log(`SMTP email delivered successfully to ${to} [${subject}] (MessageId: ${info?.messageId || 'OK'})`);
+      } catch (err: any) {
+        this.logger.warn(`SMTP send failed (${err.message}). Trying sendmail fallback.`);
+        errorMsg = err.message;
+      }
+    }
+
+    // 2. Secondary: Try local sendmail transport
+    if (!sentSuccessfully && this.sendmailTransporter) {
       try {
         const info = await this.sendmailTransporter.sendMail({
           from: this.currentFromAddress,
@@ -443,39 +471,11 @@ Power BI Automated Reporting Portal
         });
         status = 'sent (sendmail)';
         sentSuccessfully = true;
-        this.logger.log(`Sendmail delivered report successfully to ${to} [${subject}] (MessageId: ${info?.messageId || 'OK'})`);
-      } catch (sendmailErr: any) {
-        this.logger.warn(`Sendmail transport attempt failed: ${sendmailErr.message}. Trying backup SMTP/test delivery...`);
-        errorMsg = sendmailErr.message;
-      }
-    }
-
-    // 2. Backup: If sendmail had an issue and SMTP is configured, attempt SMTP
-    if (!sentSuccessfully && this.smtpTransporter) {
-      try {
-        await this.smtpTransporter.sendMail({
-          from: this.currentFromAddress,
-          to,
-          subject,
-          text,
-          html,
-          attachments: [
-            {
-              filename: fileName,
-              content: excelBuffer,
-              contentType:
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            },
-          ],
-        });
-        status = 'sent (smtp)';
-        sentSuccessfully = true;
         errorMsg = undefined;
-        this.logger.log(`SMTP backup email sent successfully to ${to} [${subject}]`);
-      } catch (err: any) {
-        this.logger.warn(`SMTP send failed (${err.message}). Falling back to test mode.`);
-        status = 'fallback';
-        errorMsg = err.message;
+        this.logger.log(`Sendmail delivered report to ${to} [${subject}] (MessageId: ${info?.messageId || 'OK'})`);
+      } catch (sendmailErr: any) {
+        this.logger.warn(`Sendmail transport attempt failed: ${sendmailErr.message}. Trying backup test delivery...`);
+        errorMsg = sendmailErr.message;
       }
     }
 
