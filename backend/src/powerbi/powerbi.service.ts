@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
+import { Pool } from 'pg';
 import { PowerBiAuthService } from '../auth/powerbi-auth.service';
+import { PG_POOL } from '../db/database.module';
 
 const API_BASE = 'https://api.powerbi.com/v1.0/myorg';
 
@@ -68,7 +70,10 @@ const DOWNLOAD_ROLES = ['Admin', 'Member', 'Contributor'];
 export class PowerBiService {
   private readonly logger = new Logger(PowerBiService.name);
 
-  constructor(private readonly auth: PowerBiAuthService) {}
+  constructor(
+    private readonly auth: PowerBiAuthService,
+    @Inject(PG_POOL) private readonly pool: Pool,
+  ) {}
 
   private async client(): Promise<AxiosInstance> {
     const token = await this.auth.getAccessToken();
@@ -762,11 +767,10 @@ export class PowerBiService {
   }
 
   /**
-   * Retrieves all directory users across all workspaces in the tenant.
+   * Retrieves all directory users across the enterprise (all workspaces + user activity + past recipients).
    * De-duplicated by email, with service principals filtered out.
    */
   async listDirectoryUsers(): Promise<PbiDirectoryUser[]> {
-    const groups = await this.listGroups();
     const userMap = new Map<string, PbiDirectoryUser>();
 
     const isServicePrincipal = (disp = '', em = '', pType = '') => {
@@ -788,29 +792,67 @@ export class PowerBiService {
       );
     };
 
-    const CHUNK_SIZE = 5;
-    for (let i = 0; i < groups.length; i += CHUNK_SIZE) {
-      const chunk = groups.slice(i, i + CHUNK_SIZE);
-      await Promise.all(
-        chunk.map(async (g) => {
-          try {
-            const users = await this.listGroupUsers(g.id);
-            for (const u of users) {
-              if (isServicePrincipal(u.name, u.email, u.principalType)) continue;
-              const em = (u.email || '').toLowerCase().trim();
-              if (em && !userMap.has(em)) {
-                userMap.set(em, {
-                  name: u.name && u.name !== u.email ? u.name : em,
-                  email: em,
-                  role: u.role || 'Member',
-                  principalType: u.principalType || 'User',
-                  workspaceName: g.name,
-                });
+    // 1. Fetch all company users from usage_user_activity table in PostgreSQL
+    try {
+      const dbRes = await this.pool.query(`
+        SELECT 
+          LOWER(TRIM(email)) as email,
+          COALESCE(
+            MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+            MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+            MAX(TRIM(given_name)),
+            LOWER(TRIM(email))
+          ) as name,
+          MAX(group_name) as workspace_name
+        FROM usage_user_activity
+        WHERE email IS NOT NULL AND TRIM(email) != ''
+        GROUP BY LOWER(TRIM(email))
+      `);
+      for (const r of dbRes.rows) {
+        if (!isServicePrincipal(r.name, r.email)) {
+          userMap.set(r.email, {
+            name: r.name,
+            email: r.email,
+            role: 'Viewer',
+            principalType: 'User',
+            workspaceName: r.workspace_name || '',
+          });
+        }
+      }
+    } catch (dbErr) {
+      this.logger.warn(`Could not load users from database: ${dbErr}`);
+    }
+
+    // 2. Fetch workspace members across all Power BI workspaces
+    try {
+      const groups = await this.listGroups();
+      const CHUNK_SIZE = 5;
+      for (let i = 0; i < groups.length; i += CHUNK_SIZE) {
+        const chunk = groups.slice(i, i + CHUNK_SIZE);
+        await Promise.all(
+          chunk.map(async (g) => {
+            try {
+              const users = await this.listGroupUsers(g.id);
+              for (const u of users) {
+                if (isServicePrincipal(u.name, u.email, u.principalType)) continue;
+                const em = (u.email || '').toLowerCase().trim();
+                if (em) {
+                  const existing = userMap.get(em);
+                  userMap.set(em, {
+                    name: existing?.name && existing.name !== em ? existing.name : (u.name || em),
+                    email: em,
+                    role: u.role || existing?.role || 'Member',
+                    principalType: u.principalType || 'User',
+                    workspaceName: g.name || existing?.workspaceName || '',
+                  });
+                }
               }
-            }
-          } catch (e) {}
-        }),
-      );
+            } catch (e) {}
+          }),
+        );
+      }
+    } catch (pbiErr) {
+      this.logger.warn(`Could not load users from Power BI workspaces: ${pbiErr}`);
     }
 
     return Array.from(userMap.values()).sort((a, b) => a.name.localeCompare(b.name));
