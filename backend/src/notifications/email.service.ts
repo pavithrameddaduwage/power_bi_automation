@@ -286,10 +286,7 @@ export class EmailService {
           <!-- Main Content -->
           <tr>
             <td style="padding:32px;">
-              <h2 style="margin:0 0 12px; font-size:17px; font-weight:700; color:#111827;">${params.title}</h2>
-              <p style="margin:0 0 20px; font-size:14px; color:#4b5563; line-height:1.5;">
-                Your requested automated Power BI dataset export is ready. The report spreadsheet has been generated and attached to this email.
-              </p>
+              <h2 style="margin:0 0 16px; font-size:17px; font-weight:700; color:#111827;">${params.title}</h2>
 
               <!-- Report Details Table -->
               <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:24px;">
