@@ -28,8 +28,8 @@ import { PagerComponent } from './pager.component';
           <tr *ngFor="let j of pagedJobs()">
             <td>
               <div style="font-weight: 600;">{{ j.name }}</div>
-              <div class="tag" *ngIf="j.recipients" style="margin-top:3px; color:var(--accent); font-size:11px; display:inline-flex; align-items:center; gap:4px;" [title]="'Recipients: ' + j.recipients">
-                ✉️ {{ j.recipients }}
+              <div class="tag" *ngIf="j.recipients" style="margin-top:3px; color:var(--accent); font-size:11px;" [title]="'Recipients: ' + j.recipients">
+                {{ j.recipients }}
               </div>
             </td>
             <td>

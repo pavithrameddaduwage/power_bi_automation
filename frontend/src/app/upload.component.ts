@@ -308,7 +308,7 @@ import { PagerComponent } from './pager.component';
           <div class="row-between" style="margin-bottom:12px;">
             <strong>Database Destination</strong>
             <button class="btn-secondary" style="font-size:12px; padding:4px 10px;" (click)="showDbForm.set(!showDbForm())">
-              {{ showDbForm() ? 'Hide DB Connections' : '⚙️ Manage DB Connections' }}
+              {{ showDbForm() ? 'Hide DB Connections' : 'Manage DB Connections' }}
             </button>
           </div>
 
@@ -349,7 +349,7 @@ import { PagerComponent } from './pager.component';
                 <button class="btn-secondary" (click)="testDbConnection()" [disabled]="busy() || !newDb.host || !newDb.dbname" style="font-size:11px;">
                   <span *ngIf="dbTestState() === 'testing'" class="spinner"></span> Test Connection
                 </button>
-                <span *ngIf="dbTestState() === 'ok'" style="color:#16a34a;font-size:12px;font-weight:600;">✓ Connected</span>
+                <span *ngIf="dbTestState() === 'ok'" style="color:#16a34a;font-size:12px;font-weight:600;">Connected</span>
                 <span *ngIf="dbTestState() === 'fail'" style="color:#dc2626;font-size:12px;font-weight:600;">{{ dbTestError() }}</span>
               </div>
               <button class="btn-primary" (click)="createDatabase()" [disabled]="busy() || !newDb.host || !newDb.dbname || !newDb.username || !newDb.password" style="font-size:11px;">
@@ -412,7 +412,7 @@ import { PagerComponent } from './pager.component';
         <div class="grid2" style="margin-bottom:20px;">
           <!-- Job Schedule Card -->
           <div class="card">
-            <strong>⏱️ Schedule Recurring Job</strong>
+            <strong>Schedule Recurring Job</strong>
             <p class="muted" style="margin-top:2px; font-size:12px;">
               Automatically sync this report on a schedule.
             </p>
@@ -432,7 +432,7 @@ import { PagerComponent } from './pager.component';
 
           <!-- Email Export Card -->
           <div class="card">
-            <strong>✉️ Send Report via Email</strong>
+            <strong>Send Report via Email</strong>
             <p class="muted" style="margin-top:2px; font-size:12px;">
               Dispatch this Excel spreadsheet directly to recipients now.
             </p>
