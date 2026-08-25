@@ -294,11 +294,6 @@ export class EmailService {
                   <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#64748b; width:35%;">Report / Dataset:</td>
                   <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:700; color:#0f172a;">${params.reportName}</td>
                 </tr>
-                ${params.source ? `
-                <tr>
-                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#64748b;">Source / Schedule:</td>
-                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#1d6ef5;">${params.source}</td>
-                </tr>` : ''}
                 <tr>
                   <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#64748b;">Total Rows Exported:</td>
                   <td style="padding:12px 16px; border-bottom:1px solid #e2e8f0; font-size:13px; font-weight:600; color:#0f172a;">${rowCountStr}</td>
@@ -344,7 +339,7 @@ Power BI Portal - Automated Report Delivery
 ${params.title}
 
 Report / Dataset: ${params.reportName}
-${params.source ? `Source / Schedule: ${params.source}\n` : ''}Total Rows: ${rowCountStr}
+Total Rows: ${rowCountStr}
 Attachment: ${params.fileName} (${sizeKb} KB)
 Generated At: ${formattedDate}
 
