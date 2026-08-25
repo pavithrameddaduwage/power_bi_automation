@@ -203,7 +203,7 @@ export class JobsService implements OnModuleInit {
   }
 
   /** Pull the job's data from Power BI and write it to its target table. */
-  async runJob(id: number): Promise<{ rowsWritten: number; totalRows: number }> {
+  async runJob(id: number): Promise<{ rowsWritten: number; totalRows: number; emailedTo?: string; emailStatus?: string }> {
     const job = await this.get(id);
     await this.upsert.ensureSyncLogTable();
     try {
@@ -244,19 +244,38 @@ export class JobsService implements OnModuleInit {
         status: 'success',
       });
 
+      let emailStatus: string | undefined = undefined;
       if (job.recipients && job.recipients.trim() !== '') {
         try {
           const excelBuffer = await this.excelService.generateExcelBuffer(data, job.target_table);
           const subject = job.email_subject || `Scheduled Report: ${job.name}`;
           const fileName = `${job.target_table}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-          await this.emailService.sendReport(job.recipients, subject, excelBuffer, fileName);
-          this.logger.log(`Emailed scheduled report ${job.name} to ${job.recipients}`);
+          const emailRes = await this.emailService.sendReport(
+            job.recipients,
+            subject,
+            excelBuffer,
+            fileName,
+            {
+              reportName: job.report_name || job.name,
+              rowCount: data.length,
+              source: `Job Schedule (${job.name})`,
+              notes: `This report was automatically pulled from Power BI dataset "${job.dataset_id}" and saved to database table "${job.target_table}".`,
+            },
+          );
+          emailStatus = emailRes.status;
+          this.logger.log(`Emailed scheduled report "${job.name}" to ${job.recipients} (Status: ${emailRes.status})`);
         } catch (emailErr: any) {
-          this.logger.error(`Failed to send scheduled email for ${job.name}: ${emailErr.message}`);
+          emailStatus = 'failed';
+          this.logger.error(`Failed to send scheduled email for "${job.name}": ${emailErr.message}`);
         }
       }
 
-      return { rowsWritten: res.rowsWritten, totalRows: res.totalRows };
+      return {
+        rowsWritten: res.rowsWritten,
+        totalRows: res.totalRows,
+        emailedTo: job.recipients || undefined,
+        emailStatus,
+      };
     } catch (e: any) {
       const msg = e?.message ?? String(e);
       await this.pool.query(

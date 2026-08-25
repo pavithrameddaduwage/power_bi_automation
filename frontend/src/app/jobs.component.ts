@@ -26,7 +26,12 @@ import { PagerComponent } from './pager.component';
         </thead>
         <tbody>
           <tr *ngFor="let j of pagedJobs()">
-            <td style="font-weight: 600;">{{ j.name }}</td>
+            <td>
+              <div style="font-weight: 600;">{{ j.name }}</div>
+              <div class="tag" *ngIf="j.recipients" style="margin-top:3px; color:var(--accent); font-size:11px; display:inline-flex; align-items:center; gap:4px;" [title]="'Recipients: ' + j.recipients">
+                ✉️ {{ j.recipients }}
+              </div>
+            </td>
             <td>
               <span class="badge" [class.badge-ok]="j.mode === 'upsert'" [class.badge-no]="j.mode === 'append'">{{ j.mode }}</span>
               <span class="badge badge-ok" *ngIf="j.cron">{{ j.cron }}</span>
@@ -131,7 +136,8 @@ export class JobsComponent implements OnInit {
     this.api.runJob(j.id).subscribe({
       next: (res) => {
         this.done();
-        this.toast.success(`"${j.name}" wrote ${res.rowsWritten} row(s).`);
+        const emailMsg = res?.emailedTo ? ` & emailed report to ${res.emailedTo}` : '';
+        this.toast.success(`"${j.name}" wrote ${res.rowsWritten} row(s)${emailMsg}.`);
       },
       error: (e) => {
         this.done();

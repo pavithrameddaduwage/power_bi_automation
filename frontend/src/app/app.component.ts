@@ -105,63 +105,12 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
             <app-jobs *ngIf="tab() === 'jobs'"></app-jobs>
             <app-usage *ngIf="tab() === 'usage'"></app-usage>
             <div *ngIf="tab() === 'email-history'">
-              <!-- SMTP Settings Card -->
-              <div class="card" style="margin-bottom: 24px;">
-                <div class="row-between" style="cursor: pointer;" (click)="showSmtpForm.set(!showSmtpForm())">
-                  <div>
-                    <h3 style="margin: 0; display:flex; align-items:center; gap:8px;">
-                      ⚙️ Real Email Server (SMTP Configuration)
-                      <span class="badge" [class.badge-ok]="smtpIsConfigured()" [class.badge-no]="!smtpIsConfigured()">
-                        {{ smtpIsConfigured() ? 'SMTP Active' : 'Test Mode (Ethereal)' }}
-                      </span>
-                    </h3>
-                    <div class="muted" style="font-size:12px; margin-top:2px;">
-                      Configure your Gmail / Outlook / SMTP credentials so reports land directly in users' email inboxes.
-                    </div>
-                  </div>
-                  <button class="btn-secondary" style="font-size:12px;">
-                    {{ showSmtpForm() ? 'Hide Config ▲' : 'Configure SMTP ▼' }}
-                  </button>
-                </div>
-
-                <div *ngIf="showSmtpForm()" style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
-                  <div class="grid2">
-                    <label>SMTP Host
-                      <input [(ngModel)]="smtpHost" placeholder="e.g. smtp.gmail.com" />
-                    </label>
-                    <label>Port
-                      <input type="number" [(ngModel)]="smtpPort" placeholder="587" />
-                    </label>
-                  </div>
-                  <div class="grid2" style="margin-top:10px;">
-                    <label>Email / Username
-                      <input [(ngModel)]="smtpUsername" placeholder="e.g. your-email@gmail.com" />
-                    </label>
-                    <label>App Password / Password
-                      <input type="password" [(ngModel)]="smtpPassword" placeholder="16-character app password" />
-                    </label>
-                  </div>
-                  <div style="margin-top:10px;">
-                    <label>Sender Name &amp; Address (Optional)
-                      <input [(ngModel)]="smtpFromAddress" placeholder='"Power BI Portal" <your-email@gmail.com>' />
-                    </label>
-                  </div>
-                  <div class="row-between" style="margin-top: 16px;">
-                    <div style="font-size:12px; color:var(--muted);">
-                      💡 For Gmail: Use <strong>smtp.gmail.com</strong>, Port <strong>587</strong>, and generate a 16-character <strong>App Password</strong> in Google Security settings.
-                    </div>
-                    <button class="btn-primary" (click)="saveSmtpConfig()" [disabled]="savingSmtp() || !smtpHost || !smtpUsername">
-                      <span *ngIf="savingSmtp()" class="spinner-white"></span>
-                      Save &amp; Test Connection
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               <!-- Email Delivery Logs Card -->
               <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
                 <h3 style="margin: 0;">Email Delivery Logs</h3>
-                <button class="btn-secondary" (click)="loadEmailLogs()" [disabled]="loadingEmailLogs()">Refresh</button>
+                <button class="btn-secondary" (click)="loadEmailLogs()" [disabled]="loadingEmailLogs()">
+                  <span *ngIf="loadingEmailLogs()" class="spinner"></span> Refresh
+                </button>
               </div>
 
               <div class="card" style="padding: 0; overflow: hidden;">
@@ -178,7 +127,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
                   </thead>
                   <tbody>
                     <tr *ngFor="let log of emailLogs()">
-                      <td style="font-weight: 600; font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      <td style="font-weight: 600; font-size: 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         {{ log.recipients }}
                       </td>
                       <td>
@@ -189,15 +138,20 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
                         {{ ((log.file_size_bytes || 0) / 1024).toFixed(1) }} KB
                       </td>
                       <td>
-                        <span class="badge" [class.badge-ok]="log.status.includes('sent')" [class.badge-no]="log.status === 'failed'">
-                          {{ log.status }}
-                        </span>
+                        <div>
+                          <span class="badge" [class.badge-ok]="log.status.includes('sent')" [class.badge-no]="log.status === 'failed' || log.status === 'error'">
+                            {{ log.status }}
+                          </span>
+                        </div>
+                        <div *ngIf="log.error" style="color: var(--red); font-size: 11px; margin-top: 3px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="log.error">
+                          ⚠️ {{ log.error }}
+                        </div>
                       </td>
                       <td class="muted" style="white-space:nowrap;">
                         {{ log.sent_at | date: 'short' }}
                       </td>
                       <td>
-                        <a *ngIf="log.preview_url" [href]="log.preview_url" target="_blank" class="btn-secondary" style="text-decoration:none; padding:4px 8px; font-size:11px;">
+                        <a *ngIf="log.preview_url" [href]="log.preview_url" target="_blank" class="btn-secondary" style="text-decoration:none; padding:4px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px;">
                           View Email ↗
                         </a>
                       </td>
@@ -430,6 +384,30 @@ export class AppComponent {
         this.loadingEmailLogs.set(false);
       },
       error: () => this.loadingEmailLogs.set(false),
+    });
+  }
+
+  // Live Test Email
+  testEmailRecipient = '';
+  sendingTestEmail = signal(false);
+
+  sendLiveTestEmail() {
+    if (!this.testEmailRecipient.trim() || !this.testEmailRecipient.includes('@')) {
+      this.toast.error('Please enter a valid recipient email address.');
+      return;
+    }
+    this.sendingTestEmail.set(true);
+    this.api.sendTestEmail(this.testEmailRecipient.trim()).subscribe({
+      next: (res) => {
+        this.sendingTestEmail.set(false);
+        this.toast.success(res.message || 'Test email dispatched successfully!');
+        this.loadEmailLogs();
+      },
+      error: (err: any) => {
+        this.sendingTestEmail.set(false);
+        this.toast.error(err?.error?.message || err?.message || 'Failed to dispatch test email.');
+        this.loadEmailLogs();
+      },
     });
   }
 }

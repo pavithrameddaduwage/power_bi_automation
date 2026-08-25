@@ -56,13 +56,24 @@ export class UploadsService {
     if (!recipients || recipients.length === 0) {
       throw new Error('No recipients provided.');
     }
-    const result = await this.db.query(`SELECT * FROM "${table}" LIMIT 100000`); const rows = result.rows;
+    const result = await this.db.query(`SELECT * FROM "${table}" LIMIT 100000`);
+    const rows = result.rows;
     const excelBuffer = await this.excelService.generateExcelBuffer(
       rows,
       table,
     );
     const fileName = `${table}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    await this.emailService.sendReport(recipients, subject || `Data export: ${table}`, excelBuffer, fileName);
+    await this.emailService.sendReport(
+      recipients,
+      subject || `Data export: ${table}`,
+      excelBuffer,
+      fileName,
+      {
+        reportName: table,
+        rowCount: rows.length,
+        source: 'Stored Dataset Export',
+      },
+    );
   }
 
   async getEmailHistory() {
@@ -77,12 +88,19 @@ export class UploadsService {
     return this.emailService.saveSmtpConfig(dto);
   }
 
+  async sendTestEmail(dto: { toEmail: string }) {
+    if (!dto?.toEmail?.trim()) {
+      throw new BadRequestException('Recipient email address is required.');
+    }
+    return this.emailService.sendTestEmail(dto.toEmail.trim());
+  }
+
   async sendEmailReport(dto: {
     reportName: string;
     rows: any[];
     recipients: string[];
     subject?: string;
-  }): Promise<{ ok: boolean; count: number }> {
+  }): Promise<{ ok: boolean; count: number; status?: string; previewUrl?: string }> {
     if (!dto.recipients || dto.recipients.length === 0) {
       throw new BadRequestException('No recipients provided.');
     }
@@ -94,8 +112,18 @@ export class UploadsService {
     const subject = dto.subject?.trim() || `Excel Report Export: ${name}`;
     const fileName = `${name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
-    await this.emailService.sendReport(dto.recipients, subject, excelBuffer, fileName);
-    return { ok: true, count: dto.rows.length };
+    const res = await this.emailService.sendReport(
+      dto.recipients,
+      subject,
+      excelBuffer,
+      fileName,
+      {
+        reportName: name,
+        rowCount: dto.rows.length,
+        source: 'Report Automation Direct Export',
+      },
+    );
+    return { ok: true, count: dto.rows.length, status: res.status, previewUrl: res.previewUrl };
   }
 
   /** Generate Excel buffer for direct download */

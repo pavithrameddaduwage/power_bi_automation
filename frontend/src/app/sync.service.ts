@@ -104,6 +104,8 @@ export interface Job {
   last_run_at: string | null;
   last_status: string | null;
   last_rows: number | null;
+  recipients?: string | null;
+  email_subject?: string | null;
 }
 export interface CreateJob {
   name: string;
@@ -258,6 +260,9 @@ export class SyncApiService {
   }
   saveSmtpConfig(dto: { host: string; port: number; username: string; password?: string; fromAddress?: string }): Observable<{ ok: boolean; message: string }> {
     return this.http.post<any>(`${API}/uploads/smtp-config`, dto);
+  }
+  sendTestEmail(toEmail: string): Observable<{ ok: boolean; message: string; previewUrl?: string }> {
+    return this.http.post<any>(`${API}/uploads/send-test-email`, { toEmail });
   }
 
   // ── Jobs ────────────────────────────────────────────────────────

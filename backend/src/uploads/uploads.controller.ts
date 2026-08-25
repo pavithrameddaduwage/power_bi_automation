@@ -83,6 +83,12 @@ export class UploadsController {
     return this.uploads.saveSmtpConfig(body);
   }
 
+  /** Send a live test email to verify mailbox receipt */
+  @Post('send-test-email')
+  sendTestEmail(@Body() body: { toEmail: string }) {
+    return this.uploads.sendTestEmail(body);
+  }
+
   /** Directly email an Excel report of given rows to recipients */
   @Post('send-email-report')
   sendEmailReport(@Body() body: { reportName: string; rows: any[]; recipients: string[]; subject?: string }) {
