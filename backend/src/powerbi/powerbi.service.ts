@@ -713,6 +713,53 @@ export class PowerBiService {
       a.workspaceName.localeCompare(b.workspaceName) || a.datasetName.localeCompare(b.datasetName),
     );
   }
+
+  /**
+   * Look up the real-time refresh status of a specific dataset directly from Power BI API.
+   */
+  async getDatasetRefreshStatus(
+    datasetId: string,
+    groupId?: string,
+  ): Promise<{
+    status: 'Completed' | 'Failed' | 'InProgress' | 'Unknown';
+    startTime?: string;
+    endTime?: string;
+    refreshType?: string;
+    error?: string;
+  } | null> {
+    const http = await this.client();
+    let targetGroupId = groupId;
+    if (!targetGroupId) {
+      const groups = await this.listGroups();
+      for (const g of groups) {
+        try {
+          const { data } = await http.get(`/groups/${g.id}/datasets`);
+          if ((data.value || []).some((d: any) => d.id === datasetId)) {
+            targetGroupId = g.id;
+            break;
+          }
+        } catch (e) {}
+      }
+    }
+    if (!targetGroupId) return null;
+
+    try {
+      const { data } = await http.get(
+        `/groups/${targetGroupId}/datasets/${datasetId}/refreshes?$top=1`,
+      );
+      if (data.value && data.value.length > 0) {
+        const item = data.value[0];
+        return {
+          status: item.status || 'Unknown',
+          startTime: item.startTime,
+          endTime: item.endTime,
+          refreshType: item.refreshType,
+          error: item.serviceExceptionJson || undefined,
+        };
+      }
+    } catch (e) {}
+    return null;
+  }
 }
 
 export interface PbiDatasetRefreshInfo {

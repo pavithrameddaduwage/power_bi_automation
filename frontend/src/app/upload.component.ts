@@ -424,19 +424,47 @@ import { PagerComponent } from './pager.component';
               <input [(ngModel)]="cron" placeholder="0 6 * * 3  (Wed 06:00)" />
             </label>
 
-            <!-- Dataset Refresh Schedule Reference -->
-            <div *ngIf="selectedDatasetRefresh()" style="margin-top:8px; padding:6px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:11px;">
-              <div *ngIf="selectedDatasetRefresh()?.scheduleEnabled && selectedDatasetRefresh()?.scheduleTimes?.length">
-                <span style="font-weight:600; color:var(--accent);">Power BI Refresh:</span>
-                {{ selectedDatasetRefresh()?.scheduleTimes?.join(', ') }} ({{ selectedDatasetRefresh()?.timeZone || 'UTC' }}) ·
-                <span class="muted">{{ selectedDatasetRefresh()?.scheduleDays?.join(', ') || 'Daily' }}</span>
-                <span *ngIf="selectedDatasetRefresh()?.lastRefreshStartTime" class="muted" style="margin-left:4px;">
-                  (Last: {{ selectedDatasetRefresh()?.lastRefreshStartTime | date:'short' }})
+            <!-- Dataset Refresh Schedule & Validation Reference -->
+            <div *ngIf="selectedDatasetRefresh()" style="margin-top:10px; padding:10px 12px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px;">
+              <div class="row-between" style="margin-bottom:6px;">
+                <span style="font-weight:700; color:var(--text);">Power BI Refresh Status</span>
+                <span class="badge"
+                      [class.badge-ok]="selectedDatasetRefresh()?.lastRefreshStatus === 'Completed'"
+                      [class.badge-no]="selectedDatasetRefresh()?.lastRefreshStatus === 'Failed'"
+                      style="font-size:10px;">
+                  {{ selectedDatasetRefresh()?.lastRefreshStatus || 'Unknown' }}
                 </span>
               </div>
-              <div *ngIf="!selectedDatasetRefresh()?.scheduleEnabled || !selectedDatasetRefresh()?.scheduleTimes?.length" class="muted">
-                Power BI dataset has no automated schedule (manual refresh).
+
+              <div *ngIf="selectedDatasetRefresh()?.scheduleEnabled && selectedDatasetRefresh()?.scheduleTimes?.length" style="margin-bottom:6px;">
+                <div>
+                  <strong>Scheduled Times:</strong> {{ selectedDatasetRefresh()?.scheduleTimes?.join(', ') }} ({{ selectedDatasetRefresh()?.timeZone || 'UTC' }}) ·
+                  <span class="muted">{{ selectedDatasetRefresh()?.scheduleDays?.join(', ') || 'Daily' }}</span>
+                </div>
+                <div class="muted" style="font-size:11px; margin-top:2px;" *ngIf="selectedDatasetRefresh()?.lastRefreshStartTime">
+                  Last finished: {{ selectedDatasetRefresh()?.lastRefreshStartTime | date:'short' }}
+                </div>
               </div>
+
+              <div *ngIf="!selectedDatasetRefresh()?.scheduleEnabled || !selectedDatasetRefresh()?.scheduleTimes?.length" class="muted" style="margin-bottom:6px;">
+                Dataset has no scheduled timer in Power BI (manual refresh).
+              </div>
+
+              <!-- Cron Validation Hint & Auto-Fill Action -->
+              <div style="margin-top:6px; padding:6px 8px; border-radius:4px; font-size:11px;"
+                   [style.background]="cronValidation().type === 'warning' ? '#fef3c7' : (cronValidation().type === 'success' ? '#f0fdf4' : 'var(--card)')"
+                   [style.color]="cronValidation().type === 'warning' ? '#92400e' : (cronValidation().type === 'success' ? '#166534' : 'var(--muted)')"
+                   [style.border]="cronValidation().type === 'warning' ? '1px solid #fde68a' : (cronValidation().type === 'success' ? '1px solid #bbf7d0' : '1px solid var(--border)')">
+                {{ cronValidation().message }}
+              </div>
+
+              <button class="btn-secondary"
+                      *ngIf="selectedDatasetRefresh()?.scheduleTimes?.length"
+                      (click)="autoSetSafeCron()"
+                      type="button"
+                      style="margin-top:8px; font-size:11px; padding:4px 8px; width:100%;">
+                Auto-Set Safe Cron (+30m after refresh)
+              </button>
             </div>
 
             <div class="row-between" style="margin-top:12px;">
@@ -624,6 +652,67 @@ export class UploadComponent implements OnInit {
     if (!dsId) return null;
     return this.refreshSchedules().find((s) => s.datasetId === dsId) || null;
   });
+
+  cronValidation = computed(() => {
+    const s = this.selectedDatasetRefresh();
+    const c = (this.cron || '').trim();
+    if (!s || !s.scheduleEnabled || !s.scheduleTimes?.length) {
+      return { type: 'none', message: 'No automated Power BI refresh schedule detected for this dataset.' };
+    }
+    if (!c) {
+      return {
+        type: 'info',
+        message: `Dataset refreshes at ${s.scheduleTimes.join(', ')} (${s.timeZone || 'UTC'}). Schedule this job at least 30m after refresh.`,
+      };
+    }
+
+    const parts = c.split(/\s+/);
+    if (parts.length >= 2) {
+      const min = parseInt(parts[0], 10);
+      const hr = parseInt(parts[1], 10);
+      if (!isNaN(hr)) {
+        for (const t of s.scheduleTimes) {
+          const [refHrStr, refMinStr] = t.split(':');
+          const refHr = parseInt(refHrStr, 10);
+          const refMin = parseInt(refMinStr || '0', 10);
+          if (!isNaN(refHr)) {
+            // Check if cron matches exact refresh hour or within 15 minutes
+            if (hr === refHr && (!isNaN(min) ? min <= refMin + 15 : true)) {
+              return {
+                type: 'warning',
+                message: `Warning: Cron runs at ${t} (${s.timeZone || 'UTC'}) right as Power BI refresh begins. Power BI refreshes take 5-15 mins. Schedule at least +30m later to prevent extracting stale/partial data.`,
+              };
+            }
+          }
+        }
+      }
+    }
+    return {
+      type: 'success',
+      message: `Validated: Job schedule is aligned after Power BI dataset refresh (${s.scheduleTimes.join(', ')} ${s.timeZone || 'UTC'}).`,
+    };
+  });
+
+  autoSetSafeCron() {
+    const s = this.selectedDatasetRefresh();
+    if (!s || !s.scheduleTimes?.length) {
+      this.cron = '0 6 * * *';
+      this.toast.success('Set default safe schedule: daily at 06:00 UTC.');
+      return;
+    }
+    const firstTime = s.scheduleTimes[0];
+    const [hrStr, minStr] = firstTime.split(':');
+    let hr = parseInt(hrStr, 10) || 0;
+    let min = parseInt(minStr || '0', 10) || 0;
+
+    min += 30;
+    if (min >= 60) {
+      min -= 60;
+      hr = (hr + 1) % 24;
+    }
+    this.cron = `${min} ${hr} * * *`;
+    this.toast.success(`Auto-configured safe cron: "${this.cron}" (+30m after Power BI ${firstTime} refresh).`);
+  }
 
   // ── Column filters (Step 3) ───────────────────────────────────────
   colFilters = signal<Record<string, string[]>>({});

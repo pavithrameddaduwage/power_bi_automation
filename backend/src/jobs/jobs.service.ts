@@ -207,6 +207,32 @@ export class JobsService implements OnModuleInit {
     const job = await this.get(id);
     await this.upsert.ensureSyncLogTable();
     try {
+      // 1. Check if dataset is actively refreshing in Power BI. If in progress, wait for it to complete.
+      try {
+        let refreshCheck = await this.powerbi.getDatasetRefreshStatus(job.dataset_id);
+        let waitSeconds = 0;
+        const MAX_WAIT_SECONDS = 180; // Wait up to 3 minutes for active refresh
+
+        while (refreshCheck?.status === 'InProgress' && waitSeconds < MAX_WAIT_SECONDS) {
+          this.logger.warn(
+            `Power BI dataset "${job.dataset_id}" is currently refreshing. Waiting 15s for completion (${waitSeconds}s elapsed)...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 15000));
+          waitSeconds += 15;
+          refreshCheck = await this.powerbi.getDatasetRefreshStatus(job.dataset_id);
+        }
+
+        if (refreshCheck?.status === 'InProgress') {
+          this.logger.warn(`Power BI dataset is still refreshing after ${MAX_WAIT_SECONDS}s. Proceeding with latest available data.`);
+        } else if (refreshCheck?.status === 'Completed') {
+          this.logger.log(`Verified Power BI dataset "${job.dataset_id}" refresh is completed (Finished: ${refreshCheck.endTime || refreshCheck.startTime}).`);
+        } else if (refreshCheck?.status === 'Failed') {
+          this.logger.warn(`Notice: Most recent Power BI refresh for dataset "${job.dataset_id}" failed. Error: ${refreshCheck.error}`);
+        }
+      } catch (refreshErr: any) {
+        this.logger.warn(`Could not verify live Power BI refresh status before execution: ${refreshErr?.message || refreshErr}`);
+      }
+
       const data = await this.powerbi.getReportData(
         job.dataset_id,
         job.source_table,
