@@ -278,17 +278,8 @@ export class EmailService {
           <!-- Header Banner -->
           <tr>
             <td style="background-color:#1d6ef5; padding:24px 32px; color:#ffffff;">
-              <table width="100%" border="0" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td>
-                    <h1 style="margin:0; font-size:20px; font-weight:700; color:#ffffff; letter-spacing:-0.3px;">Power BI Portal</h1>
-                    <div style="font-size:13px; color:#eff5ff; margin-top:4px; opacity:0.9;">Automated Report Delivery</div>
-                  </td>
-                  <td align="right" style="font-size:24px;">
-                    📊
-                  </td>
-                </tr>
-              </table>
+              <h1 style="margin:0; font-size:20px; font-weight:700; color:#ffffff; letter-spacing:-0.3px;">Power BI Portal</h1>
+              <div style="font-size:13px; color:#eff5ff; margin-top:4px; opacity:0.9;">Automated Report Delivery</div>
             </td>
           </tr>
 
