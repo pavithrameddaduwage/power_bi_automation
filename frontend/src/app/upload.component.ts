@@ -9,6 +9,7 @@ import {
   DatasetMeasure,
   DbConnection,
   NewDbDto,
+  DatasetRefreshInfo,
 } from './sync.service';
 import { ToastService } from './toast.service';
 import { PagerComponent } from './pager.component';
@@ -422,6 +423,22 @@ import { PagerComponent } from './pager.component';
             <label style="margin-top:8px;">Cron schedule (UTC)
               <input [(ngModel)]="cron" placeholder="0 6 * * 3  (Wed 06:00)" />
             </label>
+
+            <!-- Dataset Refresh Schedule Reference -->
+            <div *ngIf="selectedDatasetRefresh()" style="margin-top:8px; padding:6px 10px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:11px;">
+              <div *ngIf="selectedDatasetRefresh()?.scheduleEnabled && selectedDatasetRefresh()?.scheduleTimes?.length">
+                <span style="font-weight:600; color:var(--accent);">Power BI Refresh:</span>
+                {{ selectedDatasetRefresh()?.scheduleTimes?.join(', ') }} ({{ selectedDatasetRefresh()?.timeZone || 'UTC' }}) ·
+                <span class="muted">{{ selectedDatasetRefresh()?.scheduleDays?.join(', ') || 'Daily' }}</span>
+                <span *ngIf="selectedDatasetRefresh()?.lastRefreshStartTime" class="muted" style="margin-left:4px;">
+                  (Last: {{ selectedDatasetRefresh()?.lastRefreshStartTime | date:'short' }})
+                </span>
+              </div>
+              <div *ngIf="!selectedDatasetRefresh()?.scheduleEnabled || !selectedDatasetRefresh()?.scheduleTimes?.length" class="muted">
+                Power BI dataset has no automated schedule (manual refresh).
+              </div>
+            </div>
+
             <div class="row-between" style="margin-top:12px;">
               <span class="muted" style="font-size:11px;">e.g. <code>0 6 * * *</code> daily</span>
               <button class="btn-secondary" (click)="saveJob()" [disabled]="busy() || targetLocked() || !jobName.trim()">
@@ -599,6 +616,14 @@ export class UploadComponent implements OnInit {
   previewTable = signal('');
   previewCols = signal<string[]>([]);
   previewRows = signal<any[]>([]);
+
+  // ── Dataset Refresh Schedules ─────────────────────────────────────
+  refreshSchedules = signal<DatasetRefreshInfo[]>([]);
+  selectedDatasetRefresh = computed(() => {
+    const dsId = this.selectedReport()?.datasetId;
+    if (!dsId) return null;
+    return this.refreshSchedules().find((s) => s.datasetId === dsId) || null;
+  });
 
   // ── Column filters (Step 3) ───────────────────────────────────────
   colFilters = signal<Record<string, string[]>>({});
@@ -806,6 +831,14 @@ export class UploadComponent implements OnInit {
     this.loadReports();
     this.loadDatasets();
     this.loadDatabases();
+    this.loadRefreshSchedules();
+  }
+
+  loadRefreshSchedules() {
+    this.api.refreshSchedules().subscribe({
+      next: (s) => this.refreshSchedules.set(s || []),
+      error: () => {},
+    });
   }
 
   loadReports() {

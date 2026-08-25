@@ -243,6 +243,9 @@ export class SyncApiService {
   emailHistory(): Observable<EmailLog[]> {
     return this.http.get<EmailLog[]>(`${API}/uploads/email-history`);
   }
+  refreshSchedules(): Observable<DatasetRefreshInfo[]> {
+    return this.http.get<DatasetRefreshInfo[]>(`${API}/catalog/refresh-schedules`);
+  }
   deleteEmailLog(id: number): Observable<{ ok: boolean }> {
     return this.http.delete<{ ok: boolean }>(`${API}/uploads/email-history/${id}`);
   }
@@ -585,6 +588,24 @@ export interface UserDetailsBreakdown {
   totalDashboards: number;
   topReports: { reportName: string; views: number }[];
   leastReports: { reportName: string; views: number }[];
+}
+
+export interface DatasetRefreshInfo {
+  datasetId: string;
+  datasetName: string;
+  workspaceId: string;
+  workspaceName: string;
+  isRefreshable: boolean;
+  configuredBy?: string;
+  scheduleEnabled: boolean;
+  scheduleDays: string[];
+  scheduleTimes: string[];
+  timeZone: string;
+  lastRefreshStatus?: 'Completed' | 'Failed' | 'InProgress' | 'Unknown' | null;
+  lastRefreshStartTime?: string | null;
+  lastRefreshEndTime?: string | null;
+  lastRefreshType?: string | null;
+  lastRefreshError?: string | null;
 }
 
 

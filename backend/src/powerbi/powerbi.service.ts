@@ -624,5 +624,112 @@ export class PowerBiService {
     }
     return merged;
   }
+
+  /**
+   * Fetches refresh schedule configurations & latest refresh status for all datasets
+   * across all workspaces accessible by the tenant service principal.
+   */
+  async listAllDatasetRefreshSchedules(): Promise<PbiDatasetRefreshInfo[]> {
+    const groups = await this.listGroups();
+    const http = await this.client();
+    const allDatasets: { groupId: string; groupName: string; ds: any }[] = [];
+
+    // 1. Collect all datasets across workspaces in parallel chunks
+    const GROUP_CHUNK = 5;
+    for (let i = 0; i < groups.length; i += GROUP_CHUNK) {
+      const chunk = groups.slice(i, i + GROUP_CHUNK);
+      await Promise.all(
+        chunk.map(async (g) => {
+          try {
+            const { data } = await http.get(`/groups/${g.id}/datasets`);
+            for (const ds of data.value || []) {
+              const lower = (ds.name || '').toLowerCase();
+              if (lower.includes('usage metric') || lower.includes('report usage')) continue;
+              allDatasets.push({ groupId: g.id, groupName: g.name, ds });
+            }
+          } catch (e) {
+            this.logger.warn(`Could not read datasets for group ${g.name}: ${e}`);
+          }
+        }),
+      );
+    }
+
+    // 2. Fetch refresh schedules & latest refresh info with concurrency pool
+    const results: PbiDatasetRefreshInfo[] = [];
+    const DS_CHUNK = 6;
+    for (let i = 0; i < allDatasets.length; i += DS_CHUNK) {
+      const chunk = allDatasets.slice(i, i + DS_CHUNK);
+      const chunkResults = await Promise.all(
+        chunk.map(async ({ groupId, groupName, ds }) => {
+          let schedule = {
+            enabled: false,
+            days: [] as string[],
+            times: [] as string[],
+            timeZone: '',
+          };
+          try {
+            const { data: s } = await http.get(`/groups/${groupId}/datasets/${ds.id}/refreshSchedule`);
+            schedule = {
+              enabled: !!s.enabled,
+              days: s.days || [],
+              times: s.times || [],
+              timeZone: s.localTimeZoneId || '',
+            };
+          } catch (e) {}
+
+          let lastRefresh: any = null;
+          try {
+            const { data: r } = await http.get(`/groups/${groupId}/datasets/${ds.id}/refreshes?$top=1`);
+            if (r.value && r.value.length > 0) {
+              lastRefresh = r.value[0];
+            }
+          } catch (e) {}
+
+          const info: PbiDatasetRefreshInfo = {
+            datasetId: ds.id,
+            datasetName: ds.name,
+            workspaceId: groupId,
+            workspaceName: groupName,
+            isRefreshable: !!ds.isRefreshable,
+            configuredBy: ds.configuredBy,
+            scheduleEnabled: schedule.enabled,
+            scheduleDays: schedule.days,
+            scheduleTimes: schedule.times,
+            timeZone: schedule.timeZone,
+            lastRefreshStatus: lastRefresh?.status || null,
+            lastRefreshStartTime: lastRefresh?.startTime || null,
+            lastRefreshEndTime: lastRefresh?.endTime || null,
+            lastRefreshType: lastRefresh?.refreshType || null,
+            lastRefreshError: lastRefresh?.serviceExceptionJson || null,
+          };
+          return info;
+        }),
+      );
+      results.push(...chunkResults);
+    }
+
+    // Sort by workspace name, then dataset name
+    return results.sort((a, b) =>
+      a.workspaceName.localeCompare(b.workspaceName) || a.datasetName.localeCompare(b.datasetName),
+    );
+  }
+}
+
+export interface PbiDatasetRefreshInfo {
+  datasetId: string;
+  datasetName: string;
+  workspaceId: string;
+  workspaceName: string;
+  isRefreshable: boolean;
+  configuredBy?: string;
+  scheduleEnabled: boolean;
+  scheduleDays: string[];
+  scheduleTimes: string[];
+  timeZone: string;
+  lastRefreshStatus?: string | null;
+  lastRefreshStartTime?: string | null;
+  lastRefreshEndTime?: string | null;
+  lastRefreshType?: string | null;
+  lastRefreshError?: string | null;
 }
 

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { PowerBiService } from '../powerbi/powerbi.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 /**
  * Read-only views of the live Power BI tenant:
@@ -9,6 +10,13 @@ import { PowerBiService } from '../powerbi/powerbi.service';
 @Controller('api/catalog')
 export class CatalogController {
   constructor(private readonly powerbi: PowerBiService) {}
+
+  /** Power BI dataset refresh schedules and latest refresh statuses across all workspaces */
+  @Public()
+  @Get('refresh-schedules')
+  refreshSchedules() {
+    return this.powerbi.listAllDatasetRefreshSchedules();
+  }
 
   /** Live dashboards across all workspaces. */
   @Get('dashboards')
