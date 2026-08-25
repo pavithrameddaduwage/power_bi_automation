@@ -181,18 +181,6 @@ export class UploadsService {
         rowsWritten: result.rowsWritten,
         status: 'success',
       });
-      
-      // Email Excel if recipients are provided
-      if (dto.recipients && dto.recipients.length > 0) {
-        try {
-          const excelBuffer = await this.excelService.generateExcelBuffer(dto.rows, dto.reportName.trim());
-          const subject = dto.subject || `New Report: ${dto.reportName.trim()}`;
-          const fileName = `${dto.reportName.trim().replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
-          await this.emailService.sendReport(dto.recipients, subject, excelBuffer, fileName);
-        } catch (exportErr) {
-          console.error('Failed to export/email report:', exportErr);
-        }
-      }
 
       return result;
     } catch (e: any) {
