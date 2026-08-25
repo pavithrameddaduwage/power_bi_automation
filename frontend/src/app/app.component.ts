@@ -144,12 +144,12 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
                                (change)="toggleSelectAllEmails()"
                                [disabled]="pagedEmailLogs().length === 0" />
                       </th>
-                      <th>Recipients</th>
-                      <th>Subject &amp; File</th>
-                      <th>Size</th>
-                      <th>Status</th>
-                      <th>Sent At</th>
-                      <th style="text-align: right; width: 140px;">Action</th>
+                      <th style="width: 26%;">Recipients</th>
+                      <th style="width: 32%;">Subject &amp; File</th>
+                      <th style="width: 10%;">Size</th>
+                      <th style="width: 14%;">Status</th>
+                      <th style="width: 10%;">Sent At</th>
+                      <th style="text-align: right; width: 80px;">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -159,8 +159,10 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
                                [checked]="isEmailSelected(log.id)"
                                (change)="toggleSelectEmail(log.id)" />
                       </td>
-                      <td style="font-weight: 600; font-size: 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        {{ log.recipients }}
+                      <td style="font-weight: 600; font-size: 12.5px; color: var(--text);">
+                        <div style="max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="log.recipients">
+                          {{ log.recipients }}
+                        </div>
                       </td>
                       <td>
                         <div style="font-weight:600; color:var(--text);">{{ log.subject }}</div>

@@ -46,10 +46,10 @@ import { PagerComponent } from './pager.component';
       <table style="margin: 0;">
         <thead>
           <tr>
-            <th>Workspace</th>
-            <th>Dataset / Dashboard</th>
-            <th>Power BI Refresh Schedule</th>
-            <th>Last Refresh &amp; Status</th>
+            <th style="width: 24%;">Workspace</th>
+            <th style="width: 30%;">Dataset / Dashboard</th>
+            <th style="width: 26%;">Power BI Refresh Schedule</th>
+            <th style="width: 20%;">Last Refresh &amp; Status</th>
           </tr>
         </thead>
         <tbody>
@@ -126,11 +126,11 @@ import { PagerComponent } from './pager.component';
       <table style="margin: 0;">
         <thead>
           <tr>
-            <th>Job Name</th>
-            <th>Type &amp; Schedule</th>
-            <th>Target Table</th>
-            <th>Last Run</th>
-            <th>Actions</th>
+            <th style="width: 28%;">Job Name</th>
+            <th style="width: 20%;">Type &amp; Schedule</th>
+            <th style="width: 26%;">Target Table</th>
+            <th style="width: 14%;">Last Run</th>
+            <th style="width: 12%; text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -182,13 +182,25 @@ import { PagerComponent } from './pager.component';
     <div class="card" style="padding: 0; overflow: hidden;">
       <table style="margin: 0;">
         <thead>
-          <tr><th>Request</th><th>Table</th><th>Rows</th><th>Status</th><th>When</th></tr>
+          <tr>
+            <th style="width: 36%;">Request</th>
+            <th style="width: 24%;">Table</th>
+            <th style="width: 10%; text-align: center;">Rows</th>
+            <th style="width: 16%;">Status</th>
+            <th style="width: 14%;">When</th>
+          </tr>
         </thead>
         <tbody>
           <tr *ngFor="let r of pagedRuns()">
-            <td>{{ r.request }}</td>
-            <td>{{ r.target_table }}</td>
-            <td>{{ r.rows_written }}</td>
+            <td>
+              <div style="font-weight: 600; color: var(--text);">{{ r.request }}</div>
+            </td>
+            <td>
+              <div class="tag">{{ r.target_table }}</div>
+            </td>
+            <td style="text-align: center; font-variant-numeric: tabular-nums; font-weight: 600;">
+              {{ r.rows_written }}
+            </td>
             <td [class]="'status-' + r.status">
               {{ r.status }}<span class="tag" *ngIf="r.error"> — {{ r.error }}</span>
             </td>

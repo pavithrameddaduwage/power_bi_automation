@@ -172,51 +172,49 @@ import { ToastService } from './toast.service';
     .filter-grid {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 10px;
+      gap: 8px;
       width: 100%;
       box-sizing: border-box;
+      align-items: end;
     }
 
-    @media (max-width: 1280px) {
+    @media (max-width: 960px) {
       .filter-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 560px) {
       .filter-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    @media (max-width: 480px) {
-      .filter-grid {
-        grid-template-columns: 1fr;
       }
     }
 
     .filter-item {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
       position: relative;
       min-width: 0;
     }
 
     .filter-label {
-      font-size: 12.5px;
+      font-size: 11.5px;
       font-weight: 600;
       color: #1e3a8a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Custom Searchable Select Trigger */
     .dropdown-trigger {
-      height: 36px;
+      height: 34px;
       background: #ffffff;
       border: 1.5px solid #bfdbfe;
-      border-radius: 8px;
-      padding: 0 28px 0 10px;
-      font-size: 13px;
+      border-radius: 7px;
+      padding: 0 24px 0 8px;
+      font-size: 12px;
       font-weight: 500;
       color: #0f172a;
       cursor: pointer;
@@ -477,7 +475,7 @@ import { ToastService } from './toast.service';
     .monthly-bars-container {
       display: flex;
       align-items: flex-end;
-      gap: 14px;
+      gap: 8px;
       height: 180px;
       width: 100%;
       padding-bottom: 6px;
@@ -489,26 +487,27 @@ import { ToastService } from './toast.service';
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 6px;
-      flex: 1;
-      min-width: 40px;
+      gap: 4px;
+      flex: 1 1 0;
+      min-width: 0;
       height: 100%;
       justify-content: flex-end;
     }
 
     .monthly-bar-val {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 700;
       color: #0f172a;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     /* Clean Solid Yellow Bars */
     .monthly-bar-pill {
       width: 100%;
-      max-width: 46px;
+      max-width: 36px;
       background: #f59e0b;
-      border-radius: 6px 6px 0 0;
+      border-radius: 4px 4px 0 0;
       min-height: 8px;
       transition: all 0.2s ease;
       cursor: pointer;
@@ -520,12 +519,13 @@ import { ToastService } from './toast.service';
     }
 
     .monthly-bar-lbl {
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 600;
-      color: #0f172a;
+      color: #334155;
       text-align: center;
       margin-top: 4px;
       white-space: nowrap;
+      letter-spacing: -0.2px;
     }
 
     /* ── Big Blue Pie / Donut Chart ── */
@@ -1564,7 +1564,7 @@ import { ToastService } from './toast.service';
               <div class="monthly-bar-col" *ngFor="let m of monthlyTimelineData()" [title]="m.label + ': ' + (m.views | number) + ' views'">
                 <div class="monthly-bar-val">{{ m.views | number }}</div>
                 <div class="monthly-bar-pill" [style.height.%]="monthlyBarHeightPct(m.views)"></div>
-                <div class="monthly-bar-lbl">{{ m.label }}</div>
+                <div class="monthly-bar-lbl" [title]="m.label">{{ m.shortLabel }}</div>
               </div>
             </div>
           </div>
@@ -2138,7 +2138,7 @@ export class UsageComponent implements OnInit {
     const raw = this.analytics()?.viewsTimeline || [];
     if (!raw.length) return [];
 
-    const monthMap = new Map<string, { label: string; yearMonth: string; views: number }>();
+    const monthMap = new Map<string, { label: string; shortLabel: string; yearMonth: string; views: number }>();
     const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     for (const item of raw) {
@@ -2148,12 +2148,14 @@ export class UsageComponent implements OnInit {
         const year = parts[0];
         const monthIdx = parseInt(parts[1], 10) - 1;
         const key = `${year}-${parts[1]}`;
-        const label = `${shortMonths[monthIdx] || parts[1]} ${year}`;
+        const monthStr = shortMonths[monthIdx] || parts[1];
+        const label = `${monthStr} ${year}`;
+        const shortLabel = `${monthStr} '${year.slice(2)}`;
         const existing = monthMap.get(key);
         if (existing) {
           existing.views += item.views;
         } else {
-          monthMap.set(key, { label, yearMonth: key, views: item.views });
+          monthMap.set(key, { label, shortLabel, yearMonth: key, views: item.views });
         }
       }
     }
