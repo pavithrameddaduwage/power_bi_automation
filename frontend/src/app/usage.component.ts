@@ -199,22 +199,24 @@ import { ToastService } from './toast.service';
     }
 
     .filter-label {
-      font-size: 11.5px;
-      font-weight: 600;
+      font-size: 13.5px;
+      font-weight: 700;
       color: #1e3a8a;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      margin-bottom: 2px;
+      letter-spacing: -0.1px;
     }
 
     /* Custom Searchable Select Trigger */
     .dropdown-trigger {
-      height: 34px;
+      height: 38px;
       background: #ffffff;
       border: 1.5px solid #bfdbfe;
-      border-radius: 7px;
-      padding: 0 24px 0 8px;
-      font-size: 12px;
+      border-radius: 8px;
+      padding: 0 28px 0 10px;
+      font-size: 13px;
       font-weight: 500;
       color: #0f172a;
       cursor: pointer;
