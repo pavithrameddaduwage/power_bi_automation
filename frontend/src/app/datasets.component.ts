@@ -233,7 +233,7 @@ import { EmailPickerComponent } from './email-picker.component';
                 <div class="email-drawer-box">
                   <div class="row-between" style="margin-bottom: 8px;">
                     <div style="display: flex; align-items: center; gap: 6px;">
-                      <strong style="font-size: 12.5px; color: #1e3a8a;">Email Excel Report: {{ d.label }}</strong>
+                      <strong style="font-size: 12.5px; color: #1e3a8a;">Email Excel Report - {{ d.label }}</strong>
                       <span class="badge badge-ok" style="font-size: 10px;">Direct Dispatch</span>
                     </div>
                     <button class="btn-secondary" style="font-size: 11px; padding: 2px 6px;" (click)="activeEmailTable.set('')">Close</button>

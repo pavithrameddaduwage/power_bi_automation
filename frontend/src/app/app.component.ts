@@ -166,7 +166,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
                       </td>
                       <td>
                         <div style="font-weight:600; color:var(--text);">{{ log.subject }}</div>
-                        <div class="muted" style="font-size:11px;" *ngIf="log.file_name">📎 {{ log.file_name }}</div>
+                        <div class="muted" style="font-size:11px;" *ngIf="log.file_name">File - {{ log.file_name }}</div>
                       </td>
                       <td class="muted" style="white-space:nowrap;">
                         {{ ((log.file_size_bytes || 0) / 1024).toFixed(1) }} KB

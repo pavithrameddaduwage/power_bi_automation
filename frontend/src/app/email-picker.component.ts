@@ -291,7 +291,7 @@ import { SyncApiService, DirectoryUser, ReportWithAccess } from './sync.service'
       <div class="dropdown-list">
         <!-- Add custom email action if typed query is an email not currently selected -->
         <div class="custom-add-item" *ngIf="isCustomEmailQuery()" (click)="addCustomQueryEmail()">
-          + Add custom recipient: <strong>{{ searchQuery().trim() }}</strong>
+          + Add custom recipient - <strong>{{ searchQuery().trim() }}</strong>
         </div>
 
         <div

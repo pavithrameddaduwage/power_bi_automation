@@ -481,14 +481,14 @@ import { EmailPickerComponent } from './email-picker.component';
 
           <!-- Schedule Pipeline Execution Summary Box -->
           <div style="margin-top:12px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-sm); font-size:12px;">
-            <strong style="color:var(--text);">Scheduled Execution Pipeline:</strong>
+            <strong style="color:var(--text);">Scheduled Execution Pipeline -</strong>
             <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:6px; font-size:12px;">
               <div>
-                <span class="muted">🗄️ Database Sync:</span>
+                <span class="muted">Database Sync -</span>
                 <strong> {{ tableName || '(enter table name)' }}</strong> ({{ writeMode }})
               </div>
               <div>
-                <span class="muted">✉️ Email Delivery:</span>
+                <span class="muted">Email Delivery -</span>
                 <strong *ngIf="recipients.trim()"> {{ recipients.split(',').length }} recipient(s)</strong>
                 <span *ngIf="!recipients.trim()" class="muted"> None (DB sync only)</span>
               </div>

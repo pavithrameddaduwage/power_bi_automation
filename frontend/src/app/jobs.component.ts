@@ -59,7 +59,7 @@ import { PagerComponent } from './pager.component';
             </td>
             <td>
               <div style="font-weight: 600; font-size: 13px; color: var(--text);">{{ s.datasetName }}</div>
-              <div class="muted" style="font-size: 11px;" *ngIf="s.configuredBy">Owner: {{ s.configuredBy }}</div>
+              <div class="muted" style="font-size: 11px;" *ngIf="s.configuredBy">Owner - {{ s.configuredBy }}</div>
             </td>
             <td>
               <div *ngIf="s.scheduleEnabled && s.scheduleTimes?.length">
@@ -137,7 +137,7 @@ import { PagerComponent } from './pager.component';
           <tr *ngFor="let j of pagedJobs()">
             <td>
               <div style="font-weight: 600;">{{ j.name }}</div>
-              <div class="tag" *ngIf="j.recipients" style="margin-top:3px; color:var(--accent); font-size:11px;" [title]="'Recipients: ' + j.recipients">
+              <div class="tag" *ngIf="j.recipients" style="margin-top:3px; color:var(--accent); font-size:11px;" [title]="'Recipients - ' + j.recipients">
                 {{ j.recipients }}
               </div>
             </td>
