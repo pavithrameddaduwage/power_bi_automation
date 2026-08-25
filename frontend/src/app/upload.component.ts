@@ -390,7 +390,7 @@ import { EmailPickerComponent } from './email-picker.component';
               <label class="pick" style="margin:0; font-size:11px;">
                 <input type="checkbox" [(ngModel)]="customColumns" /> Pick columns
               </label>
-              <button class="btn-primary" (click)="upload()" [disabled]="busy() || writeRows().length === 0 || targetLocked()">
+              <button class="btn-primary" (click)="upload()" [disabled]="busy()">
                 <span *ngIf="busy()" class="spinner-white"></span>
                 Upload to Database Now
               </button>
@@ -422,7 +422,7 @@ import { EmailPickerComponent } from './email-picker.component';
 
             <div class="row-between" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border);">
               <span class="muted" style="font-size:11px;">Direct email only (no DB write)</span>
-              <button class="btn-secondary" (click)="sendReportEmail()" [disabled]="busy() || writeRows().length === 0 || !recipients.trim()">
+              <button class="btn-secondary" (click)="sendReportEmail()" [disabled]="busy()">
                 Send Email Now
               </button>
             </div>
@@ -1360,14 +1360,21 @@ export class UploadComponent implements OnInit {
 
   upload() {
     const rep = this.selectedReport();
-    if (!rep) return;
+    if (!rep) {
+      this.toast.error('Please select a report first.');
+      return;
+    }
+    if (this.targetLocked()) {
+      this.toast.error(`Target table "${this.targetTableName()}" is locked.`);
+      return;
+    }
     if ((this.writeMode === 'upsert') && this.selectedKeyNames().length === 0) {
       this.toast.error('Pick at least one business key for upsert.');
       return;
     }
-    const rows = this.writeRows();
+    const rows = this.writeRows().length ? this.writeRows() : this.loadedRows();
     if (rows.length === 0) {
-      this.toast.error('No rows match the current filters — nothing to write.');
+      this.toast.error('No rows available to write. Please select or load table data first.');
       return;
     }
     this.busy.set(true);
@@ -1376,12 +1383,13 @@ export class UploadComponent implements OnInit {
         ? (this.selectedKeyNames().length > 0 ? 'upsert' : 'append')
         : this.writeMode;
 
+    const targetTbl = this.tableName.trim() || this.suggestName();
     this.api
       .uploadReport({
         reportName: `${rep.name} · ${this.selectedTables().join('+')}`,
         owner: this.owner || 'anonymous',
         rows,
-        tableName: this.tableName,
+        tableName: targetTbl,
         mode: effectiveMode,
         businessKeys: this.selectedKeyNames(),
       })
@@ -1392,7 +1400,10 @@ export class UploadComponent implements OnInit {
           this.loadDatasets();
           this.lastSyncAt.set(new Date().toISOString());
         },
-        error: (e) => this.fail(e),
+        error: (e) => {
+          this.busy.set(false);
+          this.fail(e);
+        },
       });
   }
 
@@ -1455,7 +1466,7 @@ export class UploadComponent implements OnInit {
       this.toast.error('Please enter at least one recipient email address.');
       return;
     }
-    const rows = this.writeRows();
+    const rows = this.writeRows().length ? this.writeRows() : this.loadedRows();
     if (rows.length === 0) {
       this.toast.error('No rows available to send.');
       return;
