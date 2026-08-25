@@ -291,7 +291,7 @@ import { PagerComponent } from './pager.component';
               <span *ngIf="busy()" class="spinner"></span>
               Download Excel Sheet
             </button>
-            <button class="btn-primary" (click)="setStep(4)">Next: Schedule &amp; Database (Optional) ›</button>
+            <button class="btn-primary" (click)="setStep(4)">Next ›</button>
           </div>
         </div>
       </ng-container>
