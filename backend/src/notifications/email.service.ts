@@ -3,6 +3,9 @@ import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
 import { PG_POOL } from '../db/database.module';
+import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface EmailLogEntry {
   id?: number;
@@ -112,12 +115,28 @@ export class EmailService {
       }
     }
 
-    const host = this.configService.get<string>('SMTP_HOST');
-    const port = parseInt(this.configService.get<string>('SMTP_PORT') || '587', 10);
-    const user = this.configService.get<string>('SMTP_USER');
-    const pass = this.configService.get<string>('SMTP_PASS');
+    const envPath = path.resolve(process.cwd(), '.env');
+    let envVars: any = {};
+    if (fs.existsSync(envPath)) {
+      try {
+        envVars = dotenv.parse(fs.readFileSync(envPath));
+      } catch (err: any) {
+        this.logger.warn(`Could not read .env dynamically: ${err.message}`);
+      }
+    }
 
-    if (host && host !== 'smtp.example.com' && user && user !== 'user@example.com') {
+    const host = envVars.SMTP_HOST || this.configService.get<string>('SMTP_HOST') || process.env.SMTP_HOST;
+    const port = parseInt(
+      envVars.SMTP_PORT ||
+        this.configService.get<string>('SMTP_PORT') ||
+        process.env.SMTP_PORT ||
+        '587',
+      10,
+    );
+    const user = envVars.SMTP_USER || this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER;
+    const pass = envVars.SMTP_PASS || this.configService.get<string>('SMTP_PASS') || process.env.SMTP_PASS;
+
+    if (host && host !== 'smtp.example.com' && user && user !== 'user@example.com' && pass) {
       this.smtpTransporter = nodemailer.createTransport({
         host,
         port,
@@ -125,7 +144,7 @@ export class EmailService {
         auth: { user, pass },
         tls: { rejectUnauthorized: false },
       });
-      this.logger.log(`Initialized optional SMTP transporter from env: ${host}`);
+      this.logger.log(`Initialized authenticated SMTP transporter from .env: ${host} (${user})`);
     } else {
       this.smtpTransporter = null;
     }
