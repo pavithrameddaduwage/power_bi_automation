@@ -788,8 +788,8 @@ export class UploadComponent implements OnInit {
     if (!f) return list;
     return list.filter(
       (r) =>
-        r.name.toLowerCase().includes(f) ||
-        r.workspaceName.toLowerCase().includes(f),
+        (r.name || '').toLowerCase().includes(f) ||
+        (r.workspaceName || '').toLowerCase().includes(f),
     );
   });
   pagedReports = computed(() =>
@@ -798,7 +798,7 @@ export class UploadComponent implements OnInit {
   filteredTables = computed(() => {
     const f = this.tableFilter().trim().toLowerCase();
     const list = this.tables();
-    return f ? list.filter((t) => t.toLowerCase().includes(f)) : list;
+    return f ? list.filter((t) => (t || '').toLowerCase().includes(f)) : list;
   });
 
   /** All columns across ALL selected tables. */
@@ -811,12 +811,12 @@ export class UploadComponent implements OnInit {
   filteredColumns = computed(() => {
     const f = this.columnFilter().trim().toLowerCase();
     const cols = this.activeColumns();
-    return f ? cols.filter((c) => c.name.toLowerCase().includes(f) || c.table.toLowerCase().includes(f)) : cols;
+    return f ? cols.filter((c) => (c.name || '').toLowerCase().includes(f) || (c.table || '').toLowerCase().includes(f)) : cols;
   });
   filteredMeasures = computed(() => {
     const f = this.measureFilter().trim().toLowerCase();
     const m = this.measures();
-    return f ? m.filter((x) => x.name.toLowerCase().includes(f)) : m;
+    return f ? m.filter((x) => (x.name || '').toLowerCase().includes(f)) : m;
   });
   selectedMeasureNames = computed(() =>
     this.measures().map((m) => m.name).filter((n) => this.measureSelected()[n]),

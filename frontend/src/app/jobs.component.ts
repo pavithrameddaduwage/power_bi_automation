@@ -241,9 +241,9 @@ export class JobsComponent implements OnInit {
     if (!q) return list;
     return list.filter(
       (s) =>
-        s.datasetName.toLowerCase().includes(q) ||
-        s.workspaceName.toLowerCase().includes(q) ||
-        (s.configuredBy && s.configuredBy.toLowerCase().includes(q)),
+        (s.datasetName || '').toLowerCase().includes(q) ||
+        (s.workspaceName || '').toLowerCase().includes(q) ||
+        (s.configuredBy || '').toLowerCase().includes(q),
     );
   });
 

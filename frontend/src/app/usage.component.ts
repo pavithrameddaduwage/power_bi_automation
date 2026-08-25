@@ -1008,11 +1008,24 @@ import { ToastService } from './toast.service';
 
     .page-name {
       font-size: 13.5px;
-      font-weight: 500;
+      font-weight: 600;
       color: #0f172a;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .page-report-tag {
+      font-size: 11.5px;
+      color: #64748b;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .page-report-tag strong {
+      color: #1d4ed8;
+      font-weight: 600;
     }
 
     .page-stats-right {
@@ -1355,11 +1368,7 @@ import { ToastService } from './toast.service';
 
       <!-- ── 1. Top Filter Bar (6 Searchable Dropdowns) ── -->
       <div class="filter-bar-card">
-        <div class="filter-bar-header" *ngIf="activeFilterCount() > 0 || loading()">
-          <div class="filter-title">
-            <span class="filter-badge" *ngIf="activeFilterCount() > 0">{{ activeFilterCount() }} active</span>
-          </div>
-
+        <div class="filter-bar-header" *ngIf="activeFilterCount() > 0 || loading()" style="justify-content: flex-end;">
           <div style="display:flex; align-items:center; gap:10px;">
             <span *ngIf="loading()" style="font-size:12.5px; color:#1e40af; font-weight:600;">
               <span class="spinner"></span> Updating…
@@ -1381,7 +1390,7 @@ import { ToastService } from './toast.service';
               </span>
             </div>
             <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'ws'" (click)="$event.stopPropagation()">
-              <input class="menu-search-input" [(ngModel)]="searchWs" placeholder="Search workspace…" (click)="$event.stopPropagation()" />
+              <input class="menu-search-input" [ngModel]="searchWs()" (ngModelChange)="searchWs.set($event)" placeholder="Search workspace…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
                 <div class="menu-option-item" [class.selected]="!filterGroupId" (click)="selectWorkspace('')">
                   All Workspaces
@@ -1404,7 +1413,7 @@ import { ToastService } from './toast.service';
               </span>
             </div>
             <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'rep'" (click)="$event.stopPropagation()">
-              <input class="menu-search-input" [(ngModel)]="searchRep" placeholder="Search report…" (click)="$event.stopPropagation()" />
+              <input class="menu-search-input" [ngModel]="searchRep()" (ngModelChange)="searchRep.set($event)" placeholder="Search report or dashboard…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
                 <div class="menu-option-item" [class.selected]="!filterReportName" (click)="selectReport('')">
                   All Reports &amp; Dashboards
@@ -1427,7 +1436,7 @@ import { ToastService } from './toast.service';
               </span>
             </div>
             <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'user'" (click)="$event.stopPropagation()">
-              <input class="menu-search-input" [(ngModel)]="searchUser" placeholder="Search user…" (click)="$event.stopPropagation()" />
+              <input class="menu-search-input" [ngModel]="searchUser()" (ngModelChange)="searchUser.set($event)" placeholder="Search user…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
                 <div class="menu-option-item" [class.selected]="!filterUserEmail" (click)="selectUser('')">
                   All Users
@@ -1450,7 +1459,7 @@ import { ToastService } from './toast.service';
               </span>
             </div>
             <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'year'" (click)="$event.stopPropagation()">
-              <input class="menu-search-input" [(ngModel)]="searchYear" placeholder="Search year…" (click)="$event.stopPropagation()" />
+              <input class="menu-search-input" [ngModel]="searchYear()" (ngModelChange)="searchYear.set($event)" placeholder="Search year…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
                 <div class="menu-option-item" [class.selected]="!filterYear" (click)="selectYear('')">
                   All Years
@@ -1472,7 +1481,7 @@ import { ToastService } from './toast.service';
               </span>
             </div>
             <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'month'" (click)="$event.stopPropagation()">
-              <input class="menu-search-input" [(ngModel)]="searchMonth" placeholder="Search month…" (click)="$event.stopPropagation()" />
+              <input class="menu-search-input" [ngModel]="searchMonth()" (ngModelChange)="searchMonth.set($event)" placeholder="Search month…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
                 <div class="menu-option-item" [class.selected]="!filterMonth" (click)="selectMonth('')">
                   All Months
@@ -1494,7 +1503,7 @@ import { ToastService } from './toast.service';
               </span>
             </div>
             <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'date'" (click)="$event.stopPropagation()">
-              <input class="menu-search-input" [(ngModel)]="searchDate" placeholder="Search date…" (click)="$event.stopPropagation()" />
+              <input class="menu-search-input" [ngModel]="searchDate()" (ngModelChange)="searchDate.set($event)" placeholder="Search date…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
                 <div class="menu-option-item" [class.selected]="!filterDate" (click)="selectDate('')">
                   All Dates
@@ -1646,7 +1655,7 @@ import { ToastService } from './toast.service';
 
           <!-- Controls for Access tab -->
           <div *ngIf="activeBreakdownTab() === 'access'">
-            <input class="breakdown-search-input" [(ngModel)]="accessSearchText" (ngModelChange)="accessCurrentPage.set(1)" placeholder="Search..." style="width:190px;" />
+            <input class="breakdown-search-input" [ngModel]="accessSearchText()" (ngModelChange)="accessSearchText.set($event); accessCurrentPage.set(1)" placeholder="Search..." style="width:190px;" />
           </div>
         </div>
 
@@ -1662,7 +1671,11 @@ import { ToastService } from './toast.service';
                 <span class="row-rank-tag">#{{ (pageCurrentPage() - 1) * 5 + idx + 1 }}</span>
                 <div style="min-width:0; flex:1;">
                   <div class="row-primary-title" [title]="p.pageName">{{ p.pageName }}</div>
-                  <div class="row-secondary-info">{{ p.viewers }} viewer{{ p.viewers === 1 ? '' : 's' }}</div>
+                  <div class="row-secondary-info" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:2px;">
+                    <span *ngIf="p.reportName" style="color:#1d4ed8; font-weight:600;">Report - {{ p.reportName }}</span>
+                    <span *ngIf="p.reportName" style="opacity:0.4;">•</span>
+                    <span>{{ p.viewers }} viewer{{ p.viewers === 1 ? '' : 's' }}</span>
+                  </div>
                 </div>
               </div>
 
@@ -1845,7 +1858,12 @@ import { ToastService } from './toast.service';
           <div class="page-clean-row" *ngFor="let p of pagedPages(); let idx = index">
             <div class="page-title-group">
               <span class="page-rank-pill" *ngIf="pageSortOrder() === 'views-desc'">#{{ (pageCurrentPage() - 1) * 5 + idx + 1 }}</span>
-              <span class="page-name" [title]="p.pageName">{{ p.pageName }}</span>
+              <div style="min-width:0; flex:1;">
+                <div class="page-name" [title]="p.pageName">{{ p.pageName }}</div>
+                <div class="page-report-tag" *ngIf="p.reportName" [title]="p.reportName">
+                  Report - <strong>{{ p.reportName }}</strong>
+                </div>
+              </div>
             </div>
             <div class="page-stats-right">
               <span class="page-views-num">{{ p.views | number }} views</span>
@@ -1899,12 +1917,12 @@ export class UsageComponent implements OnInit {
   openDropdown = signal<string | null>(null);
 
   // Search inside dropdowns
-  searchWs: string = '';
-  searchRep: string = '';
-  searchUser: string = '';
-  searchYear: string = '';
-  searchMonth: string = '';
-  searchDate: string = '';
+  searchWs = signal<string>('');
+  searchRep = signal<string>('');
+  searchUser = signal<string>('');
+  searchYear = signal<string>('');
+  searchMonth = signal<string>('');
+  searchDate = signal<string>('');
 
   // Breakdown active tab ('pages' | 'people' | 'access')
   activeBreakdownTab = signal<'pages' | 'people' | 'access'>('pages');
@@ -1914,7 +1932,7 @@ export class UsageComponent implements OnInit {
   pageSortOrder = signal<'views-desc' | 'views-asc' | 'name-asc'>('views-desc');
   userSearchText = signal<string>('');
   accessFilterTab = signal<'all' | 'unused' | 'active'>('all');
-  accessSearchText: string = '';
+  accessSearchText = signal<string>('');
 
   // Pagination states (5 items per page)
   pageCurrentPage = signal<number>(1);
@@ -1970,25 +1988,25 @@ export class UsageComponent implements OnInit {
   // Filtered dropdown lists based on user search in dropdown
   filteredWorkspaces = computed(() => {
     const raw = this.availableWorkspaces();
-    const s = (this.searchWs || '').toLowerCase().trim();
-    return s ? raw.filter(w => w.groupName.toLowerCase().includes(s)) : raw;
+    const s = (this.searchWs() || '').toLowerCase().trim();
+    return s ? raw.filter(w => (w.groupName || '').toLowerCase().includes(s)) : raw;
   });
 
   filteredReports = computed(() => {
     const raw = this.availableReports();
-    const s = (this.searchRep || '').toLowerCase().trim();
-    return s ? raw.filter(r => r.reportName.toLowerCase().includes(s)) : raw;
+    const s = (this.searchRep() || '').toLowerCase().trim();
+    return s ? raw.filter(r => (r.reportName || '').toLowerCase().includes(s)) : raw;
   });
 
   filteredUsers = computed(() => {
     const raw = this.availableUsers();
-    const s = (this.searchUser || '').toLowerCase().trim();
-    return s ? raw.filter(u => (u.name || '').toLowerCase().includes(s) || u.email.toLowerCase().includes(s)) : raw;
+    const s = (this.searchUser() || '').toLowerCase().trim();
+    return s ? raw.filter(u => (u.name || '').toLowerCase().includes(s) || (u.email || '').toLowerCase().includes(s)) : raw;
   });
 
   filteredYears = computed(() => {
     const raw = this.availableYears();
-    const s = (this.searchYear || '').trim();
+    const s = (this.searchYear() || '').trim();
     return s ? raw.filter(y => String(y).includes(s)) : raw;
   });
 
@@ -2008,14 +2026,14 @@ export class UsageComponent implements OnInit {
   ];
 
   filteredMonths = computed(() => {
-    const s = (this.searchMonth || '').toLowerCase().trim();
+    const s = (this.searchMonth() || '').toLowerCase().trim();
     return s ? this.allMonthsList.filter(m => m.name.toLowerCase().includes(s)) : this.allMonthsList;
   });
 
   filteredDates = computed(() => {
     const raw = this.availableDates();
-    const s = (this.searchDate || '').trim();
-    return s ? raw.filter(d => d.includes(s)) : raw;
+    const s = (this.searchDate() || '').trim();
+    return s ? raw.filter(d => String(d).includes(s)) : raw;
   });
 
   // Dropdown Label Helpers
@@ -2038,7 +2056,7 @@ export class UsageComponent implements OnInit {
   // Selection handlers
   selectWorkspace(id: string) {
     this.filterGroupId = id;
-    this.searchWs = '';
+    this.searchWs.set('');
     // If a report is selected that doesn't belong to the newly picked workspace, clear it
     if (id && this.filterReportName) {
       const rep = this.availableReports().find((r) => r.reportName === this.filterReportName);
@@ -2048,7 +2066,7 @@ export class UsageComponent implements OnInit {
     }
     this.pageSearchText.set('');
     this.userSearchText.set('');
-    this.accessSearchText = '';
+    this.accessSearchText.set('');
     this.pageCurrentPage.set(1);
     this.userCurrentPage.set(1);
     this.accessCurrentPage.set(1);
@@ -2058,17 +2076,17 @@ export class UsageComponent implements OnInit {
 
   selectReport(name: string) {
     this.filterReportName = name;
-    this.searchRep = '';
+    this.searchRep.set('');
     // If the selected report has a known workspace, sync workspace if not set
     if (name) {
-      const rep = this.availableReports().find((r) => r.reportName.trim().toLowerCase() === name.trim().toLowerCase());
+      const rep = this.availableReports().find((r) => (r.reportName || '').trim().toLowerCase() === name.trim().toLowerCase());
       if (rep && rep.groupId && !this.filterGroupId) {
         // keep filterGroupId aligned
       }
     }
     this.pageSearchText.set('');
     this.userSearchText.set('');
-    this.accessSearchText = '';
+    this.accessSearchText.set('');
     this.pageCurrentPage.set(1);
     this.userCurrentPage.set(1);
     this.accessCurrentPage.set(1);
@@ -2079,7 +2097,7 @@ export class UsageComponent implements OnInit {
   selectUser(email: string) {
     this.filterUserEmail = email;
     this.selectedUserEmail.set(email);
-    this.searchUser = '';
+    this.searchUser.set('');
     this.pageCurrentPage.set(1);
     this.userCurrentPage.set(1);
     this.accessCurrentPage.set(1);
@@ -2270,13 +2288,13 @@ export class UsageComponent implements OnInit {
   filteredAccessList = computed(() => {
     const raw = (this.accessData()?.users || []).filter(u => !this.isServicePrincipal(u.displayName, u.email));
     const tab = this.accessFilterTab();
-    const search = (this.accessSearchText || '').toLowerCase().trim();
+    const search = (this.accessSearchText() || '').toLowerCase().trim();
 
     const filtered = raw.filter(u => {
       if (tab === 'unused' && u.status !== 'unused') return false;
       if (tab === 'active' && u.status !== 'active') return false;
       if (search) {
-        return u.displayName.toLowerCase().includes(search) || u.email.toLowerCase().includes(search) || u.role.toLowerCase().includes(search);
+        return (u.displayName || '').toLowerCase().includes(search) || (u.email || '').toLowerCase().includes(search) || (u.role || '').toLowerCase().includes(search);
       }
       return true;
     });
@@ -2316,15 +2334,16 @@ export class UsageComponent implements OnInit {
     this.filterYear = '';
     this.filterMonth = '';
     this.filterDate = '';
-    this.searchWs = '';
-    this.searchRep = '';
-    this.searchUser = '';
-    this.searchYear = '';
-    this.searchMonth = '';
-    this.searchDate = '';
+    this.searchWs.set('');
+    this.searchRep.set('');
+    this.searchUser.set('');
+    this.searchYear.set('');
+    this.searchMonth.set('');
+    this.searchDate.set('');
     this.pageSearchText.set('');
     this.pageSortOrder.set('views-desc');
     this.userSearchText.set('');
+    this.accessSearchText.set('');
     this.pageCurrentPage.set(1);
     this.userCurrentPage.set(1);
     this.accessCurrentPage.set(1);

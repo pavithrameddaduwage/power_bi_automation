@@ -158,7 +158,7 @@ import { EmailPickerComponent } from './email-picker.component';
           class="search-dataset-input"
           placeholder="Search stored dataset or table name…"
           [ngModel]="searchQuery()"
-          (ngModelChange)="searchQuery.set($event)"
+          (ngModelChange)="onSearchChange($event)"
         />
         <span class="tag" *ngIf="datasets().length > 0">
           {{ filteredDatasets().length }} of {{ datasets().length }} dataset(s)
@@ -312,6 +312,11 @@ export class DatasetsComponent implements OnInit {
   previewTable = signal('');
   previewCols = signal<string[]>([]);
   previewRows = signal<any[]>([]);
+
+  onSearchChange(val: string) {
+    this.searchQuery.set(val);
+    this.dsPage.set(0);
+  }
 
   filteredDatasets = computed(() => {
     const q = this.searchQuery().trim().toLowerCase();
