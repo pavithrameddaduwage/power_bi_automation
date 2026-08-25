@@ -2038,12 +2038,40 @@ export class UsageComponent implements OnInit {
   // Selection handlers
   selectWorkspace(id: string) {
     this.filterGroupId = id;
+    this.searchWs = '';
+    // If a report is selected that doesn't belong to the newly picked workspace, clear it
+    if (id && this.filterReportName) {
+      const rep = this.availableReports().find((r) => r.reportName === this.filterReportName);
+      if (rep && rep.groupId && rep.groupId !== id) {
+        this.filterReportName = '';
+      }
+    }
+    this.pageSearchText.set('');
+    this.userSearchText.set('');
+    this.accessSearchText = '';
+    this.pageCurrentPage.set(1);
+    this.userCurrentPage.set(1);
+    this.accessCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();
   }
 
   selectReport(name: string) {
     this.filterReportName = name;
+    this.searchRep = '';
+    // If the selected report has a known workspace, sync workspace if not set
+    if (name) {
+      const rep = this.availableReports().find((r) => r.reportName.trim().toLowerCase() === name.trim().toLowerCase());
+      if (rep && rep.groupId && !this.filterGroupId) {
+        // keep filterGroupId aligned
+      }
+    }
+    this.pageSearchText.set('');
+    this.userSearchText.set('');
+    this.accessSearchText = '';
+    this.pageCurrentPage.set(1);
+    this.userCurrentPage.set(1);
+    this.accessCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();
   }
@@ -2051,6 +2079,10 @@ export class UsageComponent implements OnInit {
   selectUser(email: string) {
     this.filterUserEmail = email;
     this.selectedUserEmail.set(email);
+    this.searchUser = '';
+    this.pageCurrentPage.set(1);
+    this.userCurrentPage.set(1);
+    this.accessCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();
   }

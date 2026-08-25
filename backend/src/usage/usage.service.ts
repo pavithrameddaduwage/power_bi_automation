@@ -1047,12 +1047,12 @@ export class UsageService {
     conditions.push(`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%')`);
 
     if (filters.groupId && filters.groupId.trim() !== '') {
-      conditions.push(`group_id = $${paramIdx++}`);
+      conditions.push(`TRIM(group_id) = TRIM($${paramIdx++})`);
       params.push(filters.groupId.trim());
     }
 
     if (filters.reportName && filters.reportName.trim() !== '') {
-      conditions.push(`report_name = $${paramIdx++}`);
+      conditions.push(`LOWER(TRIM(report_name)) = LOWER(TRIM($${paramIdx++}))`);
       params.push(filters.reportName.trim());
     }
 
@@ -1366,12 +1366,30 @@ export class UsageService {
     let workspaceName = '';
     let rawAccessUsers: WorkspaceUser[] = [];
 
+    // If reportName is provided but groupId is not, automatically resolve its workspace groupId
+    if (reportName && reportName.trim() !== '' && (!groupId || groupId.trim() === '')) {
+      try {
+        const repRes = await this.pool.query(
+          `SELECT DISTINCT group_id, group_name FROM usage_user_activity WHERE LOWER(TRIM(report_name)) = LOWER(TRIM($1)) LIMIT 1`,
+          [reportName.trim()],
+        );
+        if (repRes.rows.length > 0 && repRes.rows[0].group_id) {
+          groupId = repRes.rows[0].group_id;
+          if (repRes.rows[0].group_name) {
+            workspaceName = repRes.rows[0].group_name;
+          }
+        }
+      } catch (e) {}
+    }
+
     if (groupId && groupId.trim() !== '') {
       try {
         rawAccessUsers = await this.getWorkspaceUsers(groupId);
-        const reports = await this.listUsageReports();
-        const match = reports.find(r => r.groupId === groupId);
-        if (match) workspaceName = match.groupName;
+        if (!workspaceName) {
+          const reports = await this.listUsageReports();
+          const match = reports.find((r) => r.groupId === groupId);
+          if (match) workspaceName = match.groupName;
+        }
       } catch (err: any) {
         this.logger.warn(`Could not fetch group users for ${groupId}: ${err?.message}`);
       }
@@ -1410,11 +1428,11 @@ export class UsageService {
     const params: any[] = [];
     let pIdx = 1;
     if (groupId && groupId.trim() !== '') {
-      conditions.push(`group_id = $${pIdx++}`);
+      conditions.push(`TRIM(group_id) = TRIM($${pIdx++})`);
       params.push(groupId.trim());
     }
     if (reportName && reportName.trim() !== '') {
-      conditions.push(`report_name = $${pIdx++}`);
+      conditions.push(`LOWER(TRIM(report_name)) = LOWER(TRIM($${pIdx++}))`);
       params.push(reportName.trim());
     }
 
