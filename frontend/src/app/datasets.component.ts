@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SyncApiService, DynamicDataset } from './sync.service';
+import { SyncApiService, DynamicDataset, DatasetRefreshInfo } from './sync.service';
 import { ToastService } from './toast.service';
 import { PagerComponent } from './pager.component';
 import { EmailPickerComponent } from './email-picker.component';
@@ -213,13 +213,14 @@ import { EmailPickerComponent } from './email-picker.component';
                   >
                     {{ previewTable() === d.table_name ? 'Close Preview' : 'Preview' }}
                   </button>
-                  <a class="btn-action-mini" [href]="api.exportUrl(d.table_name)">
+                  <a class="btn-action-mini" [href]="api.exportUrl(d.table_name)" [title]="getDatasetRefreshTooltip(d)">
                     Export CSV
                   </a>
                   <button
                     class="btn-action-mini"
                     [class.active-email]="activeEmailTable() === d.table_name"
                     (click)="toggleEmailDrawer(d.table_name)"
+                    [title]="getDatasetRefreshTooltip(d)"
                   >
                     Email Excel
                   </button>
@@ -302,6 +303,7 @@ import { EmailPickerComponent } from './email-picker.component';
 export class DatasetsComponent implements OnInit {
   busy = signal(false);
   datasets = signal<DynamicDataset[]>([]);
+  refreshSchedules = signal<DatasetRefreshInfo[]>([]);
   datasetEmails: Record<string, string> = {};
   searchQuery = signal('');
   activeEmailTable = signal('');
@@ -335,6 +337,37 @@ export class DatasetsComponent implements OnInit {
 
   ngOnInit() {
     this.loadDatasets();
+    this.loadRefreshSchedules();
+  }
+
+  loadRefreshSchedules() {
+    this.api.refreshSchedules().subscribe({
+      next: (s) => this.refreshSchedules.set(s || []),
+      error: () => {},
+    });
+  }
+
+  getDatasetRefreshTooltip(d: DynamicDataset): string {
+    const s = this.refreshSchedules().find(
+      (r) =>
+        r.datasetName?.toLowerCase() === d.label?.toLowerCase() ||
+        r.datasetId === d.table_name ||
+        d.label?.toLowerCase().includes(r.datasetName?.toLowerCase() || '___')
+    );
+    const lines: string[] = [];
+    lines.push(`Dataset / Report - ${d.label}`);
+    lines.push(`Table - ${d.table_name} (${d.last_rows || 0} rows)`);
+    if (s) {
+      if (s.lastRefreshStartTime) {
+        lines.push(`Last Data Refresh - ${s.lastRefreshStatus || 'Completed'} (${new Date(s.lastRefreshStartTime).toLocaleString()})`);
+      } else {
+        lines.push(`Last Data Refresh - No refresh recorded`);
+      }
+      if (s.scheduleEnabled && s.scheduleTimes?.length) {
+        lines.push(`Power BI Refresh Schedule - ${s.scheduleTimes.join(', ')} (${s.timeZone || 'UTC'})`);
+      }
+    }
+    return lines.join('\n');
   }
 
   loadDatasets() {

@@ -289,10 +289,16 @@ import { EmailPickerComponent } from './email-picker.component';
         <div class="wizard-footer row-between">
           <button class="btn-secondary" (click)="setStep(2)">‹ Back</button>
           <div style="display:flex;gap:10px;align-items:center;">
-            <button class="btn-secondary" (click)="downloadExcelSheet()" [disabled]="busy()">
+            <button class="btn-secondary" (click)="downloadExcelSheet()" [disabled]="busy()" [title]="downloadTooltipText()">
               <span *ngIf="busy()" class="spinner"></span>
               Download Excel Sheet
             </button>
+            <span *ngIf="selectedDatasetRefresh()?.lastRefreshStartTime"
+                  class="tag"
+                  [title]="downloadTooltipText()"
+                  style="font-size:11px; cursor:help;">
+              Data Refreshed - {{ selectedDatasetRefresh()?.lastRefreshStartTime | date: 'short' }}
+            </span>
             <button class="btn-primary" (click)="setStep(4)">Next ›</button>
           </div>
         </div>
@@ -660,6 +666,38 @@ export class UploadComponent implements OnInit {
     const dsId = this.selectedReport()?.datasetId;
     if (!dsId) return null;
     return this.refreshSchedules().find((s) => s.datasetId === dsId) || null;
+  });
+
+  downloadTooltipText = computed(() => {
+    const rep = this.selectedReport();
+    const refresh = this.selectedDatasetRefresh();
+    if (!rep) return 'Download current data as an Excel (.xlsx) spreadsheet.';
+
+    const lines: string[] = [];
+    lines.push(`Dashboard / Report - ${rep.name}`);
+    if (rep.workspaceName) {
+      lines.push(`Workspace - ${rep.workspaceName}`);
+    }
+
+    if (refresh) {
+      if (refresh.lastRefreshStartTime) {
+        const timeStr = new Date(refresh.lastRefreshStartTime).toLocaleString();
+        lines.push(`Last Data Refresh - ${refresh.lastRefreshStatus || 'Completed'} (${timeStr})`);
+      } else {
+        lines.push(`Last Data Refresh - No refresh history recorded`);
+      }
+
+      if (refresh.scheduleEnabled && refresh.scheduleTimes?.length) {
+        lines.push(`Power BI Refresh Schedule - ${refresh.scheduleTimes.join(', ')} (${refresh.timeZone || 'UTC'}) - ${refresh.scheduleDays?.join(', ') || 'Daily'}`);
+      } else {
+        lines.push(`Power BI Refresh Schedule - Manual / Not Scheduled`);
+      }
+    } else {
+      lines.push(`Data Refresh - Refresh details not configured`);
+    }
+
+    lines.push(`Ready to download ${this.filteredLoadedRows().length} row(s) as Excel (.xlsx) file`);
+    return lines.join('\n');
   });
 
   cronValidation = computed(() => {
