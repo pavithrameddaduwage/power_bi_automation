@@ -5,6 +5,7 @@ import {
   SyncApiService,
   DashboardAnalyticsResponse,
   AccessUtilizationResponse,
+  ReportUsageItem,
   PageUsageItem,
   UserUsageItem,
   TimelineItem,
@@ -246,6 +247,30 @@ import { ToastService } from './toast.service';
       text-overflow: ellipsis;
       flex: 1;
       text-align: left;
+    }
+
+    .trigger-clear-btn {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      margin-right: 4px;
+      border-radius: 50%;
+      transition: all 0.15s ease;
+      z-index: 2;
+      flex-shrink: 0;
+    }
+
+    .trigger-clear-btn:hover {
+      color: #ffffff;
+      background: #dc2626;
+      border-color: #dc2626;
     }
 
     .trigger-caret {
@@ -1368,7 +1393,7 @@ import { ToastService } from './toast.service';
         </div>
       </div>
 
-      <!-- ── 1. Top Filter Bar (6 Searchable Dropdowns) ── -->
+      <!-- ── 1. Top Filter Bar (6 Searchable Dropdowns with Individual Clear Buttons) ── -->
       <div class="filter-bar-card">
         <div class="filter-bar-header" *ngIf="activeFilterCount() > 0 || loading()" style="justify-content: flex-end;">
           <div style="display:flex; align-items:center; gap:10px;">
@@ -1387,6 +1412,9 @@ import { ToastService } from './toast.service';
             <label class="filter-label">Workspace</label>
             <div class="dropdown-trigger" [class.active-filter]="filterGroupId" (click)="toggleDropdown('ws', $event)">
               <span class="trigger-text">{{ getWorkspaceLabel() }}</span>
+              <button *ngIf="filterGroupId" type="button" class="trigger-clear-btn" (click)="clearFilter('ws', $event)" title="Clear Workspace filter">
+                <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
@@ -1410,6 +1438,9 @@ import { ToastService } from './toast.service';
             <label class="filter-label">Report / Dashboard</label>
             <div class="dropdown-trigger" [class.active-filter]="filterReportName" (click)="toggleDropdown('rep', $event)">
               <span class="trigger-text">{{ filterReportName || 'All Reports & Dashboards' }}</span>
+              <button *ngIf="filterReportName" type="button" class="trigger-clear-btn" (click)="clearFilter('rep', $event)" title="Clear Report/Dashboard filter">
+                <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
@@ -1433,6 +1464,9 @@ import { ToastService } from './toast.service';
             <label class="filter-label">User</label>
             <div class="dropdown-trigger" [class.active-filter]="filterUserEmail" (click)="toggleDropdown('user', $event)">
               <span class="trigger-text">{{ getUserLabel() }}</span>
+              <button *ngIf="filterUserEmail" type="button" class="trigger-clear-btn" (click)="clearFilter('user', $event)" title="Clear User filter">
+                <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
@@ -1456,6 +1490,9 @@ import { ToastService } from './toast.service';
             <label class="filter-label">Year</label>
             <div class="dropdown-trigger" [class.active-filter]="filterYear" (click)="toggleDropdown('year', $event)">
               <span class="trigger-text">{{ filterYear ? filterYear : 'All Years' }}</span>
+              <button *ngIf="filterYear" type="button" class="trigger-clear-btn" (click)="clearFilter('year', $event)" title="Clear Year filter">
+                <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
@@ -1478,6 +1515,9 @@ import { ToastService } from './toast.service';
             <label class="filter-label">Month</label>
             <div class="dropdown-trigger" [class.active-filter]="filterMonth" (click)="toggleDropdown('month', $event)">
               <span class="trigger-text">{{ getMonthLabel() }}</span>
+              <button *ngIf="filterMonth" type="button" class="trigger-clear-btn" (click)="clearFilter('month', $event)" title="Clear Month filter">
+                <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
@@ -1500,6 +1540,9 @@ import { ToastService } from './toast.service';
             <label class="filter-label">Date</label>
             <div class="dropdown-trigger" [class.active-filter]="filterDate" (click)="toggleDropdown('date', $event)">
               <span class="trigger-text">{{ filterDate ? filterDate : 'All Dates' }}</span>
+              <button *ngIf="filterDate" type="button" class="trigger-clear-btn" (click)="clearFilter('date', $event)" title="Clear Date filter">
+                <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
@@ -1538,7 +1581,7 @@ import { ToastService } from './toast.service';
         </div>
 
         <div class="kpi-card blue-4">
-          <div class="kpi-label">{{ selectedUserEmail() ? 'Pages Visited' : 'Tracked Pages' }}</div>
+          <div class="kpi-label">{{ selectedUserEmail() ? 'Pages Visited' : (filterReportName ? 'Tracked Pages' : 'Tracked Pages') }}</div>
           <div class="kpi-value">{{ (analytics()?.kpis?.totalPages || 0) | number }}</div>
         </div>
 
@@ -1586,12 +1629,12 @@ import { ToastService } from './toast.service';
           </ng-template>
         </div>
 
-        <!-- Right: Big Blue Pie / Donut Chart (Without percentage) -->
+        <!-- Right: Big Blue Pie / Donut Chart (Dynamically Dashboards or Pages) -->
         <div class="card-outlined">
           <div class="card-header-row">
-            <h3 class="card-title">{{ selectedUserEmail() ? 'User Page Usage Share' : 'Page Usage Distribution' }}</h3>
+            <h3 class="card-title">{{ selectedUserEmail() ? (filterReportName ? 'User Page Usage Share' : 'User Dashboard Usage Share') : (filterReportName ? 'Page Usage Distribution' : 'Dashboard Usage Distribution') }}</h3>
             <span style="font-size:13px; font-weight:600; color:#1e3a8a;">
-              Top Pages Share
+              {{ filterReportName ? 'Top Pages Share' : 'Top Dashboards Share' }}
             </span>
           </div>
 
@@ -1603,7 +1646,7 @@ import { ToastService } from './toast.service';
               </div>
             </div>
 
-            <!-- Clean legend with views in black (percentage removed) -->
+            <!-- Clean legend with views in black -->
             <div class="donut-legend">
               <div class="legend-row" *ngFor="let s of pieChartData()">
                 <div class="legend-left">
@@ -1626,11 +1669,11 @@ import { ToastService } from './toast.service';
       <!-- ── 4A. MAIN DASHBOARD DETAILED BREAKDOWN: TABBED CARD (when NO user is selected) ── -->
       <div class="unified-breakdown-card" *ngIf="!selectedUserEmail()">
 
-        <!-- Top Bar: Segmented Tabs [ Pages | People | Access ] + Search & Sub-filters -->
+        <!-- Top Bar: Segmented Tabs [ Dashboards / Pages | People | Access ] + Search & Sub-filters -->
         <div class="breakdown-top-bar">
           <div class="segmented-tabs">
-            <button class="segmented-tab" [class.active]="activeBreakdownTab() === 'pages'" (click)="activeBreakdownTab.set('pages'); pageCurrentPage.set(1);">
-              Pages
+            <button class="segmented-tab" [class.active]="activeBreakdownTab() === 'pages'" (click)="activeBreakdownTab.set('pages'); pageCurrentPage.set(1); reportCurrentPage.set(1);">
+              {{ filterReportName ? 'Pages' : 'Dashboards' }}
             </button>
             <button class="segmented-tab" [class.active]="activeBreakdownTab() === 'people'" (click)="activeBreakdownTab.set('people'); userCurrentPage.set(1);">
               People
@@ -1640,31 +1683,100 @@ import { ToastService } from './toast.service';
             </button>
           </div>
 
-          <!-- Controls for Pages tab -->
-          <div style="display:flex; align-items:center; gap:8px;" *ngIf="activeBreakdownTab() === 'pages'">
+          <!-- Controls when Tab 1 is active and no report filter is applied (Dashboard Breakdown) -->
+          <div style="display:flex; align-items:center; gap:8px;" *ngIf="activeBreakdownTab() === 'pages' && !filterReportName">
+            <select class="breakdown-search-input" [ngModel]="reportSortOrder()" (ngModelChange)="reportSortOrder.set($event); reportCurrentPage.set(1);" style="width:115px; cursor:pointer;">
+              <option value="views-desc">Top Views</option>
+              <option value="views-asc">Least Views</option>
+              <option value="name-asc">A to Z</option>
+            </select>
+            <input class="breakdown-search-input" [ngModel]="reportSearchText()" (ngModelChange)="reportSearchText.set($event); reportCurrentPage.set(1);" placeholder="Search dashboard…" style="width:170px;" />
+          </div>
+
+          <!-- Controls when Tab 1 is active and a report IS selected (Page Breakdown) -->
+          <div style="display:flex; align-items:center; gap:8px;" *ngIf="activeBreakdownTab() === 'pages' && filterReportName">
             <select class="breakdown-search-input" [ngModel]="pageSortOrder()" (ngModelChange)="pageSortOrder.set($event); pageCurrentPage.set(1);" style="width:115px; cursor:pointer;">
               <option value="views-desc">Top Views</option>
               <option value="views-asc">Least Views</option>
               <option value="name-asc">A to Z</option>
             </select>
-            <input class="breakdown-search-input" [ngModel]="pageSearchText()" (ngModelChange)="pageSearchText.set($event); pageCurrentPage.set(1);" placeholder="Search..." style="width:160px;" />
+            <input class="breakdown-search-input" [ngModel]="pageSearchText()" (ngModelChange)="pageSearchText.set($event); pageCurrentPage.set(1);" placeholder="Search pages…" style="width:160px;" />
           </div>
 
           <!-- Controls for People tab -->
           <div *ngIf="activeBreakdownTab() === 'people'">
-            <input class="breakdown-search-input" [ngModel]="userSearchText()" (ngModelChange)="userSearchText.set($event); userCurrentPage.set(1);" placeholder="Search..." style="width:160px;" />
+            <input class="breakdown-search-input" [ngModel]="userSearchText()" (ngModelChange)="userSearchText.set($event); userCurrentPage.set(1);" placeholder="Search user…" style="width:160px;" />
           </div>
 
           <!-- Controls for Access tab -->
           <div *ngIf="activeBreakdownTab() === 'access'">
-            <input class="breakdown-search-input" [ngModel]="accessSearchText()" (ngModelChange)="accessSearchText.set($event); accessCurrentPage.set(1)" placeholder="Search..." style="width:190px;" />
+            <input class="breakdown-search-input" [ngModel]="accessSearchText()" (ngModelChange)="accessSearchText.set($event); accessCurrentPage.set(1)" placeholder="Search member…" style="width:190px;" />
           </div>
         </div>
 
-        <!-- ── TAB 1: PAGES VIEW ── -->
-        <ng-container *ngIf="activeBreakdownTab() === 'pages'">
+        <!-- ── TAB 1: DASHBOARDS VIEW (When NO report filter is active) ── -->
+        <ng-container *ngIf="activeBreakdownTab() === 'pages' && !filterReportName">
           <div class="breakdown-subtitle">
-            {{ filteredPageUsage().length }} pages tracked, ranked by views
+            {{ filteredReportUsage().length }} dashboards tracked
+          </div>
+
+          <div class="breakdown-list-container" *ngIf="pagedReports().length; else noDashboards">
+            <div class="breakdown-row-item interactive" *ngFor="let r of pagedReports(); let idx = index" (click)="selectReport(r.reportName)" [title]="'Click to view page breakdown for ' + r.reportName">
+              <div style="display:flex; align-items:center; gap:16px; min-width:0; flex:1;">
+                <span class="row-rank-tag">#{{ (reportCurrentPage() - 1) * 5 + idx + 1 }}</span>
+                <div style="min-width:0; flex:1;">
+                  <div class="row-primary-title" [title]="r.reportName">{{ r.reportName }}</div>
+                  <div class="row-secondary-info" *ngIf="r.groupName" style="margin-top:2px;">
+                    <span style="color:#1d4ed8; font-weight:600;">{{ r.groupName }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row-metric-box">
+                <div class="row-metric-val">{{ r.views | number }}</div>
+                <div class="row-metric-sub">views</div>
+              </div>
+            </div>
+          </div>
+          <ng-template #noDashboards>
+            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:35px 0;">
+              No dashboards match current search.
+            </div>
+          </ng-template>
+
+          <!-- Dashboards Pagination -->
+          <div class="breakdown-bottom-pagination" *ngIf="filteredReportUsage().length > 5">
+            <span class="footer-range-txt">
+              {{ (reportCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(reportCurrentPage() * 5, filteredReportUsage().length) }} of {{ filteredReportUsage().length }}
+            </span>
+            <div class="footer-nav-group">
+              <button class="btn-card-nav" [disabled]="reportCurrentPage() === 1" (click)="reportCurrentPage.set(reportCurrentPage() - 1)">
+                Prev
+              </button>
+              <span class="footer-page-indicator">
+                Page {{ reportCurrentPage() }} of {{ reportTotalPages() }}
+              </span>
+              <button class="btn-card-nav" [disabled]="reportCurrentPage() >= reportTotalPages()" (click)="reportCurrentPage.set(reportCurrentPage() + 1)">
+                Next
+              </button>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── TAB 1: PAGES VIEW (When a specific report IS selected) ── -->
+        <ng-container *ngIf="activeBreakdownTab() === 'pages' && filterReportName">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px; margin-bottom:6px; padding:6px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:#1e40af; min-width:0;">
+              <span style="font-weight:600; color:#64748b;">Filtered Dashboard:</span>
+              <span style="font-weight:700; color:#1d4ed8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="filterReportName">{{ filterReportName }}</span>
+            </div>
+            <button type="button" class="btn-card-nav" (click)="selectReport('')" style="display:flex; align-items:center; gap:4px; font-size:11.5px; padding:3px 10px; cursor:pointer;" title="View all dashboards">
+              <span>✕ View All Dashboards</span>
+            </button>
+          </div>
+
+          <div class="breakdown-subtitle">
+            {{ filteredPageUsage().length }} pages tracked for {{ filterReportName }}, ranked by views
           </div>
 
           <div class="breakdown-list-container" *ngIf="pagedPages().length; else noPages">
@@ -1683,7 +1795,7 @@ import { ToastService } from './toast.service';
 
               <div class="row-metric-box">
                 <div class="row-metric-val">{{ p.views | number }}</div>
-                <div class="row-metric-sub">views</div>
+                <div class="row-metric-sub">views · {{ formatAccessDate(p.lastAccessed) }}</div>
               </div>
             </div>
           </div>
@@ -1836,11 +1948,11 @@ import { ToastService } from './toast.service';
 
       </div>
 
-      <!-- ── 4B. USER DETAIL FULL-WIDTH PAGE BREAKDOWN (with Pagination) ── -->
+      <!-- ── 4B. USER DETAIL FULL-WIDTH PAGE BREAKDOWN ── -->
       <div class="card-outlined" *ngIf="selectedUserEmail()">
         <div class="card-header-row">
           <div>
-            <h3 class="card-title">Pages &amp; Tabs Viewed by {{ currentUserObject()?.name || selectedUserEmail() }}</h3>
+            <h3 class="card-title">Pages Viewed by {{ currentUserObject()?.name || selectedUserEmail() }}</h3>
             <div style="font-size:13px; color:#1e3a8a; margin-top:2px;">
               {{ filteredPageUsage().length }} page{{ filteredPageUsage().length === 1 ? '' : 's' }} visited
             </div>
@@ -1929,16 +2041,22 @@ export class UsageComponent implements OnInit {
   // Breakdown active tab ('pages' | 'people' | 'access')
   activeBreakdownTab = signal<'pages' | 'people' | 'access'>('pages');
 
-  // In-page search & sorting as reactive signals
+  // In-page search & sorting for Dashboard breakdown
+  reportSearchText = signal<string>('');
+  reportSortOrder = signal<'views-desc' | 'views-asc' | 'name-asc'>('views-desc');
+  reportCurrentPage = signal<number>(1);
+
+  // In-page search & sorting for Page breakdown
   pageSearchText = signal<string>('');
   pageSortOrder = signal<'views-desc' | 'views-asc' | 'name-asc'>('views-desc');
+  pageCurrentPage = signal<number>(1);
+
+  // In-page search for People & Access
   userSearchText = signal<string>('');
+  userCurrentPage = signal<number>(1);
+
   accessFilterTab = signal<'all' | 'unused' | 'active'>('all');
   accessSearchText = signal<string>('');
-
-  // Pagination states (5 items per page)
-  pageCurrentPage = signal<number>(1);
-  userCurrentPage = signal<number>(1);
   accessCurrentPage = signal<number>(1);
 
   // Expose Math for template
@@ -2066,11 +2184,13 @@ export class UsageComponent implements OnInit {
         this.filterReportName = '';
       }
     }
+    this.reportSearchText.set('');
+    this.reportCurrentPage.set(1);
     this.pageSearchText.set('');
-    this.userSearchText.set('');
-    this.accessSearchText.set('');
     this.pageCurrentPage.set(1);
+    this.userSearchText.set('');
     this.userCurrentPage.set(1);
+    this.accessSearchText.set('');
     this.accessCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();
@@ -2087,10 +2207,10 @@ export class UsageComponent implements OnInit {
       }
     }
     this.pageSearchText.set('');
-    this.userSearchText.set('');
-    this.accessSearchText.set('');
     this.pageCurrentPage.set(1);
+    this.userSearchText.set('');
     this.userCurrentPage.set(1);
+    this.accessSearchText.set('');
     this.accessCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();
@@ -2100,6 +2220,7 @@ export class UsageComponent implements OnInit {
     this.filterUserEmail = email;
     this.selectedUserEmail.set(email);
     this.searchUser.set('');
+    this.reportCurrentPage.set(1);
     this.pageCurrentPage.set(1);
     this.userCurrentPage.set(1);
     this.accessCurrentPage.set(1);
@@ -2109,25 +2230,56 @@ export class UsageComponent implements OnInit {
 
   selectYear(yr: string) {
     this.filterYear = yr;
+    this.reportCurrentPage.set(1);
+    this.pageCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();
   }
 
   selectMonth(m: string) {
     this.filterMonth = m;
+    this.reportCurrentPage.set(1);
+    this.pageCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();
   }
 
   selectDate(d: string) {
     this.filterDate = d;
+    this.reportCurrentPage.set(1);
+    this.pageCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();
+  }
+
+  clearFilter(type: string, event: MouseEvent) {
+    event.stopPropagation();
+    switch (type) {
+      case 'ws':
+        this.selectWorkspace('');
+        break;
+      case 'rep':
+        this.selectReport('');
+        break;
+      case 'user':
+        this.clearSelectedUser();
+        break;
+      case 'year':
+        this.selectYear('');
+        break;
+      case 'month':
+        this.selectMonth('');
+        break;
+      case 'date':
+        this.selectDate('');
+        break;
+    }
   }
 
   navigateToUser(email: string) {
     this.selectedUserEmail.set(email);
     this.filterUserEmail = email;
+    this.reportCurrentPage.set(1);
     this.pageCurrentPage.set(1);
     this.onFilterChanged();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2136,6 +2288,7 @@ export class UsageComponent implements OnInit {
   clearSelectedUser() {
     this.selectedUserEmail.set('');
     this.filterUserEmail = '';
+    this.reportCurrentPage.set(1);
     this.pageCurrentPage.set(1);
     this.onFilterChanged();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2192,34 +2345,122 @@ export class UsageComponent implements OnInit {
     return Math.max(8, Math.round((views / this.maxMonthlyViews()) * 100));
   }
 
-  // Big Pie / Donut Chart Data in Blue Shades
-  pieChartData = computed(() => {
-    const pages = this.analytics()?.pageUsage || [];
-    if (!pages.length) return [];
-
-    const total = pages.reduce((sum, p) => sum + p.views, 0) || 1;
-    const topPages = pages.slice(0, 5);
-    const otherViews = pages.slice(5).reduce((sum, p) => sum + p.views, 0);
-
-    const blueShades = ['#1e3a8a', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
-
-    const slices = topPages.map((p, idx) => ({
-      name: p.pageName,
-      views: p.views,
-      percent: Math.round((p.views / total) * 100),
-      color: blueShades[idx % blueShades.length]
-    }));
-
-    if (otherViews > 0) {
-      slices.push({
-        name: 'Other Pages',
-        views: otherViews,
-        percent: Math.max(1, Math.round((otherViews / total) * 100)),
-        color: blueShades[5]
-      });
+  // Filtered Dashboard / Report Usage (when no report is selected)
+  filteredReportUsage = computed(() => {
+    let raw: ReportUsageItem[] = this.analytics()?.reportUsage || [];
+    // Fallback: If backend didn't return reportUsage, derive it from pageUsage
+    if (!raw.length && this.analytics()?.pageUsage?.length) {
+      const map = new Map<string, { reportName: string; views: number; viewers: Set<string>; pagesCount: Set<string>; lastAccessed: string; groupName?: string }>();
+      for (const p of this.analytics()!.pageUsage) {
+        const repName = p.reportName || 'Unknown Report';
+        const existing = map.get(repName);
+        if (existing) {
+          existing.views += p.views;
+          existing.pagesCount.add(p.pageName);
+          if (p.lastAccessed && p.lastAccessed > existing.lastAccessed) {
+            existing.lastAccessed = p.lastAccessed;
+          }
+        } else {
+          map.set(repName, {
+            reportName: repName,
+            views: p.views,
+            viewers: new Set<string>(),
+            pagesCount: new Set<string>([p.pageName]),
+            lastAccessed: p.lastAccessed || ''
+          });
+        }
+      }
+      raw = Array.from(map.values()).map(r => ({
+        reportName: r.reportName,
+        groupName: r.groupName,
+        views: r.views,
+        viewers: r.viewers.size || 1,
+        pagesCount: r.pagesCount.size,
+        lastAccessed: r.lastAccessed
+      }));
     }
 
-    return slices;
+    const search = (this.reportSearchText() || '').toLowerCase().trim();
+    const sort = this.reportSortOrder();
+
+    let filtered = raw.filter(r =>
+      (!search || r.reportName.toLowerCase().includes(search) || (r.groupName || '').toLowerCase().includes(search))
+    );
+
+    if (sort === 'views-asc') {
+      filtered = [...filtered].sort((a, b) => a.views - b.views);
+    } else if (sort === 'name-asc') {
+      filtered = [...filtered].sort((a, b) => a.reportName.localeCompare(b.reportName));
+    } else {
+      filtered = [...filtered].sort((a, b) => b.views - a.views);
+    }
+
+    return filtered;
+  });
+
+  reportTotalPages = computed(() => Math.max(1, Math.ceil(this.filteredReportUsage().length / 5)));
+  pagedReports = computed(() => {
+    const p = this.reportCurrentPage();
+    return this.filteredReportUsage().slice((p - 1) * 5, p * 5);
+  });
+
+  // Big Pie / Donut Chart Data in Blue Shades (Dashboards when on main overview without report filter, Pages when user or report filter active)
+  pieChartData = computed(() => {
+    if (!this.filterReportName && !this.selectedUserEmail()) {
+      // Dashboard level distribution for main overview
+      const reports = this.filteredReportUsage();
+      if (!reports.length) return [];
+
+      const total = reports.reduce((sum, r) => sum + r.views, 0) || 1;
+      const topReports = reports.slice(0, 5);
+      const otherViews = reports.slice(5).reduce((sum, r) => sum + r.views, 0);
+
+      const blueShades = ['#1e3a8a', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
+
+      const slices = topReports.map((r, idx) => ({
+        name: r.reportName,
+        views: r.views,
+        percent: Math.round((r.views / total) * 100),
+        color: blueShades[idx % blueShades.length]
+      }));
+
+      if (otherViews > 0) {
+        slices.push({
+          name: 'Other Dashboards',
+          views: otherViews,
+          percent: Math.max(1, Math.round((otherViews / total) * 100)),
+          color: blueShades[5]
+        });
+      }
+      return slices;
+    } else {
+      // Page level distribution for the selected dashboard or selected user
+      const pages = this.filteredPageUsage();
+      if (!pages.length) return [];
+
+      const total = pages.reduce((sum, p) => sum + p.views, 0) || 1;
+      const topPages = pages.slice(0, 5);
+      const otherViews = pages.slice(5).reduce((sum, p) => sum + p.views, 0);
+
+      const blueShades = ['#1e3a8a', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
+
+      const slices = topPages.map((p, idx) => ({
+        name: p.pageName,
+        views: p.views,
+        percent: Math.round((p.views / total) * 100),
+        color: blueShades[idx % blueShades.length]
+      }));
+
+      if (otherViews > 0) {
+        slices.push({
+          name: 'Other Pages',
+          views: otherViews,
+          percent: Math.max(1, Math.round((otherViews / total) * 100)),
+          color: blueShades[5]
+        });
+      }
+      return slices;
+    }
   });
 
   pieGradient = computed(() => {
@@ -2342,12 +2583,15 @@ export class UsageComponent implements OnInit {
     this.searchYear.set('');
     this.searchMonth.set('');
     this.searchDate.set('');
+    this.reportSearchText.set('');
+    this.reportSortOrder.set('views-desc');
+    this.reportCurrentPage.set(1);
     this.pageSearchText.set('');
     this.pageSortOrder.set('views-desc');
-    this.userSearchText.set('');
-    this.accessSearchText.set('');
     this.pageCurrentPage.set(1);
+    this.userSearchText.set('');
     this.userCurrentPage.set(1);
+    this.accessSearchText.set('');
     this.accessCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 /* ── Design Tokens ───────────────────────────────────────── */
 :root {
@@ -13,10 +13,10 @@
   --text2:         #1e293b;
   --muted:         #475569;
 
-  --accent:        #1d6ef5;
+  --accent:        #1d4ed8;
   --accent-light:  #eff6ff;
-  --accent2:       #1558d6;
-  --accent-glow:   rgba(29,110,245,0.12);
+  --accent2:       #1e40af;
+  --accent-glow:   rgba(29,78,216,0.14);
 
   --green:         #059669;
   --green-light:   #ecfdf5;
@@ -27,28 +27,31 @@
 
   --sidebar-bg:    #ffffff;
   --sidebar-active-bg:   #eff6ff;
-  --sidebar-active-text: #1d6ef5;
+  --sidebar-active-text: #1d4ed8;
 
   --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
   --shadow-sm:  0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
   --shadow:     0 4px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.02);
   --shadow-lg:  0 10px 25px rgba(0,0,0,0.07);
-  --shadow-accent: 0 4px 14px rgba(29,110,245,0.22);
+  --shadow-accent: 0 4px 14px rgba(29,78,216,0.25);
 
   --radius:     12px;
   --radius-sm:  8px;
   --radius-xs:  6px;
 
   --req-asterisk: #dc2626;
-  --header-bg:  #1d6ef5;
+  --header-bg:  #1d4ed8;
   --header-text: #ffffff;
 }
 
 /* ── Reset ───────────────────────────────────────────────── */
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+}
 body {
   margin: 0;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 14px;

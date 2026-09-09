@@ -1,62 +1,72 @@
-<div class="login-container">
+<div class="login-wrapper">
   <div class="login-card">
-    <div class="brand-header">
-      <h2>Power BI Portal</h2>
-      <p>Sign in with your Active Directory credentials</p>
+    <!-- Left Blue Panel -->
+    <div class="blue-panel">
+      <div class="panel-content">
+        <span class="welcome-label">Welcome to</span>
+        <h1 class="portal-heading">Power BI Report Automation Portal</h1>
+      </div>
+
+      <!-- Cloud Wave Layered Transition -->
+      <div class="cloud-wave-transition">
+        <svg viewBox="0 0 100 500" preserveAspectRatio="none" class="wave-svg">
+          <path d="M0,0 C30,30 65,60 40,110 C15,160 55,200 35,250 C15,300 55,350 35,400 C15,450 40,480 0,500 L100,500 L100,0 Z" fill="#ffffff" opacity="0.35"/>
+          <path d="M0,0 C20,25 50,55 25,105 C0,155 42,195 22,245 C2,295 42,345 22,395 C2,445 25,475 0,500 L100,500 L100,0 Z" fill="#ffffff"/>
+        </svg>
+      </div>
     </div>
 
-    <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="login-form">
-      <div class="form-group">
-        <label for="username">Username / Email</label>
-        <div class="input-wrap">
-          <svg class="input-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <input 
-            type="text" 
-            id="username" 
-            name="username" 
-            [(ngModel)]="username" 
-            required 
-            placeholder="e.g. username@company.com"
+    <!-- Right Form Panel -->
+    <div class="form-panel">
+      <h2 class="form-title">Sign in to your account</h2>
+
+      <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="login-form">
+        <!-- Username Field -->
+        <div class="field-container">
+          <label class="field-label" for="username">Username / E-mail Address</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            class="line-input"
+            [(ngModel)]="username"
+            required
+            placeholder="Enter your email or username"
             autocomplete="username"
           />
         </div>
-      </div>
-      
-      <div class="form-group">
-        <label for="password">Password</label>
-        <div class="input-wrap">
-          <svg class="input-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-          <input 
-            type="password" 
-            id="password" 
-            name="password" 
-            [(ngModel)]="password" 
-            required 
+
+        <!-- Password Field -->
+        <div class="field-container">
+          <label class="field-label" for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="line-input"
+            [(ngModel)]="password"
+            required
             placeholder="Enter your password"
             autocomplete="current-password"
           />
         </div>
-      </div>
-      
-      <div class="error-banner" *ngIf="errorMessage">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <span>{{ errorMessage }}</span>
-      </div>
-      
-      <button type="submit" [disabled]="!loginForm.form.valid || loading" class="btn-login">
-        <span *ngIf="loading" class="spinner-white"></span>
-        <span>{{ loading ? 'Signing in...' : 'Sign In' }}</span>
-      </button>
-    </form>
+
+        <!-- Error Banner -->
+        <div class="error-banner" *ngIf="errorMessage">
+          <span>{{ errorMessage }}</span>
+        </div>
+
+        <!-- Admin Notice above Sign In Button -->
+        <p class="admin-notice">If you can't log in, please contact the admin.</p>
+
+        <!-- Sign In Button -->
+        <div class="button-row">
+          <button type="submit" [disabled]="!loginForm.form.valid || loading" class="btn-pill-blue">
+            <span *ngIf="loading" class="spinner-white"></span>
+            <span>{{ loading ? 'Signing In...' : 'Sign In' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>

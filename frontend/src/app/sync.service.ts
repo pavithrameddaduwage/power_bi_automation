@@ -423,6 +423,23 @@ export class SyncApiService {
       localStorage.setItem('pbi_cached_usage_reports', JSON.stringify(reports));
     } catch {}
   }
+
+  // ── Active Directory & Role Management ──────────────────────────────
+  syncADUsers(): Observable<any> {
+    return this.http.post('http://localhost:3000/users/sync-ad', {});
+  }
+  findAllUsers(): Observable<any[]> {
+    return this.http.get<any[]>('http://localhost:3000/users/findAllUsers');
+  }
+  findAllRoles(): Observable<any[]> {
+    return this.http.get<any[]>('http://localhost:3000/users/findAllRoles');
+  }
+  createRole(role: string, permissions: string[], id?: number): Observable<any> {
+    return this.http.post('http://localhost:3000/users/createRole', { id, role, permissions });
+  }
+  deleteRole(id: number): Observable<any> {
+    return this.http.delete(`http://localhost:3000/users/deleteRole/${id}`);
+  }
 }
 
 // ── Usage Report interfaces ──────────────────────────────────────
@@ -468,6 +485,18 @@ export interface FilterOptions {
   dates: string[];
 }
 
+export interface ReportUsageItem {
+  reportName: string;
+  groupName?: string;
+  groupId?: string;
+  views: number;
+  viewers: number;
+  pagesCount: number;
+  lastAccessed: string;
+  percent?: number;
+  relativePercent?: number;
+}
+
 export interface DashboardAnalyticsResponse {
   kpis: {
     totalViews: number;
@@ -478,6 +507,7 @@ export interface DashboardAnalyticsResponse {
     topReport: { name: string; views: number } | null;
     mostActiveUser: { name: string; email: string; views: number } | null;
   };
+  reportUsage?: ReportUsageItem[];
   pageUsage: PageUsageItem[];
   userUsage: UserUsageItem[];
   viewsTimeline: TimelineItem[];

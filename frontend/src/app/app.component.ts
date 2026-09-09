@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { UploadComponent } from './upload.component';
@@ -11,14 +11,15 @@ import { LoginComponent } from './auth/login/login.component';
 import { SyncApiService, EmailLog } from './sync.service';
 import { UsageComponent } from './usage.component';
 import { UserDetailsComponent } from './user-details.component';
+import { RolesPermissionsComponent } from './roles-permissions.component';
 import { NavigationStateService } from './navigation-state.service';
 
-type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' | 'usage' | 'user-details';
+type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' | 'usage' | 'user-details' | 'roles-permissions';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadComponent, JobsComponent, DatasetsComponent, PagerComponent, LoginComponent, UsageComponent, UserDetailsComponent],
+  imports: [CommonModule, FormsModule, UploadComponent, JobsComponent, DatasetsComponent, PagerComponent, LoginComponent, UsageComponent, UserDetailsComponent, RolesPermissionsComponent],
   template: `
     <app-login *ngIf="!(auth.isAuthenticated$() | async)"></app-login>
 
@@ -34,7 +35,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
 
           <nav class="sidebar-nav">
             <!-- Usage Analytics Group -->
-            <div class="nav-group">
+            <div class="nav-group" *ngIf="auth.hasPermission('usage_analytics')">
               <div class="nav-subitem" [class.active]="tab() === 'usage'" (click)="tab.set('usage')">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                 Usage Analytics
@@ -43,11 +44,11 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
 
             <!-- Reports Group -->
             <div class="nav-group" style="margin-top:8px;">
-              <div class="nav-subitem" [class.active]="tab() === 'final'" (click)="tab.set('final')">
+              <div class="nav-subitem" *ngIf="auth.hasPermission('reports')" [class.active]="tab() === 'final'" (click)="tab.set('final')">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                 Reports
               </div>
-              <div class="nav-subitem" [class.active]="tab() === 'datasets'" (click)="tab.set('datasets')" style="margin-top:4px;">
+              <div class="nav-subitem" *ngIf="auth.hasPermission('stored_datasets')" [class.active]="tab() === 'datasets'" (click)="tab.set('datasets')" style="margin-top:4px;">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M21 19c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14"></path><path d="M21 5v14"></path></svg>
                 Stored Datasets
               </div>
@@ -55,13 +56,21 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
 
             <!-- Jobs Group -->
             <div class="nav-group" style="margin-top:8px;">
-              <div class="nav-subitem" [class.active]="tab() === 'jobs'" (click)="tab.set('jobs')">
+              <div class="nav-subitem" *ngIf="auth.hasPermission('jobs_schedules')" [class.active]="tab() === 'jobs'" (click)="tab.set('jobs')">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                 Jobs &amp; Schedules
               </div>
-              <div class="nav-subitem" [class.active]="tab() === 'email-history'" (click)="setTab('email-history')">
+              <div class="nav-subitem" *ngIf="auth.hasPermission('email_history')" [class.active]="tab() === 'email-history'" (click)="setTab('email-history')" style="margin-top:4px;">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                 Email History
+              </div>
+            </div>
+
+            <!-- Roles & Permissions Group -->
+            <div class="nav-group" style="margin-top:8px;" *ngIf="auth.hasPermission('roles_permissions') || auth.isAdmin()">
+              <div class="nav-subitem" [class.active]="tab() === 'roles-permissions'" (click)="tab.set('roles-permissions')">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                Roles &amp; Permissions
               </div>
             </div>
           </nav>
@@ -69,10 +78,10 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
           <!-- Sidebar footer -->
           <div class="sidebar-footer">
             <div class="sidebar-user">
-              <div class="avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0;">PM</div>
+              <div class="avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0;">{{ userInitials }}</div>
               <div style="flex:1;min-width:0;">
-                <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Pavithra M.</div>
-                <div style="font-size:11px;color:var(--muted);">Admin</div>
+                <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ currentUser?.name || 'User' }}</div>
+                <div style="font-size:11px;color:var(--muted);">{{ currentUser?.role || (currentUser?.is_admin ? 'Admin' : 'User') }}</div>
               </div>
               <button class="icon-btn-circle" (click)="auth.logout()" title="Logout">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -91,11 +100,12 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
               <span *ngIf="tab() === 'jobs'">Jobs &amp; Schedules</span>
               <span *ngIf="tab() === 'email-history'">Email History</span>
               <span *ngIf="tab() === 'usage'">Usage Analytics</span>
+              <span *ngIf="tab() === 'roles-permissions'">Roles &amp; Permissions Management</span>
             </div>
             <div class="top-bar-right">
               <div class="user-chip">
-                <div class="avatar" style="width:28px;height:28px;font-size:10px;">PM</div>
-                <span>Pavithra Meddaduwage</span>
+                <div class="avatar" style="width:28px;height:28px;font-size:10px;">{{ userInitials }}</div>
+                <span>{{ currentUser?.name || 'User' }}</span>
               </div>
             </div>
           </header>
@@ -105,6 +115,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
             <app-datasets *ngIf="tab() === 'datasets'"></app-datasets>
             <app-jobs *ngIf="tab() === 'jobs'"></app-jobs>
             <app-usage *ngIf="tab() === 'usage'"></app-usage>
+            <app-roles-permissions *ngIf="tab() === 'roles-permissions'"></app-roles-permissions>
             <div *ngIf="tab() === 'email-history'">
               <!-- Email Delivery Logs Card -->
               <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
@@ -341,13 +352,32 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
     }
   `]
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   tab = signal<Tab>('usage');
   usageExpanded = signal(false);
   reportsExpanded = signal(true);
   jobsExpanded = signal(true);
   toast = inject(ToastService);
   auth = inject(AuthService);
+
+  ngOnInit() {
+    this.auth.isAuthenticated$().subscribe((isAuth) => {
+      if (isAuth) {
+        this.tab.set('usage');
+      }
+    });
+  }
+
+  get currentUser() {
+    return this.auth.getUser();
+  }
+
+  get userInitials(): string {
+    const name = this.currentUser?.name || 'User';
+    const parts = name.trim().split(' ').filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
   api = inject(SyncApiService);
   navState = inject(NavigationStateService);
 

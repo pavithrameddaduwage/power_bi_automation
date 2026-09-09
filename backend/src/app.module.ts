@@ -22,6 +22,8 @@ import { EmailService } from './notifications/email.service';
 import { UsageController } from './usage/usage.controller';
 import { UsageService } from './usage/usage.service';
 
+import { UsersModule } from './users/users.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
@@ -29,6 +31,7 @@ import { UsageService } from './usage/usage.service';
     DatabaseModule,
     DatabasesModule,
     AuthModule,
+    UsersModule,
   ],
   controllers: [
     SyncController,

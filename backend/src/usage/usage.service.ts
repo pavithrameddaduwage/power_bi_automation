@@ -872,12 +872,12 @@ export class UsageService {
 
           -- 3. Migrate from usage_views_by_user
           IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'usage_views_by_user') THEN
-            INSERT INTO usage_user_activity (group_id, dataset_id, email, given_name, family_name, report_name, page_name, date, views, updated_at)
-            SELECT group_id, dataset_id, email, given_name, family_name, 'General Usage', 'Overview', date, views, now()
-            FROM usage_views_by_user
-            ON CONFLICT (group_id, dataset_id, email, report_name, page_name, date)
-            DO NOTHING;
+            -- Only migrate if specific report is known, avoid dummy 'General Usage'
+            NULL;
           END IF;
+
+          -- 4. Clean up any dummy General Usage or system usage metric records
+          DELETE FROM usage_user_activity WHERE report_name ILIKE '%general usage%' OR report_name ILIKE '%usage%metric%' OR report_name ILIKE '%report usage%' OR report_name = 'Unknown';
         END $$;
       `);
     } catch (migErr: any) {
@@ -964,30 +964,7 @@ export class UsageService {
       }
     }
 
-    // 3. Ingest viewsByUser (if user+date not captured above)
-    for (const u of data.viewsByUser) {
-      if (!u.email || !u.date) continue;
-      const email = u.email.toLowerCase().trim();
-      const prefix = `${groupId}|${datasetId}|${email}|`;
-      const hasAnyEntry = Array.from(userActivityMap.keys()).some(k => k.startsWith(prefix) && k.endsWith(`|${u.date}`));
-      if (!hasAnyEntry) {
-        const key = `${groupId}|${datasetId}|${email}|General Usage|Overview|${u.date}`;
-        userActivityMap.set(key, {
-          groupId,
-          groupName: workspaceName,
-          datasetId,
-          email,
-          givenName: u.givenName || '',
-          familyName: u.familyName || '',
-          reportName: 'General Usage',
-          pageName: 'Overview',
-          date: u.date,
-          views: u.views || 1,
-        });
-      }
-    }
-
-    // 4. Batch UPSERT into usage_user_activity
+    // 3. Batch UPSERT into usage_user_activity
     const records = Array.from(userActivityMap.values());
     for (const item of records) {
       await this.pool.query(`
@@ -1043,8 +1020,8 @@ export class UsageService {
     const params: any[] = [];
     let paramIdx = 1;
 
-    // Filter out internal usage metric report names from standard reporting
-    conditions.push(`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%')`);
+    // Filter out internal usage metric report names and dummy fallback names from standard reporting
+    conditions.push(`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%' AND report_name NOT ILIKE '%general usage%' AND report_name != 'Unknown')`);
 
     if (filters.groupId && filters.groupId.trim() !== '') {
       conditions.push(`TRIM(group_id) = TRIM($${paramIdx++})`);
@@ -1133,7 +1110,39 @@ export class UsageService {
       views: Number(topUserQuery.rows[0].views)
     } : null;
 
-    // 4. Page-wise / Tab-wise Usage (Single diagram)
+    // 4. Report / Dashboard-wise Usage
+    const reportUsageQuery = await this.pool.query(`
+      SELECT 
+        report_name,
+        COALESCE(MAX(group_name), '') as group_name,
+        COALESCE(MAX(group_id), '') as group_id,
+        SUM(views) as views,
+        COUNT(DISTINCT LOWER(TRIM(email))) as viewers,
+        COUNT(DISTINCT page_name) as pages_count,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY report_name
+      ORDER BY views DESC
+    `, params);
+
+    const maxReportViews = reportUsageQuery.rows.length > 0 ? Number(reportUsageQuery.rows[0].views) : 1;
+    const reportUsage = reportUsageQuery.rows.map(r => {
+      const views = Number(r.views);
+      return {
+        reportName: r.report_name,
+        groupName: workspaceMap.get(r.group_id) || (r.group_name && r.group_name.trim() !== '' ? r.group_name : r.group_id),
+        groupId: r.group_id,
+        views,
+        viewers: Number(r.viewers),
+        pagesCount: Number(r.pages_count),
+        lastAccessed: r.last_accessed,
+        percent: totalViews > 0 ? Math.round((views / totalViews) * 100) : 0,
+        relativePercent: maxReportViews > 0 ? Math.round((views / maxReportViews) * 100) : 0
+      };
+    });
+
+    // 5. Page-wise / Tab-wise Usage (Single diagram)
     const pageUsageQuery = await this.pool.query(`
       SELECT 
         page_name,
@@ -1243,7 +1252,7 @@ export class UsageService {
       groupName: workspaceMap.get(r.group_id) || (r.group_name && r.group_name.trim() !== '' ? r.group_name : r.group_id)
     }));
 
-    const reportFilterWhere = filters.groupId ? `WHERE group_id = '${filters.groupId}' AND report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%'` : `WHERE report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%'`;
+    const reportFilterWhere = filters.groupId ? `WHERE group_id = '${filters.groupId}' AND report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%' AND report_name NOT ILIKE '%general usage%' AND report_name != 'Unknown'` : `WHERE report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%' AND report_name NOT ILIKE '%general usage%' AND report_name != 'Unknown'`;
     const repFilterQuery = await this.pool.query(`
       SELECT DISTINCT report_name, group_id
       FROM usage_user_activity
@@ -1255,7 +1264,7 @@ export class UsageService {
       groupId: r.group_id
     }));
 
-    const userFilterConditions = [`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%')`];
+    const userFilterConditions = [`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%' AND report_name NOT ILIKE '%general usage%' AND report_name != 'Unknown')`];
     if (filters.groupId) userFilterConditions.push(`group_id = '${filters.groupId}'`);
     if (filters.reportName) userFilterConditions.push(`report_name = '${filters.reportName}'`);
     const userFilterWhere = `WHERE ${userFilterConditions.join(' AND ')}`;
@@ -1328,6 +1337,7 @@ export class UsageService {
         topReport,
         mostActiveUser
       },
+      reportUsage,
       pageUsage,
       userUsage,
       viewsTimeline,
