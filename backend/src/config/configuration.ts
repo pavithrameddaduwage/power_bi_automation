@@ -19,17 +19,15 @@ export default (): AppConfig => ({
   tenantId: process.env.TENANT_ID || '',
   clientId: process.env.CLIENT_ID || '',
   clientSecret: process.env.CLIENT_SECRET || '',
-  powerbiScope:
-    process.env.POWERBI_SCOPE ||
-    'https://analysis.windows.net/powerbi/api/.default',
+  powerbiScope: process.env.POWERBI_SCOPE || '',
   pg: {
     host: process.env.PGHOST || '',
-    port: parseInt(process.env.PGPORT || '5432', 10),
+    port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
     database: process.env.PGDATABASE || '',
     user: process.env.PGUSER || '',
     password: process.env.PGPASSWORD || '',
   },
-  port: parseInt(process.env.PORT || '3000', 10),
-  syncCron: process.env.SYNC_CRON || '0 0 6 * * 3',
-  corsOrigin: process.env.CORS_ORIGIN || '*',
+  port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
+  syncCron: process.env.SYNC_CRON || '',
+  corsOrigin: process.env.CORS_ORIGIN || '',
 });
