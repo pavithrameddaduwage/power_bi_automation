@@ -146,118 +146,179 @@ export class UsersService implements OnModuleInit {
 
   // ── Active Directory Users Sync ──────────────────────────────────────
 
+  // ── Active Directory Users Sync ──────────────────────────────────────
+
   async syncADUsers(): Promise<{ success: boolean; totalADUsersFound: number; newlySynced: number; updated: number; message: string }> {
+    await this.ensureTables();
+
     const config = {
       url: process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com',
       baseDN: process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com',
       username: process.env.LDAP_USERNAME || 'MISSVCACC',
       password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
+      paged: true,
+      pageSize: 500,
       attributes: {
         user: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
       },
       tlsOptions: {
         rejectUnauthorized: false,
       },
-      timeout: 8000,
+      timeout: 30000,
       reconnect: false,
-      connectTimeout: 5000,
+      connectTimeout: 10000,
     };
 
-    this.logger.log(`Starting AD user sync from ${config.url} (${config.baseDN})...`);
+    this.logger.log(`Starting AD user sync from ${config.url} (${config.baseDN}) with LDAP pagination...`);
 
     const ad = new ActiveDirectory(config);
-    const searchQuery = '(&(objectCategory=person)(objectClass=user))';
+    const queryOpts = {
+      filter: '(&(objectCategory=person)(objectClass=user))',
+      paged: true,
+      pageSize: 500,
+      attributes: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
+    };
 
-    return new Promise((resolve, reject) => {
-      ad.findUsers(searchQuery, true, async (err: any, users: any[]) => {
-        if (err) {
-          this.logger.error(`AD Search error during sync: ${err.message || err}`);
-          return resolve({
-            success: false,
-            totalADUsersFound: 0,
-            newlySynced: 0,
-            updated: 0,
-            message: `Active Directory sync failed: ${err.message || 'LDAP connection error'}`,
-          });
-        }
-
-        if (!users || users.length === 0) {
-          this.logger.log('No AD users returned from search.');
-          return resolve({
-            success: true,
-            totalADUsersFound: 0,
-            newlySynced: 0,
-            updated: 0,
-            message: 'No AD users found in directory.',
-          });
-        }
-
-        let newlySynced = 0;
-        let updated = 0;
-
-        // Get default 'User' role ID
-        const roleRes = await this.pool.query(`SELECT id FROM role_master WHERE LOWER(role) = 'user'`);
-        const defaultRoleId = roleRes.rows.length > 0 ? roleRes.rows[0].id : null;
-
-        for (const adUser of users) {
-          try {
-            const rawMail = adUser.mail || (adUser.sAMAccountName ? `${adUser.sAMAccountName}@hgusa.com` : null);
-            if (!rawMail) continue;
-
-            const email = String(rawMail).trim().toLowerCase();
-            const name = adUser.displayName || adUser.cn || `${adUser.givenName || ''} ${adUser.sn || ''}`.trim() || adUser.sAMAccountName || email;
-            
-            // Check account status: bit 2 (0x2) in userAccountControl indicates disabled account
-            const uac = Number(adUser.userAccountControl || 0);
-            const isActive = (uac & 2) === 0;
-
-            const existing = await this.pool.query(
-              `SELECT id, name, is_active FROM app_users WHERE LOWER(email) = $1`,
-              [email],
-            );
-
-            if (existing.rows.length === 0) {
-              const insertRes = await this.pool.query(
-                `INSERT INTO app_users (email, name, is_admin, role, is_active)
-                 VALUES ($1, $2, false, 'User', $3)
-                 RETURNING id`,
-                [email, name, isActive],
-              );
-              const userId = insertRes.rows[0].id;
-
-              if (defaultRoleId) {
-                await this.pool.query(
-                  `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-                  [userId, defaultRoleId],
-                );
-              }
-              newlySynced++;
-            } else {
-              const current = existing.rows[0];
-              if (current.name !== name || current.is_active !== isActive) {
-                await this.pool.query(
-                  `UPDATE app_users SET name = $1, is_active = $2, updated_at = now() WHERE id = $3`,
-                  [name, isActive, current.id],
-                );
-                updated++;
-              }
-            }
-          } catch (e: any) {
-            this.logger.warn(`Error processing AD user ${adUser.mail || adUser.sAMAccountName}: ${e?.message}`);
+    try {
+      const users = await new Promise<any[]>((resolve, reject) => {
+        ad.findUsers(queryOpts, false, (err: any, foundUsers: any[]) => {
+          if (err) {
+            this.logger.error(`AD Search error during sync: ${err.message || err}`);
+            return reject(err);
           }
-        }
-
-        const msg = `Synced ${users.length} AD users (${newlySynced} new, ${updated} updated).`;
-        this.logger.log(msg);
-        resolve({
-          success: true,
-          totalADUsersFound: users.length,
-          newlySynced,
-          updated,
-          message: msg,
+          resolve(foundUsers || []);
         });
       });
-    });
+
+      if (!users || users.length === 0) {
+        this.logger.log('No AD users returned from directory search.');
+        return {
+          success: true,
+          totalADUsersFound: 0,
+          newlySynced: 0,
+          updated: 0,
+          message: 'No AD users found in directory.',
+        };
+      }
+
+      this.logger.log(`Fetched ${users.length} AD users from directory. Processing database sync...`);
+
+      // 1. Fetch existing users from DB into Map for fast O(1) lookup
+      const existingRes = await this.pool.query(`SELECT id, LOWER(email) as email, name, is_active FROM app_users`);
+      const existingMap = new Map<string, { id: number; name: string; is_active: boolean }>();
+      for (const row of existingRes.rows) {
+        existingMap.set(row.email, { id: Number(row.id), name: row.name, is_active: row.is_active });
+      }
+
+      // 2. Fetch default 'User' role ID
+      const roleRes = await this.pool.query(`SELECT id FROM role_master WHERE LOWER(role) = 'user'`);
+      const defaultRoleId = roleRes.rows.length > 0 ? roleRes.rows[0].id : null;
+
+      // 3. Categorize AD users into insert and update lists
+      const usersToInsert: { email: string; name: string; isActive: boolean }[] = [];
+      const usersToUpdate: { id: number; name: string; isActive: boolean }[] = [];
+      const processedEmails = new Set<string>();
+
+      for (const adUser of users) {
+        const rawMail = adUser.mail || (adUser.sAMAccountName ? `${adUser.sAMAccountName}@hgusa.com` : null);
+        if (!rawMail) continue;
+
+        const email = String(rawMail).trim().toLowerCase();
+        if (processedEmails.has(email)) continue;
+        processedEmails.add(email);
+
+        const name = adUser.displayName || adUser.cn || `${adUser.givenName || ''} ${adUser.sn || ''}`.trim() || adUser.sAMAccountName || email;
+        const uac = Number(adUser.userAccountControl || 0);
+        const isActive = (uac & 2) === 0;
+
+        const existing = existingMap.get(email);
+        if (!existing) {
+          usersToInsert.push({ email, name, isActive });
+        } else if (existing.name !== name || existing.is_active !== isActive) {
+          usersToUpdate.push({ id: existing.id, name, isActive });
+        }
+      }
+
+      let newlySynced = 0;
+      let updated = 0;
+      const CHUNK_SIZE = 300;
+
+      // 4. Batch INSERT new users
+      if (usersToInsert.length > 0) {
+        for (let i = 0; i < usersToInsert.length; i += CHUNK_SIZE) {
+          const chunk = usersToInsert.slice(i, i + CHUNK_SIZE);
+          const valuePlaceholders: string[] = [];
+          const params: any[] = [];
+
+          chunk.forEach((u, idx) => {
+            const base = idx * 3;
+            valuePlaceholders.push(`($${base + 1}, $${base + 2}, false, 'User', $${base + 3})`);
+            params.push(u.email, u.name, u.isActive);
+          });
+
+          const insertSql = `
+            INSERT INTO app_users (email, name, is_admin, role, is_active)
+            VALUES ${valuePlaceholders.join(', ')}
+            ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active, updated_at = now()
+            RETURNING id;
+          `;
+          const insertedRes = await this.pool.query(insertSql, params);
+
+          if (defaultRoleId && insertedRes.rows.length > 0) {
+            const rolePlaceholders: string[] = [];
+            const roleParams: any[] = [defaultRoleId];
+            insertedRes.rows.forEach((row, idx) => {
+              rolePlaceholders.push(`($${idx + 2}, $1)`);
+              roleParams.push(row.id);
+            });
+            await this.pool.query(
+              `INSERT INTO user_roles (user_id, role_id) VALUES ${rolePlaceholders.join(', ')} ON CONFLICT DO NOTHING`,
+              roleParams,
+            );
+          }
+        }
+        newlySynced = usersToInsert.length;
+      }
+
+      // 5. Batch UPDATE existing users
+      if (usersToUpdate.length > 0) {
+        for (let i = 0; i < usersToUpdate.length; i += CHUNK_SIZE) {
+          const chunk = usersToUpdate.slice(i, i + CHUNK_SIZE);
+          const ids = chunk.map((u) => u.id);
+          const names = chunk.map((u) => u.name);
+          const actives = chunk.map((u) => u.isActive);
+
+          await this.pool.query(
+            `UPDATE app_users AS u
+             SET name = c.name, is_active = c.is_active, updated_at = now()
+             FROM (SELECT unnest($1::int[]) AS id, unnest($2::text[]) AS name, unnest($3::boolean[]) AS is_active) AS c
+             WHERE u.id = c.id`,
+            [ids, names, actives],
+          );
+        }
+        updated = usersToUpdate.length;
+      }
+
+      const msg = `Synced ${users.length} total AD users from directory (${newlySynced} new added, ${updated} updated).`;
+      this.logger.log(msg);
+
+      return {
+        success: true,
+        totalADUsersFound: users.length,
+        newlySynced,
+        updated,
+        message: msg,
+      };
+    } catch (err: any) {
+      this.logger.error(`AD Sync error: ${err.message || err}`);
+      return {
+        success: false,
+        totalADUsersFound: 0,
+        newlySynced: 0,
+        updated: 0,
+        message: `Active Directory sync failed: ${err.message || 'LDAP connection error'}`,
+      };
+    }
   }
 
   async searchADUsers(query: string): Promise<any[]> {
@@ -271,32 +332,39 @@ export class UsersService implements OnModuleInit {
       baseDN: process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com',
       username: process.env.LDAP_USERNAME || 'MISSVCACC',
       password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
+      paged: true,
+      pageSize: 500,
       attributes: {
         user: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
       },
       tlsOptions: { rejectUnauthorized: false },
-      timeout: 5000,
+      timeout: 8000,
       reconnect: false,
-      connectTimeout: 4000,
+      connectTimeout: 5000,
     };
 
     const syncedEmails = new Set<string>();
 
     try {
       const ad = new ActiveDirectory(config);
-      const searchQuery = `(&(objectCategory=person)(objectClass=user)(|(displayName=*${escapedQuery}*)(cn=*${escapedQuery}*)(mail=*${escapedQuery}*)(sAMAccountName=*${escapedQuery}*)(givenName=*${escapedQuery}*)(sn=*${escapedQuery}*)))`;
+      const queryOpts = {
+        filter: `(&(objectCategory=person)(objectClass=user)(|(displayName=*${escapedQuery}*)(cn=*${escapedQuery}*)(mail=*${escapedQuery}*)(sAMAccountName=*${escapedQuery}*)(givenName=*${escapedQuery}*)(sn=*${escapedQuery}*)))`,
+        paged: true,
+        pageSize: 500,
+        attributes: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
+      };
 
       const users = await new Promise<any[]>((resolve) => {
         let isDone = false;
         const timer = setTimeout(() => {
           if (!isDone) {
             isDone = true;
-            this.logger.warn(`AD Live search timed out for query "${searchText}" after 6s.`);
+            this.logger.warn(`AD Live search timed out for query "${searchText}" after 8s.`);
             resolve([]);
           }
-        }, 6000);
+        }, 8000);
 
-        ad.findUsers(searchQuery, true, (err: any, foundUsers: any[]) => {
+        ad.findUsers(queryOpts, false, (err: any, foundUsers: any[]) => {
           if (!isDone) {
             isDone = true;
             clearTimeout(timer);
