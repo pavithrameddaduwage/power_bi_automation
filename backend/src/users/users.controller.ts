@@ -38,6 +38,18 @@ export class UsersController {
   }
 
   @Public()
+  @Post('updateUserRole')
+  updateUserRole(@Body() data: { userId: number; role: string; is_admin?: boolean }) {
+    return this.usersService.updateUserRole(data.userId, data.role, data.is_admin);
+  }
+
+  @Public()
+  @Patch('updateUserRole/:id')
+  updateUserRoleParam(@Param('id') id: number, @Body() data: { role: string; is_admin?: boolean }) {
+    return this.usersService.updateUserRole(id, data.role, data.is_admin);
+  }
+
+  @Public()
   @Delete('deleteUser/:id')
   deleteUser(@Param('id') id: number) {
     return this.usersService.deleteUser(id);

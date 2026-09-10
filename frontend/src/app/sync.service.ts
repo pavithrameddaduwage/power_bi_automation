@@ -440,6 +440,12 @@ export class SyncApiService {
   findAllRoles(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.apiUrl}/users/findAllRoles`);
   }
+  updateUserRole(userId: number, role: string, is_admin?: boolean): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/users/updateUserRole`, { userId, role, is_admin });
+  }
+  updateUser(data: any): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/users/createUser`, data);
+  }
   createRole(role: string, permissions: string[], id?: number): Observable<any> {
     return this.http.post(`${environment.apiUrl}/users/createRole`, { id, role, permissions });
   }

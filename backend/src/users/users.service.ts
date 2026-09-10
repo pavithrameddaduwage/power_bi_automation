@@ -512,6 +512,43 @@ export class UsersService implements OnModuleInit {
     return (await this.findUserByEmail(email)) || { id: userId, email, name, is_admin: isAdmin, role, is_active: isActive };
   }
 
+  async updateUserRole(userId: number, role: string, isAdminParam?: boolean): Promise<any> {
+    await this.ensureTables();
+    const cleanRole = String(role || 'User').trim();
+    const isAdmin = isAdminParam !== undefined ? Boolean(isAdminParam) : (cleanRole.toLowerCase() === 'admin' || cleanRole.toLowerCase() === 'super admin');
+
+    await this.pool.query(
+      `UPDATE app_users SET role = $1, is_admin = $2, updated_at = now() WHERE id = $3`,
+      [cleanRole, isAdmin, userId],
+    );
+
+    // Sync with user_roles table
+    await this.pool.query(`DELETE FROM user_roles WHERE user_id = $1`, [userId]);
+    const roleNames = cleanRole.split(',').map((r: string) => r.trim()).filter(Boolean);
+    for (const rName of roleNames) {
+      const rRes = await this.pool.query(`SELECT id FROM role_master WHERE LOWER(role) = LOWER($1)`, [rName]);
+      if (rRes.rows.length > 0) {
+        await this.pool.query(
+          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [userId, rRes.rows[0].id],
+        );
+      }
+    }
+
+    const { rows } = await this.pool.query(
+      `SELECT u.id, u.email, u.name, u.is_admin, u.role, u.is_active, u.updated_at,
+              COALESCE(json_agg(rm.role) FILTER (WHERE rm.role IS NOT NULL), '[]') as user_roles
+         FROM app_users u
+         LEFT JOIN user_roles ur ON u.id = ur.user_id
+         LEFT JOIN role_master rm ON ur.role_id = rm.id
+        WHERE u.id = $1
+        GROUP BY u.id`,
+      [userId],
+    );
+
+    return rows[0] || { id: userId, role: cleanRole, is_admin: isAdmin };
+  }
+
   async deleteUser(id: number): Promise<{ success: boolean; message: string }> {
     await this.ensureTables();
     await this.pool.query(`DELETE FROM user_roles WHERE user_id = $1`, [id]);
@@ -569,7 +606,7 @@ export class UsersService implements OnModuleInit {
       savedRow = rows[0];
     } else {
       const { rows } = await this.pool.query(
-        `INSERT INTO role_master (role, permissions) VALUES ($1, $2) RETURNING *`,
+        `INSERT INTO role_master (role, permissions) VALUES ($1, $2) ON CONFLICT (role) DO UPDATE SET permissions = EXCLUDED.permissions RETURNING *`,
         [roleName, perms],
       );
       savedRow = rows[0];

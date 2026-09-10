@@ -161,9 +161,13 @@ export class AuthService {
     let dbUser: any = null;
     try {
       const { rows } = await this.pool.query(
-        `SELECT u.id, u.email, u.name, u.is_admin, u.role, u.is_active
+        `SELECT u.id, u.email, u.name, u.is_admin, u.role, u.is_active,
+                COALESCE(json_agg(rm.role) FILTER (WHERE rm.role IS NOT NULL), '[]') as user_roles
            FROM app_users u
+           LEFT JOIN user_roles ur ON u.id = ur.user_id
+           LEFT JOIN role_master rm ON ur.role_id = rm.id
           WHERE LOWER(u.email) = $1 OR LOWER(u.email) = $2 OR LOWER(u.email) = $3
+          GROUP BY u.id
           LIMIT 1`,
         [email, `${username}@hgusa.com`, `${username}@horizongroupusa.com`],
       );
@@ -195,8 +199,10 @@ export class AuthService {
     }
 
     // Determine assigned Roles
-    const roles: string[] = (dbUser?.role || 'User').split(',').map((r: string) => r.trim()).filter(Boolean);
-    if (dbUser?.is_admin && !roles.includes('Admin')) {
+    const directRoles: string[] = (dbUser?.role || 'User').split(',').map((r: string) => r.trim()).filter(Boolean);
+    const relationalRoles: string[] = Array.isArray(dbUser?.user_roles) ? dbUser.user_roles : [];
+    const roles: string[] = [...new Set([...directRoles, ...relationalRoles])];
+    if (dbUser?.is_admin && !roles.some((r) => r.toLowerCase() === 'admin')) {
       roles.push('Admin');
     }
 

@@ -405,10 +405,10 @@ export class RolesPermissionsComponent implements OnInit {
 
   saveUserRole(user: any) {
     this.savingUser.set(user.id);
-    this.api.createRole(user.role, [], user.id).subscribe({
-      next: () => {
+    this.api.updateUserRole(user.id, user.role, user.is_admin).subscribe({
+      next: (res) => {
         this.savingUser.set(null);
-        this.toast.success(`Updated role for ${user.name}`);
+        this.toast.success(`Updated role to "${user.role}" for ${user.name}`);
         this.loadUsers();
       },
       error: (err) => {
