@@ -68,6 +68,7 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
             class="search-input"
             placeholder="Search users by name or email..."
             [(ngModel)]="userSearch"
+            (ngModelChange)="searchUsers($event)"
           />
           <span class="user-count">{{ filteredUsers().length }} users loaded</span>
         </div>
@@ -315,6 +316,7 @@ export class RolesPermissionsComponent implements OnInit {
 
   userSearch = '';
   syncingAD = signal(false);
+  searchingUsers = signal(false);
   savingUser = signal<number | null>(null);
   savingRole = signal(false);
   showNewRoleModal = signal(false);
@@ -351,11 +353,28 @@ export class RolesPermissionsComponent implements OnInit {
   }
 
   filteredUsers() {
-    const q = (this.userSearch || '').toLowerCase().trim();
-    if (!q) return this.users();
-    return this.users().filter(u =>
-      (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
-    );
+    return this.users();
+  }
+
+  searchUsers(query: string) {
+    this.userSearch = query;
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) {
+      this.loadUsers();
+      return;
+    }
+
+    this.searchingUsers.set(true);
+    this.api.searchADUsers(trimmedQuery).subscribe({
+      next: (res) => {
+        this.users.set(res || []);
+        this.searchingUsers.set(false);
+      },
+      error: () => {
+        this.searchingUsers.set(false);
+        this.toast.error('Failed to search Active Directory users.');
+      },
+    });
   }
 
   getInitials(name: string): string {

@@ -27,7 +27,7 @@ export interface AuthResponse {
 export class AuthService {
   private tokenKey = 'pbi_backup_token';
   private userKey = 'pbi_user_info';
-  private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
+  private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasStoredSession());
 
   constructor(private http: HttpClient, private router: Router) {}
 
@@ -92,5 +92,9 @@ export class AuthService {
 
   private hasToken(): boolean {
     return !!localStorage.getItem(this.tokenKey);
+  }
+
+  private hasStoredSession(): boolean {
+    return this.hasToken() && this.getUser() !== null;
   }
 }

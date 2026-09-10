@@ -135,6 +135,10 @@ export class EmailService {
     );
     const user = envVars.SMTP_USER || this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER;
     const pass = envVars.SMTP_PASS || this.configService.get<string>('SMTP_PASS') || process.env.SMTP_PASS;
+    const fromAddress =
+      envVars.SMTP_FROM || this.configService.get<string>('SMTP_FROM') || process.env.SMTP_FROM || DEFAULT_SENDER_FROM;
+
+    this.currentFromAddress = fromAddress;
 
     if (host && host !== 'smtp.example.com' && user && user !== 'user@example.com' && pass) {
       this.smtpTransporter = nodemailer.createTransport({

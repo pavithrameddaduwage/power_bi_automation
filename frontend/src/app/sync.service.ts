@@ -428,6 +428,11 @@ export class SyncApiService {
   syncADUsers(): Observable<any> {
     return this.http.post('http://localhost:3000/users/sync-ad', {});
   }
+  searchADUsers(query: string): Observable<any[]> {
+    return this.http.get<any[]>('http://localhost:3000/users/search-ad', {
+      params: { query },
+    });
+  }
   findAllUsers(): Observable<any[]> {
     return this.http.get<any[]>('http://localhost:3000/users/findAllUsers');
   }

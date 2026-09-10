@@ -163,6 +163,71 @@ export class UsersService implements OnModuleInit {
       connectTimeout: 5000,
     };
 
+
+  async searchADUsers(query: string): Promise<any[]> {
+    const searchText = String(query || '').trim();
+    if (searchText.length < 2) return this.findAllUsers();
+
+    const escapeLDAP = (value: string) => value.replace(/[\\*()\0]/g, (character) => `\\${character.charCodeAt(0).toString(16).padStart(2, '0')}`);
+    const escapedQuery = escapeLDAP(searchText);
+    const config = {
+      url: process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com',
+      baseDN: process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com',
+      username: process.env.LDAP_USERNAME || 'MISSVCACC',
+      password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
+      attributes: {
+        user: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'userAccountControl'],
+      },
+      tlsOptions: { rejectUnauthorized: false },
+      timeout: 8000,
+      reconnect: false,
+      connectTimeout: 5000,
+    };
+
+    const ad = new ActiveDirectory(config);
+    const searchQuery = `(&(objectCategory=person)(objectClass=user)(|(displayName=*${escapedQuery}*)(cn=*${escapedQuery}*)(mail=*${escapedQuery}*)(sAMAccountName=*${escapedQuery}*)))`;
+
+    const users = await new Promise<any[]>((resolve, reject) => {
+      ad.findUsers(searchQuery, true, (err: any, foundUsers: any[]) => {
+        if (err) return reject(err);
+        resolve(foundUsers || []);
+      });
+    });
+
+    const roleRes = await this.pool.query(`SELECT id FROM role_master WHERE LOWER(role) = 'user'`);
+    const defaultRoleId = roleRes.rows[0]?.id;
+
+    for (const adUser of users) {
+      const rawMail = adUser.mail || (adUser.sAMAccountName ? `${adUser.sAMAccountName}@hgusa.com` : null);
+      if (!rawMail) continue;
+
+      const email = String(rawMail).trim().toLowerCase();
+      const name = adUser.displayName || adUser.cn || `${adUser.givenName || ''} ${adUser.sn || ''}`.trim() || adUser.sAMAccountName || email;
+      const uac = Number(adUser.userAccountControl || 0);
+      const isActive = (uac & 2) === 0;
+      const result = await this.pool.query(
+        `INSERT INTO app_users (email, name, is_admin, role, is_active)
+         VALUES ($1, $2, false, 'User', $3)
+         ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active, updated_at = now()
+         RETURNING id`,
+        [email, name, isActive],
+      );
+
+      if (defaultRoleId) {
+        await this.pool.query(
+          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [result.rows[0].id, defaultRoleId],
+        );
+      }
+    }
+
+    const allUsers = await this.findAllUsers();
+    const normalizedQuery = searchText.toLowerCase();
+    return allUsers.filter((user) =>
+      (user.name || '').toLowerCase().includes(normalizedQuery) ||
+      (user.email || '').toLowerCase().includes(normalizedQuery),
+    );
+  }
     this.logger.log(`Starting AD user sync from ${config.url} (${config.baseDN})...`);
 
     const ad = new ActiveDirectory(config);

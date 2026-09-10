@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Header, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Header, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Public } from 'src/auth/decorators/public.decorator';
 
@@ -12,6 +12,14 @@ export class UsersController {
   @Get('findAllUsers')
   findAllUsers() {
     return this.usersService.findAllUsers();
+  }
+
+  @Public()
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Get('search-ad')
+  searchADUsers(@Query('query') query: string) {
+    return this.usersService.searchADUsers(query);
   }
 
   @Public()
