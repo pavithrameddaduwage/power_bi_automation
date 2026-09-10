@@ -21,7 +21,7 @@ const id = (n: string) => {
 
 async function main() {
   const pool = new Pool({
-    host: process.env.PGHOST || 'localhost',
+    host: process.env.PGHOST,
     port: parseInt(process.env.PGPORT || '5432', 10),
     database: process.env.PGDATABASE,
     user: process.env.PGUSER,

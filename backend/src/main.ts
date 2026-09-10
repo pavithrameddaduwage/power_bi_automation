@@ -6,25 +6,31 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
-  // Allow the configured origin plus the common Angular dev ports (the
-  // frontend's `npm start` uses 4301). Comma-separated values are supported.
-  const configured = (config.get<string>('corsOrigin') || '')
+
+  const corsOriginEnv = config.get<string>('corsOrigin') || process.env.CORS_ORIGIN || '*';
+  const corsOrigins = corsOriginEnv
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  const origin = Array.from(
-    new Set([
-      ...configured,
-      'http://localhost:4200',
-      'http://localhost:4301',
-    ]),
-  );
-  app.enableCors({ origin });
+
+  const origin =
+    corsOrigins.includes('*') || corsOrigins.length === 0
+      ? true
+      : corsOrigins.length === 1
+      ? corsOrigins[0]
+      : corsOrigins;
+
+  app.enableCors({
+    origin,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Pragma', 'Cache-Control'],
+  });
+
   // Custom report uploads can be sizeable JSON payloads.
   app.use(json({ limit: '25mb' }));
-  const port = config.get<number>('port')!;
+  const port = config.get<number>('port') || parseInt(process.env.PORT || '3000', 10);
   await app.listen(port);
-  // eslint-disable-next-line no-console
-  console.log(`Backend listening on http://localhost:${port}`);
+  console.log(`Backend server successfully listening on port ${port}`);
 }
 bootstrap();

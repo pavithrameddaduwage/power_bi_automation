@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'http://localhost:3000', // Update this to your production backend API URL (e.g. 'https://api.yourdomain.com')
+  apiUrl: '', // Empty string uses relative endpoints (e.g. /api) in production, or replace with your backend domain URL (e.g. 'https://api.yourdomain.com')
 };

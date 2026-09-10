@@ -31,5 +31,5 @@ export default (): AppConfig => ({
   },
   port: parseInt(process.env.PORT || '3000', 10),
   syncCron: process.env.SYNC_CRON || '0 0 6 * * 3',
-  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+  corsOrigin: process.env.CORS_ORIGIN || '*',
 });
