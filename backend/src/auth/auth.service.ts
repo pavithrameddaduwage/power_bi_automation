@@ -6,23 +6,32 @@ import { Pool } from 'pg';
 
 const ActiveDirectory = require('activedirectory2').promiseWrapper;
 
-const getADConfig = () => ({
-  url: process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com',
-  baseDN: process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com',
-  username: process.env.LDAP_USERNAME || 'MISSVCACC',
-  password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
-  paged: true,
-  pageSize: 500,
-  attributes: {
-    user: [],
-  },
-  tlsOptions: {
-    rejectUnauthorized: false,
-  },
-  timeout: 10000,
-  reconnect: false,
-  connectTimeout: 5000,
-});
+const getADConfig = () => {
+  const rawUser = (process.env.LDAP_USERNAME || 'MISSVCACC').trim();
+  const rawBaseDN = process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com';
+  let bindUsername = rawUser;
+  if (!bindUsername.includes('@') && !bindUsername.includes('\\')) {
+    bindUsername = `${rawUser}@horizongroupusa.com`;
+  }
+
+  return {
+    url: process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com',
+    baseDN: rawBaseDN,
+    username: bindUsername,
+    password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
+    paged: true,
+    pageSize: 500,
+    attributes: {
+      user: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
+    },
+    tlsOptions: {
+      rejectUnauthorized: false,
+    },
+    timeout: 10000,
+    reconnect: false,
+    connectTimeout: 5000,
+  };
+};
 
 const getADClient = () => new ActiveDirectory(getADConfig());
 
@@ -57,7 +66,7 @@ export class AuthService {
       return new Promise<boolean>((resolve) => {
         ad.authenticate(username, password, (err: any, auth: boolean) => {
           if (err) {
-            console.log('AD authentication error:', err.message);
+            console.log('AD authentication error for', username, ':', err.message);
             resolve(false);
           } else {
             resolve(auth);
@@ -71,20 +80,19 @@ export class AuthService {
   }
 
   async getADUserDetails(username: string): Promise<ADUser> {
+    const rawUser = username.trim().toLowerCase().split('@')[0];
     const ad = getADClient();
-    let user = await new Promise<ADUser>((resolve, reject) => {
-      ad.findUser(username, function (err: any, user: ADUser) {
-        if (err) {
-          reject(err);
-        }
-        if (user) {
-          resolve(user);
+    return new Promise<ADUser>((resolve) => {
+      ad.findUser(rawUser, (err: any, user: ADUser) => {
+        if (err || !user) {
+          ad.findUser(`${rawUser}@hgusa.com`, (err2: any, user2: ADUser) => {
+            resolve(user2 || user || (null as any));
+          });
         } else {
-          resolve(null as any);
+          resolve(user);
         }
       });
     });
-    return user;
   }
 
   async signIn(username: string, pass: string): Promise<any> {
@@ -128,11 +136,19 @@ export class AuthService {
     let email = '';
     let aduser: any = null;
 
-    // Authenticate with Active Directory LDAP
+    // Authenticate with Active Directory LDAP using multiple candidate formats
     let adauthentication = await this.authenticateuser(`${username}@hgusa.com`, pass);
     if (!adauthentication) {
       console.log('First domain auth failed, trying second domain...');
       adauthentication = await this.authenticateuser(`${username}@horizongroupusa.com`, pass);
+    }
+    if (!adauthentication) {
+      console.log('Second domain auth failed, trying domain\\username format...');
+      adauthentication = await this.authenticateuser(`horizongroupusa\\${username}`, pass);
+    }
+    if (!adauthentication) {
+      console.log('Third format auth failed, trying plain username...');
+      adauthentication = await this.authenticateuser(username, pass);
     }
 
     if (!adauthentication) {

@@ -146,32 +146,103 @@ export class UsersService implements OnModuleInit {
 
   // ── Active Directory Users Sync ──────────────────────────────────────
 
-  // ── Active Directory Users Sync ──────────────────────────────────────
+  private async executeADQuery(queryOpts: any, isSearch: boolean = false): Promise<any[]> {
+    const rawUrl = process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com';
+    const rawBaseDN = process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com';
+    const rawUser = (process.env.LDAP_USERNAME || 'MISSVCACC').trim();
+    const rawPass = process.env.LDAP_PASSWORD || 'Horizon@MIS';
+
+    // Build candidate bind usernames
+    const candidates: string[] = [];
+    if (rawUser.includes('@') || rawUser.includes('\\')) {
+      candidates.push(rawUser);
+    } else {
+      const domainFromDn = rawBaseDN
+        .split(',')
+        .map((p) => p.trim())
+        .filter((p) => p.toLowerCase().startsWith('dc='))
+        .map((p) => p.substring(3))
+        .join('.');
+
+      if (domainFromDn) {
+        candidates.push(`${rawUser}@${domainFromDn}`);
+      }
+      candidates.push(`${rawUser}@horizongroupusa.com`);
+      candidates.push(`${rawUser}@hgusa.com`);
+      candidates.push(`horizongroupusa\\${rawUser}`);
+      candidates.push(`HGUSA\\${rawUser}`);
+      candidates.push(rawUser);
+    }
+
+    const uniqueCandidates = [...new Set(candidates)];
+    let lastError: any = null;
+
+    for (const bindUser of uniqueCandidates) {
+      const config = {
+        url: rawUrl,
+        baseDN: rawBaseDN,
+        username: bindUser,
+        password: rawPass,
+        paged: true,
+        pageSize: 500,
+        attributes: {
+          user: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
+        },
+        tlsOptions: { rejectUnauthorized: false },
+        timeout: isSearch ? 10000 : 35000,
+        reconnect: false,
+        connectTimeout: isSearch ? 6000 : 12000,
+      };
+
+      try {
+        const ad = new ActiveDirectory(config);
+        const users = await new Promise<any[]>((resolve, reject) => {
+          let isDone = false;
+          const timer = setTimeout(() => {
+            if (!isDone) {
+              isDone = true;
+              if (isSearch) resolve([]);
+              else reject(new Error('AD search timed out.'));
+            }
+          }, isSearch ? 10000 : 35000);
+
+          ad.findUsers(queryOpts, false, (err: any, foundUsers: any[]) => {
+            if (!isDone) {
+              isDone = true;
+              clearTimeout(timer);
+              if (err) return reject(err);
+              resolve(foundUsers || []);
+            }
+          });
+        });
+
+        this.logger.log(`[ActiveDirectory] Bind success with account "${bindUser}". Retrieved ${users.length} records.`);
+        return users;
+      } catch (err: any) {
+        lastError = err;
+        const msg = err?.message || String(err);
+        this.logger.warn(`[ActiveDirectory] Bind attempt with "${bindUser}" failed: ${msg}`);
+        if (
+          msg.includes('52e') ||
+          msg.includes('credentials') ||
+          msg.includes('InvalidCredentials') ||
+          msg.includes('AcceptSecurityContext') ||
+          msg.includes('NoSuchObject')
+        ) {
+          continue;
+        }
+        break;
+      }
+    }
+
+    throw lastError || new Error('Active Directory LDAP query failed with all candidate bind usernames.');
+  }
 
   async syncADUsers(): Promise<{ success: boolean; totalADUsersFound: number; newlySynced: number; updated: number; message: string }> {
     await this.ensureTables();
 
-    const config = {
-      url: process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com',
-      baseDN: process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com',
-      username: process.env.LDAP_USERNAME || 'MISSVCACC',
-      password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
-      paged: true,
-      pageSize: 500,
-      attributes: {
-        user: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
-      },
-      tlsOptions: {
-        rejectUnauthorized: false,
-      },
-      timeout: 30000,
-      reconnect: false,
-      connectTimeout: 10000,
-    };
+    this.logger.log(`Starting AD user sync with LDAP pagination and multi-domain bind resolver...`);
 
-    this.logger.log(`Starting AD user sync from ${config.url} (${config.baseDN}) with LDAP pagination...`);
-
-    const ad = new ActiveDirectory(config);
     const queryOpts = {
       filter: '(&(objectCategory=person)(objectClass=user))',
       paged: true,
@@ -180,15 +251,7 @@ export class UsersService implements OnModuleInit {
     };
 
     try {
-      const users = await new Promise<any[]>((resolve, reject) => {
-        ad.findUsers(queryOpts, false, (err: any, foundUsers: any[]) => {
-          if (err) {
-            this.logger.error(`AD Search error during sync: ${err.message || err}`);
-            return reject(err);
-          }
-          resolve(foundUsers || []);
-        });
-      });
+      const users = await this.executeADQuery(queryOpts, false);
 
       if (!users || users.length === 0) {
         this.logger.log('No AD users returned from directory search.');
@@ -327,26 +390,9 @@ export class UsersService implements OnModuleInit {
 
     const escapeLDAP = (value: string) => value.replace(/[\\*()\0]/g, (character) => `\\${character.charCodeAt(0).toString(16).padStart(2, '0')}`);
     const escapedQuery = escapeLDAP(searchText);
-    const config = {
-      url: process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com',
-      baseDN: process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com',
-      username: process.env.LDAP_USERNAME || 'MISSVCACC',
-      password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
-      paged: true,
-      pageSize: 500,
-      attributes: {
-        user: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
-      },
-      tlsOptions: { rejectUnauthorized: false },
-      timeout: 8000,
-      reconnect: false,
-      connectTimeout: 5000,
-    };
-
     const syncedEmails = new Set<string>();
 
     try {
-      const ad = new ActiveDirectory(config);
       const queryOpts = {
         filter: `(&(objectCategory=person)(objectClass=user)(|(displayName=*${escapedQuery}*)(cn=*${escapedQuery}*)(mail=*${escapedQuery}*)(sAMAccountName=*${escapedQuery}*)(givenName=*${escapedQuery}*)(sn=*${escapedQuery}*)))`,
         paged: true,
@@ -354,28 +400,7 @@ export class UsersService implements OnModuleInit {
         attributes: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
       };
 
-      const users = await new Promise<any[]>((resolve) => {
-        let isDone = false;
-        const timer = setTimeout(() => {
-          if (!isDone) {
-            isDone = true;
-            this.logger.warn(`AD Live search timed out for query "${searchText}" after 8s.`);
-            resolve([]);
-          }
-        }, 8000);
-
-        ad.findUsers(queryOpts, false, (err: any, foundUsers: any[]) => {
-          if (!isDone) {
-            isDone = true;
-            clearTimeout(timer);
-            if (err) {
-              this.logger.warn(`AD Live search notice for "${searchText}": ${err?.message || err}`);
-              return resolve([]);
-            }
-            resolve(foundUsers || []);
-          }
-        });
-      });
+      const users = await this.executeADQuery(queryOpts, true);
 
       const roleRes = await this.pool.query(`SELECT id FROM role_master WHERE LOWER(role) = 'user'`);
       const defaultRoleId = roleRes.rows[0]?.id;
@@ -407,7 +432,7 @@ export class UsersService implements OnModuleInit {
         }
       }
     } catch (err: any) {
-      this.logger.warn(`AD Live search failed for query "${searchText}": ${err?.message || err}`);
+      this.logger.warn(`AD Live search notice for query "${searchText}": ${err?.message || err}`);
     }
 
     const allUsers = await this.findAllUsers();
