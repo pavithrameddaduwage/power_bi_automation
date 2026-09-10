@@ -265,7 +265,6 @@ export class SyncApiService {
     recipients: string[];
     subject?: string;
   }): Observable<{ ok: boolean; count: number }> {
-    console.log(input);
     return this.http.post<{ ok: boolean; count: number }>(`${API}/uploads/send-email-report`, input);
   }
   exportExcel(reportName: string, rows: any[]): Observable<Blob> {

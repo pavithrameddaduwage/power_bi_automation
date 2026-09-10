@@ -27,8 +27,8 @@ export class AuthController {
         signInDto.pass
       );
       return result;
-    } catch (error) {
-      console.error('Login error in controller:', error);
+    } catch (error: any) {
+      console.error('Login error in controller:', error?.message || 'Authentication error');
       throw error;
     }
   }
