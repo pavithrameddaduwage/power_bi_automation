@@ -152,10 +152,10 @@ export class UsersService implements OnModuleInit {
     await this.ensureTables();
 
     const config = {
-      url: process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com',
-      baseDN: process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com',
-      username: process.env.LDAP_USERNAME || 'MISSVCACC',
-      password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
+      url: process.env.LDAP_URL || '',
+      baseDN: process.env.LDAP_BASE_DN || '',
+      username: process.env.LDAP_USERNAME || '',
+      password: process.env.LDAP_PASSWORD || '',
       paged: true,
       pageSize: 500,
       attributes: {
@@ -328,10 +328,10 @@ export class UsersService implements OnModuleInit {
     const escapeLDAP = (value: string) => value.replace(/[\\*()\0]/g, (character) => `\\${character.charCodeAt(0).toString(16).padStart(2, '0')}`);
     const escapedQuery = escapeLDAP(searchText);
     const config = {
-      url: process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com',
-      baseDN: process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com',
-      username: process.env.LDAP_USERNAME || 'MISSVCACC',
-      password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
+      url: process.env.LDAP_URL || '',
+      baseDN: process.env.LDAP_BASE_DN || '',
+      username: process.env.LDAP_USERNAME || '',
+      password: process.env.LDAP_PASSWORD || '',
       paged: true,
       pageSize: 500,
       attributes: {

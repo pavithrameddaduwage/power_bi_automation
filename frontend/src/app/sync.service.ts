@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../environments/environment';
 
-const API = 'http://localhost:3000/api';
+const API = `${environment.apiUrl}/api`;
 
 export interface ReportConfig {
   request: string;
@@ -426,24 +427,24 @@ export class SyncApiService {
 
   // ── Active Directory & Role Management ──────────────────────────────
   syncADUsers(): Observable<any> {
-    return this.http.post('http://localhost:3000/users/sync-ad', {});
+    return this.http.post(`${environment.apiUrl}/users/sync-ad`, {});
   }
   searchADUsers(query: string): Observable<any[]> {
-    return this.http.get<any[]>('http://localhost:3000/users/search-ad', {
+    return this.http.get<any[]>(`${environment.apiUrl}/users/search-ad`, {
       params: { query },
     });
   }
   findAllUsers(): Observable<any[]> {
-    return this.http.get<any[]>('http://localhost:3000/users/findAllUsers');
+    return this.http.get<any[]>(`${environment.apiUrl}/users/findAllUsers`);
   }
   findAllRoles(): Observable<any[]> {
-    return this.http.get<any[]>('http://localhost:3000/users/findAllRoles');
+    return this.http.get<any[]>(`${environment.apiUrl}/users/findAllRoles`);
   }
   createRole(role: string, permissions: string[], id?: number): Observable<any> {
-    return this.http.post('http://localhost:3000/users/createRole', { id, role, permissions });
+    return this.http.post(`${environment.apiUrl}/users/createRole`, { id, role, permissions });
   }
   deleteRole(id: number): Observable<any> {
-    return this.http.delete(`http://localhost:3000/users/deleteRole/${id}`);
+    return this.http.delete(`${environment.apiUrl}/users/deleteRole/${id}`);
   }
 }
 
