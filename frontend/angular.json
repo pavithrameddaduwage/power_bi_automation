@@ -29,7 +29,7 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
-          "options": { "browserTarget": "frontend:build", "port": 4200 },
+          "options": { "browserTarget": "frontend:build", "port": 3018 },
           "configurations": {
             "production": {
               "browserTarget": "frontend:build:production"

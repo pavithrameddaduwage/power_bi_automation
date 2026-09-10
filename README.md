@@ -54,7 +54,7 @@ createdb powerbi_backup     # or create it however you prefer
 npm run migrate             # optional: pre-creates tables
 npm run start:dev
 ```
-Backend runs on `http://localhost:3000`.
+Backend runs on `http://localhost:4018`.
 
 > **Security:** rotate the client secret you shared earlier in Azure
 > (App registrations → Certificates & secrets) and put the new one only in
@@ -66,7 +66,7 @@ cd frontend
 npm install
 npm start
 ```
-Open `http://localhost:4200`.
+Open `http://localhost:3018`.
 
 ## Configuring your reports
 

@@ -27,7 +27,7 @@ export default (): AppConfig => ({
     user: process.env.PGUSER || '',
     password: process.env.PGPASSWORD || '',
   },
-  port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
+  port: process.env.PORT ? parseInt(process.env.PORT, 10) : 4018,
   syncCron: process.env.SYNC_CRON || '',
   corsOrigin: process.env.CORS_ORIGIN || '',
 });

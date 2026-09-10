@@ -29,7 +29,7 @@ async function bootstrap() {
 
   // Custom report uploads can be sizeable JSON payloads.
   app.use(json({ limit: '25mb' }));
-  const port = config.get<number>('port') || parseInt(process.env.PORT || '3000', 10);
+  const port = config.get<number>('port') || parseInt(process.env.PORT || '4018', 10);
   await app.listen(port);
   console.log(`Backend server successfully listening on port ${port}`);
 }

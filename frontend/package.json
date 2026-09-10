@@ -2,7 +2,7 @@
   "name": "powerbi-backup-frontend",
   "version": "1.0.0",
   "scripts": {
-    "start": "ng serve frontend --port 4301",
+    "start": "ng serve frontend --port 3018",
     "build": "ng build"
   },
   "dependencies": {
