@@ -7,21 +7,24 @@ import { Pool } from 'pg';
 const ActiveDirectory = require('activedirectory2').promiseWrapper;
 
 const getADConfig = () => ({
-  url: process.env.LDAP_URL || '',
-  baseDN: process.env.LDAP_BASE_DN || '',
-  username: process.env.LDAP_USERNAME || '',
-  password: process.env.LDAP_PASSWORD || '',
+  url: process.env.LDAP_URL || 'ldap://HGUNBXDC01VM.Horizongroupusa.com',
+  baseDN: process.env.LDAP_BASE_DN || 'dc=Horizongroupusa,dc=com',
+  username: process.env.LDAP_USERNAME || 'MISSVCACC',
+  password: process.env.LDAP_PASSWORD || 'Horizon@MIS',
+  paged: true,
+  pageSize: 500,
   attributes: {
     user: [],
   },
   tlsOptions: {
     rejectUnauthorized: false,
   },
-  timeout: 8000,
+  timeout: 10000,
   reconnect: false,
   connectTimeout: 5000,
 });
-const ad = new ActiveDirectory(getADConfig());
+
+const getADClient = () => new ActiveDirectory(getADConfig());
 
 const ALL_PERMISSIONS = [
   'usage_analytics',
@@ -50,6 +53,7 @@ export class AuthService {
   async authenticateuser(username: string, password: string): Promise<boolean> {
     try {
       console.log('Attempting AD authentication for:', username);
+      const ad = getADClient();
       return new Promise<boolean>((resolve) => {
         ad.authenticate(username, password, (err: any, auth: boolean) => {
           if (err) {
@@ -67,6 +71,7 @@ export class AuthService {
   }
 
   async getADUserDetails(username: string): Promise<ADUser> {
+    const ad = getADClient();
     let user = await new Promise<ADUser>((resolve, reject) => {
       ad.findUser(username, function (err: any, user: ADUser) {
         if (err) {
@@ -249,6 +254,7 @@ export class AuthService {
       let isResolved = false;
 
       try {
+        const ad = getADClient();
         ad.findUsers(searchQuery, true, (err: any, users: any[]) => {
           if (isResolved || searchCompleted) {
             return;
