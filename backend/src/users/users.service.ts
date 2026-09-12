@@ -9,13 +9,11 @@ const ALL_PERMISSIONS = [
   'reports',
   'stored_datasets',
   'jobs_schedules',
-  'email_history',
   'user_management',
   'roles_permissions',
   'workspace_management',
   'report_config',
   'display_view',
-  'report_scheduler',
   'workspace_access',
   'csv_export',
   'filter_sort',
@@ -85,16 +83,29 @@ export class UsersService implements OnModuleInit {
     try {
       const defaultRoles = [
         {
-          role: 'Super Admin',
+          role: 'Super User',
           permissions: JSON.stringify(ALL_PERMISSIONS),
         },
         {
           role: 'Admin',
-          permissions: JSON.stringify(ALL_PERMISSIONS),
+          permissions: JSON.stringify([
+            'usage_analytics',
+            'reports',
+            'stored_datasets',
+            'user_management',
+            'roles_permissions',
+            'display_view',
+            'csv_export',
+            'filter_sort',
+          ]),
         },
         {
           role: 'User',
-          permissions: JSON.stringify(USER_PERMISSIONS),
+          permissions: JSON.stringify([
+            'usage_analytics',
+            'display_view',
+            'filter_sort',
+          ]),
         },
       ];
 
@@ -106,7 +117,7 @@ export class UsersService implements OnModuleInit {
           [r.role, r.permissions],
         );
       }
-      this.logger.log('[Bootstrap] Seeded default roles & permissions (Super Admin, Admin, User).');
+      this.logger.log('[Bootstrap] Seeded default roles & permissions (Super User, Admin, User).');
     } catch (err: any) {
       this.logger.warn('[Bootstrap] Role seeding notice:', err?.message || err);
     }

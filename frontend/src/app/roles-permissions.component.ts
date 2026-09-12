@@ -21,7 +21,6 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   { key: 'workspace_management', label: 'Workspace Management', category: 'System & Data Access' },
   { key: 'report_config', label: 'Report Configuration', category: 'System & Data Access' },
   { key: 'display_view', label: 'Display Views', category: 'System & Data Access' },
-  { key: 'report_scheduler', label: 'Report Scheduler', category: 'System & Data Access' },
   { key: 'workspace_access', label: 'Workspace Access', category: 'System & Data Access' },
   { key: 'csv_export', label: 'CSV Export', category: 'System & Data Access' },
   { key: 'filter_sort', label: 'Filter & Sort', category: 'System & Data Access' },
@@ -37,7 +36,7 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
       <div class="page-header row-between">
         <div>
           <h2>Roles &amp; Permissions Management</h2>
-          <p class="subtext">Manage Active Directory users, assign system roles, and configure navigation link permissions.</p>
+
         </div>
         <div class="actions">
           <button class="btn-sync-ad" (click)="syncADUsers()" [disabled]="syncingAD()">
@@ -70,7 +69,10 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
             [(ngModel)]="userSearch"
             (ngModelChange)="searchUsers($event)"
           />
-          <span class="user-count">{{ filteredUsers().length }} users loaded</span>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="user-count">{{ filteredUsers().length }} user(s)</span>
+            <button class="btn-primary-sm" (click)="showAddUserModal.set(true)">+ Add User</button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -147,7 +149,7 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
             <div class="row-between panel-header">
               <div>
                 <h3>Configure Permissions — <span style="color:#2563eb;">{{ sel.role }}</span></h3>
-                <p style="font-size:12px; color:#64748b; margin:2px 0 0 0;">Check navigation links and feature capabilities for users with this role.</p>
+
               </div>
               <div style="display:flex; gap:8px;">
                 <button class="btn-secondary-sm" (click)="selectAllPermissions(true)">Select All</button>
@@ -206,7 +208,7 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
     <div class="modal-backdrop" *ngIf="showNewRoleModal()">
       <div class="modal-card">
         <h3>Create New System Role</h3>
-        <p style="font-size:12px; color:#64748b; margin-bottom:16px;">Enter a unique title for the new user role.</p>
+
         <input
           type="text"
           class="modal-input"
@@ -216,6 +218,39 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
         <div class="modal-actions">
           <button class="btn-secondary-sm" (click)="showNewRoleModal.set(false)">Cancel</button>
           <button class="btn-primary-sm" (click)="createNewRole()">Create Role</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal-backdrop" *ngIf="showAddUserModal()">
+      <div class="modal-card">
+        <h3>Add System User</h3>
+
+        <label style="font-size:12px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">Full Name</label>
+        <input
+          type="text"
+          class="modal-input"
+          placeholder="e.g. Jane Doe"
+          [(ngModel)]="newUserName"
+        />
+        <label style="font-size:12px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">Email Address</label>
+        <input
+          type="email"
+          class="modal-input"
+          placeholder="e.g. jane@company.com"
+          [(ngModel)]="newUserEmail"
+        />
+        <label style="font-size:12px; font-weight:600; color:#334155; margin-bottom:4px; display:block;">Assign Role</label>
+        <select class="modal-input" [(ngModel)]="newUserRole">
+          <option *ngFor="let r of roles()" [value]="r.role">{{ r.role }}</option>
+        </select>
+        <div class="modal-actions">
+          <button class="btn-secondary-sm" (click)="showAddUserModal.set(false)">Cancel</button>
+          <button class="btn-primary-sm" (click)="addUser()" [disabled]="creatingUser()">
+            <span *ngIf="creatingUser()" class="spinner-xs"></span>
+            Add User
+          </button>
         </div>
       </div>
     </div>
@@ -321,6 +356,12 @@ export class RolesPermissionsComponent implements OnInit {
   savingRole = signal(false);
   showNewRoleModal = signal(false);
   newRoleName = '';
+
+  showAddUserModal = signal(false);
+  newUserName = '';
+  newUserEmail = '';
+  newUserRole = 'User';
+  creatingUser = signal(false);
 
   ngOnInit() {
     this.loadUsers();
@@ -490,6 +531,31 @@ export class RolesPermissionsComponent implements OnInit {
       },
       error: (err) => {
         this.toast.error('Failed to create role.');
+      },
+    });
+  }
+
+  addUser() {
+    const name = (this.newUserName || '').trim();
+    const email = (this.newUserEmail || '').trim().toLowerCase();
+    if (!name || !email) {
+      this.toast.error('Please enter name and valid email.');
+      return;
+    }
+    this.creatingUser.set(true);
+    const isAdmin = this.newUserRole.toLowerCase() === 'admin' || this.newUserRole.toLowerCase() === 'super user' || this.newUserRole.toLowerCase() === 'super admin';
+    this.api.updateUser({ name, email, role: this.newUserRole, is_admin: isAdmin, is_active: true }).subscribe({
+      next: () => {
+        this.creatingUser.set(false);
+        this.showAddUserModal.set(false);
+        this.newUserName = '';
+        this.newUserEmail = '';
+        this.toast.success(`User "${name}" added successfully.`);
+        this.loadUsers();
+      },
+      error: (err) => {
+        this.creatingUser.set(false);
+        this.toast.error('Failed to create user.');
       },
     });
   }

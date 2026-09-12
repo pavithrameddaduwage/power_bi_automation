@@ -60,7 +60,7 @@ export class CatalogController {
     @Query('finalOnly') finalOnly?: string,
     @Query('includeHidden') includeHidden?: string,
   ) {
-    const isIncludeHidden = includeHidden === 'true';
+    const isIncludeHidden = includeHidden !== 'false';
     const cols = await this.powerbi.getDatasetColumns(datasetId, isIncludeHidden);
     if (finalOnly === 'true' && !isIncludeHidden) {
       const curated = cols.filter((c) => !this.isSourceTable(c.table));
@@ -96,8 +96,12 @@ export class CatalogController {
 
   /** Measures (DAX calculations) of a report's dataset, viewed separately. */
   @Get('datasets/:datasetId/measures')
-  measures(@Param('datasetId') datasetId: string) {
-    return this.powerbi.getDatasetMeasures(datasetId);
+  measures(
+    @Param('datasetId') datasetId: string,
+    @Query('includeHidden') includeHidden?: string,
+  ) {
+    const isIncludeHidden = includeHidden !== 'false';
+    return this.powerbi.getDatasetMeasures(datasetId, isIncludeHidden);
   }
 
   /** Pull the selected columns'/measures' data from Power BI (the "sync" step). */

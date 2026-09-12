@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { UploadComponent } from './upload.component';
 import { JobsComponent } from './jobs.component';
 import { DatasetsComponent } from './datasets.component';
-import { PagerComponent } from './pager.component';
 import { ToastService } from './toast.service';
 import { AuthService } from './auth/auth.service';
 import { LoginComponent } from './auth/login/login.component';
@@ -19,7 +18,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadComponent, JobsComponent, DatasetsComponent, PagerComponent, LoginComponent, UsageComponent, UserDetailsComponent, RolesPermissionsComponent],
+  imports: [CommonModule, FormsModule, UploadComponent, JobsComponent, DatasetsComponent, LoginComponent, UsageComponent, UserDetailsComponent, RolesPermissionsComponent],
   template: `
     <app-login *ngIf="!(auth.isAuthenticated$() | async)"></app-login>
 
@@ -58,11 +57,7 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
             <div class="nav-group" style="margin-top:8px;">
               <div class="nav-subitem" *ngIf="auth.hasPermission('jobs_schedules')" [class.active]="tab() === 'jobs'" (click)="tab.set('jobs')">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                Jobs &amp; Schedules
-              </div>
-              <div class="nav-subitem" *ngIf="auth.hasPermission('email_history')" [class.active]="tab() === 'email-history'" (click)="setTab('email-history')" style="margin-top:4px;">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                Email History
+                Power BI Schedules
               </div>
             </div>
 
@@ -146,74 +141,72 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
               </div>
 
               <div class="card" style="padding: 0; overflow: hidden;">
-                <table style="margin: 0;">
-                  <thead>
-                    <tr>
-                      <th style="width: 44px; text-align: center;">
-                        <input type="checkbox"
-                               [checked]="isAllEmailsSelected()"
-                               (change)="toggleSelectAllEmails()"
-                               [disabled]="pagedEmailLogs().length === 0" />
-                      </th>
-                      <th style="width: 26%;">Recipients</th>
-                      <th style="width: 32%;">Subject &amp; File</th>
-                      <th style="width: 10%;">Size</th>
-                      <th style="width: 14%;">Status</th>
-                      <th style="width: 10%;">Sent At</th>
-                      <th style="text-align: right; width: 80px;">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let log of pagedEmailLogs()">
-                      <td style="text-align: center;">
-                        <input type="checkbox"
-                               [checked]="isEmailSelected(log.id)"
-                               (change)="toggleSelectEmail(log.id)" />
-                      </td>
-                      <td style="font-weight: 600; font-size: 12.5px; color: var(--text);">
-                        <div style="max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="log.recipients">
-                          {{ log.recipients }}
-                        </div>
-                      </td>
-                      <td>
-                        <div style="font-weight:600; color:var(--text);">{{ log.subject }}</div>
-                        <div class="muted" style="font-size:11px;" *ngIf="log.file_name">File - {{ log.file_name }}</div>
-                      </td>
-                      <td class="muted" style="white-space:nowrap;">
-                        {{ ((log.file_size_bytes || 0) / 1024).toFixed(1) }} KB
-                      </td>
-                      <td>
-                        <div>
-                          <span class="badge" [class.badge-ok]="log.status.includes('sent')" [class.badge-no]="log.status === 'failed' || log.status === 'error'">
-                            {{ log.status }}
-                          </span>
-                        </div>
-                        <div *ngIf="log.error" style="color: var(--red); font-size: 11px; margin-top: 3px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="log.error">
-                          {{ log.error }}
-                        </div>
-                      </td>
-                      <td class="muted" style="white-space:nowrap;">
-                        {{ log.sent_at | date: 'short' }}
-                      </td>
-                      <td style="text-align: right;">
-                        <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
-                          <a *ngIf="log.preview_url" [href]="log.preview_url" target="_blank" class="btn-action-mini" style="font-size:11.5px; padding:4px 10px;">
-                            View ↗
-                          </a>
-                          <button class="btn-action-mini" (click)="deleteEmailLog(log.id)" [disabled]="deletingLogs()" style="color:var(--red); border-color:#fca5a5; font-size:11.5px; padding:4px 10px;">
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr *ngIf="emailLogs().length === 0">
-                      <td colspan="7" class="placeholder" style="padding: 24px;">No email history recorded yet.</td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div style="padding: 16px 24px;" *ngIf="emailLogs().length > emailPageSize">
-                  <app-pager [page]="emailPage()" [total]="emailLogs().length" [pageSize]="emailPageSize"
-                             (go)="emailPage.set($event)"></app-pager>
+                <div style="max-height: 520px; overflow-y: auto;">
+                  <table style="margin: 0;">
+                    <thead style="position: sticky; top: 0; z-index: 10; background: #eff6ff;">
+                      <tr>
+                        <th style="width: 40px; text-align: center;">
+                          <input type="checkbox"
+                                 [checked]="isAllEmailsSelected()"
+                                 (change)="toggleSelectAllEmails()"
+                                 [disabled]="emailLogs().length === 0" />
+                        </th>
+                        <th style="width: 26%;">Recipients</th>
+                        <th style="width: 32%;">Subject &amp; File</th>
+                        <th style="width: 10%;">Size</th>
+                        <th style="width: 14%;">Status</th>
+                        <th style="width: 10%;">Sent At</th>
+                        <th style="text-align: right; width: 80px;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let log of emailLogs()">
+                        <td style="text-align: center;">
+                          <input type="checkbox"
+                                 [checked]="isEmailSelected(log.id)"
+                                 (change)="toggleSelectEmail(log.id)" />
+                        </td>
+                        <td style="font-weight: 600; font-size: 12.5px; color: var(--text);">
+                          <div style="max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="log.recipients">
+                            {{ log.recipients }}
+                          </div>
+                        </td>
+                        <td>
+                          <div style="font-weight:600; color:var(--text);">{{ log.subject }}</div>
+                          <div class="muted" style="font-size:11px;" *ngIf="log.file_name">File - {{ log.file_name }}</div>
+                        </td>
+                        <td class="muted" style="white-space:nowrap;">
+                          {{ ((log.file_size_bytes || 0) / 1024).toFixed(1) }} KB
+                        </td>
+                        <td>
+                          <div>
+                            <span class="badge" [class.badge-ok]="log.status.includes('sent')" [class.badge-no]="log.status === 'failed' || log.status === 'error'">
+                              {{ log.status }}
+                            </span>
+                          </div>
+                          <div *ngIf="log.error" style="color: var(--red); font-size: 11px; margin-top: 3px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="log.error">
+                            {{ log.error }}
+                          </div>
+                        </td>
+                        <td class="muted" style="white-space:nowrap;">
+                          {{ log.sent_at | date: 'short' }}
+                        </td>
+                        <td style="text-align: right;">
+                          <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+                            <a *ngIf="log.preview_url" [href]="log.preview_url" target="_blank" class="btn-action-mini" style="font-size:11.5px; padding:4px 10px;">
+                              View ↗
+                            </a>
+                            <button class="btn-action-mini" (click)="deleteEmailLog(log.id)" [disabled]="deletingLogs()" style="color:var(--red); border-color:#fca5a5; font-size:11.5px; padding:4px 10px;">
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr *ngIf="emailLogs().length === 0">
+                        <td colspan="7" class="placeholder" style="padding: 24px;">No email history recorded yet.</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

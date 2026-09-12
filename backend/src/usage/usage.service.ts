@@ -1024,33 +1024,75 @@ export class UsageService {
     conditions.push(`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%' AND report_name NOT ILIKE '%general usage%' AND report_name != 'Unknown')`);
 
     if (filters.groupId && filters.groupId.trim() !== '') {
-      conditions.push(`TRIM(group_id) = TRIM($${paramIdx++})`);
-      params.push(filters.groupId.trim());
+      const vals = filters.groupId.split(',').map((s) => s.trim()).filter(Boolean);
+      if (vals.length === 1) {
+        conditions.push(`TRIM(group_id) = TRIM($${paramIdx++})`);
+        params.push(vals[0]);
+      } else if (vals.length > 1) {
+        conditions.push(`TRIM(group_id) = ANY($${paramIdx++}::text[])`);
+        params.push(vals);
+      }
     }
 
     if (filters.reportName && filters.reportName.trim() !== '') {
-      conditions.push(`LOWER(TRIM(report_name)) = LOWER(TRIM($${paramIdx++}))`);
-      params.push(filters.reportName.trim());
+      const vals = filters.reportName.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (vals.length === 1) {
+        conditions.push(`LOWER(TRIM(report_name)) = $${paramIdx++}`);
+        params.push(vals[0]);
+      } else if (vals.length > 1) {
+        conditions.push(`LOWER(TRIM(report_name)) = ANY($${paramIdx++}::text[])`);
+        params.push(vals);
+      }
     }
 
     if (filters.email && filters.email.trim() !== '') {
-      conditions.push(`LOWER(TRIM(email)) = LOWER(TRIM($${paramIdx++}))`);
-      params.push(filters.email.trim());
+      const vals = filters.email.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (vals.length === 1) {
+        conditions.push(`LOWER(TRIM(email)) = $${paramIdx++}`);
+        params.push(vals[0]);
+      } else if (vals.length > 1) {
+        conditions.push(`LOWER(TRIM(email)) = ANY($${paramIdx++}::text[])`);
+        params.push(vals);
+      }
     }
 
     if (filters.year && String(filters.year).trim() !== '') {
-      conditions.push(`EXTRACT(YEAR FROM date) = $${paramIdx++}`);
-      params.push(Number(filters.year));
+      const yearVals = String(filters.year)
+        .split(',')
+        .map((y) => Number(y.trim()))
+        .filter((n) => !isNaN(n) && n > 0);
+      if (yearVals.length === 1) {
+        conditions.push(`EXTRACT(YEAR FROM date) = $${paramIdx++}`);
+        params.push(yearVals[0]);
+      } else if (yearVals.length > 1) {
+        conditions.push(`EXTRACT(YEAR FROM date) = ANY($${paramIdx++}::int[])`);
+        params.push(yearVals);
+      }
     }
 
     if (filters.month && String(filters.month).trim() !== '') {
-      conditions.push(`EXTRACT(MONTH FROM date) = $${paramIdx++}`);
-      params.push(Number(filters.month));
+      const monthVals = String(filters.month)
+        .split(',')
+        .map((m) => Number(m.trim()))
+        .filter((n) => !isNaN(n) && n > 0);
+      if (monthVals.length === 1) {
+        conditions.push(`EXTRACT(MONTH FROM date) = $${paramIdx++}`);
+        params.push(monthVals[0]);
+      } else if (monthVals.length > 1) {
+        conditions.push(`EXTRACT(MONTH FROM date) = ANY($${paramIdx++}::int[])`);
+        params.push(monthVals);
+      }
     }
 
     if (filters.date && filters.date.trim() !== '') {
-      conditions.push(`TO_CHAR(date, 'YYYY-MM-DD') = $${paramIdx++}`);
-      params.push(filters.date.trim());
+      const dateVals = filters.date.split(',').map((d) => d.trim()).filter(Boolean);
+      if (dateVals.length === 1) {
+        conditions.push(`TO_CHAR(date, 'YYYY-MM-DD') = $${paramIdx++}`);
+        params.push(dateVals[0]);
+      } else if (dateVals.length > 1) {
+        conditions.push(`TO_CHAR(date, 'YYYY-MM-DD') = ANY($${paramIdx++}::text[])`);
+        params.push(dateVals);
+      }
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -1317,7 +1359,17 @@ export class UsageService {
 
     const dateConditions = [];
     if (filters.year) dateConditions.push(`EXTRACT(YEAR FROM date) = ${Number(filters.year)}`);
-    if (filters.month) dateConditions.push(`EXTRACT(MONTH FROM date) = ${Number(filters.month)}`);
+    if (filters.month) {
+      const monthVals = String(filters.month)
+        .split(',')
+        .map((m) => Number(m.trim()))
+        .filter((n) => !isNaN(n) && n > 0);
+      if (monthVals.length === 1) {
+        dateConditions.push(`EXTRACT(MONTH FROM date) = ${monthVals[0]}`);
+      } else if (monthVals.length > 1) {
+        dateConditions.push(`EXTRACT(MONTH FROM date) IN (${monthVals.join(',')})`);
+      }
+    }
     const dateWhere = dateConditions.length > 0 ? `WHERE ${dateConditions.join(' AND ')}` : '';
     const datesQuery = await this.pool.query(`
       SELECT DISTINCT TO_CHAR(date, 'YYYY-MM-DD') as date

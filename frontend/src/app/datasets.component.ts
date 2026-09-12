@@ -173,129 +173,82 @@ import { EmailPickerComponent } from './email-picker.component';
 
     <!-- Clean Structured Datasets Table -->
     <div class="dataset-table-card">
-      <table class="dataset-table">
-        <thead>
-          <tr>
-            <th style="width: 44%;">Dataset / Report Name</th>
-            <th style="width: 14%;">Type &amp; Status</th>
-            <th style="width: 14%; text-align: center;">Rows Stored</th>
-            <th style="width: 28%; text-align: right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <ng-container *ngFor="let d of pagedDatasets()">
+      <div style="max-height: 520px; overflow-y: auto;">
+        <table class="dataset-table">
+          <thead style="position: sticky; top: 0; z-index: 10;">
             <tr>
-              <td>
-                <div class="dataset-title">{{ d.label }}</div>
-                <div class="dataset-sub">
-                  <span class="tag" style="font-family: monospace; font-size: 11px;">{{ d.table_name }}</span>
-                </div>
-              </td>
-              <td>
-                <div style="display: flex; gap: 4px; align-items: center;">
-                  <span class="badge badge-ok" style="font-size: 10px;">{{ d.kind }}</span>
-                  <span class="badge badge-no" style="font-size: 10px;" *ngIf="d.locked">locked</span>
-                </div>
-              </td>
-              <td style="text-align: center;">
-                <strong style="font-size: 13.5px; font-variant-numeric: tabular-nums;">
-                  {{ (d.last_rows || 0) | number }}
-                </strong>
-                <span class="muted" style="font-size: 11px; margin-left: 2px;">rows</span>
-              </td>
-              <td>
-                <div class="dataset-actions">
-                  <button
-                    class="btn-action-mini"
-                    (click)="preview(d.table_name)"
-                    [class.active-email]="previewTable() === d.table_name"
-                    [disabled]="busy()"
-                  >
-                    {{ previewTable() === d.table_name ? 'Close Preview' : 'Preview' }}
-                  </button>
-                  <a class="btn-action-mini" [href]="api.exportUrl(d.table_name)" [title]="getDatasetRefreshTooltip(d)">
-                    Export CSV
-                  </a>
-                  <button
-                    class="btn-action-mini"
-                    [class.active-email]="activeEmailTable() === d.table_name"
-                    (click)="toggleEmailDrawer(d.table_name)"
-                    [title]="getDatasetRefreshTooltip(d)"
-                  >
-                    Email Excel
-                  </button>
-                </div>
-              </td>
+              <th style="width: 44%;">Dataset / Report Name</th>
+              <th style="width: 14%;">Type &amp; Status</th>
+              <th style="width: 14%; text-align: center;">Rows Stored</th>
+              <th style="width: 28%; text-align: right;">Actions</th>
             </tr>
-
-            <!-- Inline Email Drawer Row (Expanded on Demand) -->
-            <tr *ngIf="activeEmailTable() === d.table_name">
-              <td colspan="4" style="background: #f8fafc; padding: 12px 16px; border-bottom: 1.5px solid #dbeafe;">
-                <div class="email-drawer-box">
-                  <div class="row-between" style="margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                      <strong style="font-size: 12.5px; color: #1e3a8a;">Email Excel Report - {{ d.label }}</strong>
-                      <span class="badge badge-ok" style="font-size: 10px;">Direct Dispatch</span>
-                    </div>
-                    <button class="btn-secondary" style="font-size: 11px; padding: 2px 6px;" (click)="activeEmailTable.set('')">Close</button>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let d of filteredDatasets()">
+              <tr>
+                <td>
+                  <div class="dataset-title">{{ d.label }}</div>
+                  <div class="dataset-sub">
+                    <span class="tag" style="font-family: monospace; font-size: 11px;">{{ d.table_name }}</span>
                   </div>
-                  <div style="margin-bottom: 8px;">
-                    <app-email-picker
-                      [(recipients)]="datasetEmails[d.table_name]"
-                      [placeholder]="'Select Azure AD recipients or enter custom email...'"
-                    ></app-email-picker>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 4px; align-items: center;">
+                    <span class="badge badge-ok" style="font-size: 10px;">{{ d.kind }}</span>
+                    <span class="badge badge-no" style="font-size: 10px;" *ngIf="d.locked">locked</span>
                   </div>
-                  <div class="row-between" style="margin-top: 8px;">
-                    <span class="muted" style="font-size: 11px;">Generates fresh spreadsheet from stored data</span>
+                </td>
+                <td style="text-align: center;">
+                  <strong style="font-size: 13.5px; font-variant-numeric: tabular-nums;">
+                    {{ (d.last_rows || 0) | number }}
+                  </strong>
+                  <span class="muted" style="font-size: 11px; margin-left: 2px;">rows</span>
+                </td>
+                <td>
+                  <div class="dataset-actions">
                     <button
-                      class="btn-primary"
-                      style="font-size: 12px; padding: 5px 14px;"
-                      (click)="sendEmail(d.table_name)"
-                      [disabled]="busy() || !datasetEmails[d.table_name]"
+                      class="btn-action-mini"
+                      (click)="preview(d.table_name)"
+                      [class.active-email]="previewTable() === d.table_name"
+                      [disabled]="busy()"
                     >
-                      <span *ngIf="busy()" class="spinner-white"></span> Send Excel Now
+                      {{ previewTable() === d.table_name ? 'Close Preview' : 'Preview' }}
                     </button>
+                    <a class="btn-action-mini" [href]="api.exportUrl(d.table_name)" [title]="getDatasetRefreshTooltip(d)">
+                      Export CSV
+                    </a>
                   </div>
-                </div>
+                </td>
+              </tr>
+
+              <!-- Inline Preview Drawer Row (Expanded on Demand) -->
+              <tr *ngIf="previewTable() === d.table_name">
+                <td colspan="4" style="background: #ffffff; padding: 12px 16px; border-bottom: 1.5px solid #93c5fd;">
+                  <div class="row-between" style="margin-bottom: 6px;">
+                    <strong style="font-size: 12px; color: #1e3a8a;">Previewing first 100 rows of {{ d.table_name }}</strong>
+                    <button class="btn-secondary" style="font-size: 11px; padding: 2px 6px;" (click)="previewTable.set('')">Hide</button>
+                  </div>
+                  <div class="preview-box">
+                    <table style="margin: 0;">
+                      <thead>
+                        <tr><th *ngFor="let c of previewCols()">{{ c }}</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let row of previewRows()"><td *ngFor="let c of previewCols()">{{ row[c] }}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+
+            <tr *ngIf="filteredDatasets().length === 0 && !busy()">
+              <td colspan="4" class="placeholder" style="padding: 32px; text-align: center; color: var(--muted);">
+                No stored datasets found matching "{{ searchQuery() }}".
               </td>
             </tr>
-
-            <!-- Inline Preview Drawer Row (Expanded on Demand) -->
-            <tr *ngIf="previewTable() === d.table_name">
-              <td colspan="4" style="background: #ffffff; padding: 12px 16px; border-bottom: 1.5px solid #93c5fd;">
-                <div class="row-between" style="margin-bottom: 6px;">
-                  <strong style="font-size: 12px; color: #1e3a8a;">Previewing first 100 rows of {{ d.table_name }}</strong>
-                  <button class="btn-secondary" style="font-size: 11px; padding: 2px 6px;" (click)="previewTable.set('')">Hide</button>
-                </div>
-                <div class="preview-box">
-                  <table style="margin: 0;">
-                    <thead>
-                      <tr><th *ngFor="let c of previewCols()">{{ c }}</th></tr>
-                    </thead>
-                    <tbody>
-                      <tr *ngFor="let row of previewRows()"><td *ngFor="let c of previewCols()">{{ row[c] }}</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </td>
-            </tr>
-          </ng-container>
-
-          <tr *ngIf="filteredDatasets().length === 0 && !busy()">
-            <td colspan="4" class="placeholder" style="padding: 32px; text-align: center; color: var(--muted);">
-              No stored datasets found matching "{{ searchQuery() }}".
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div style="padding: 14px 20px; border-top: 1px solid #eff6ff;" *ngIf="filteredDatasets().length > pageSize">
-        <app-pager
-          [page]="dsPage()"
-          [total]="filteredDatasets().length"
-          [pageSize]="pageSize"
-          (go)="dsPage.set($event)"
-        ></app-pager>
+          </tbody>
+        </table>
       </div>
     </div>
   `,

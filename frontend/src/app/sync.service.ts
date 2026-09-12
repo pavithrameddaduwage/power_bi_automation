@@ -68,6 +68,7 @@ export interface DatasetMeasure {
   table: string;
   name: string;
   dataType: string;
+  isHidden?: boolean;
 }
 export interface DynamicDataset {
   kind: string;
@@ -182,19 +183,25 @@ export class SyncApiService {
   datasetColumns(
     datasetId: string,
     finalOnly = false,
-    includeHidden = false,
+    includeHidden = true,
   ): Observable<DatasetColumn[]> {
     let params = new HttpParams();
     if (finalOnly) params = params.set('finalOnly', 'true');
-    if (includeHidden) params = params.set('includeHidden', 'true');
+    if (!includeHidden) params = params.set('includeHidden', 'false');
     return this.http.get<DatasetColumn[]>(
       `${API}/catalog/datasets/${datasetId}/columns`,
       { params },
     );
   }
-  datasetMeasures(datasetId: string): Observable<DatasetMeasure[]> {
+  datasetMeasures(
+    datasetId: string,
+    includeHidden = true,
+  ): Observable<DatasetMeasure[]> {
+    let params = new HttpParams();
+    if (!includeHidden) params = params.set('includeHidden', 'false');
     return this.http.get<DatasetMeasure[]>(
       `${API}/catalog/datasets/${datasetId}/measures`,
+      { params },
     );
   }
   reportData(

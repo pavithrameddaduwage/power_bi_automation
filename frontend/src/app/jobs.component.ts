@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SyncApiService, Job, SyncRun, DatasetRefreshInfo } from './sync.service';
@@ -9,211 +9,257 @@ import { PagerComponent } from './pager.component';
   selector: 'app-jobs',
   standalone: true,
   imports: [CommonModule, FormsModule, PagerComponent],
-  template: `
-    <!-- Top Action Bar -->
-    <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
-      <div>
-        <h3 style="margin: 0;">Scheduled Jobs &amp; Automation</h3>
-        <p class="muted" style="margin: 4px 0 0 0; font-size: 13px;">
-          Manage recurring background sync jobs and export schedules.
-        </p>
-      </div>
-      <button class="btn-secondary" (click)="load()" [disabled]="busy() || loadingRefreshes()">
-        <span *ngIf="busy() || loadingRefreshes()" class="spinner"></span> Refresh
-      </button>
-    </div>
+  styles: [`
+    :host { display: block; }
+    .th-header-cell {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; user-select: none; cursor: pointer;
+    }
+    .th-title {
+      font-size: 12.5px; font-weight: 700; color: #1e40af; white-space: nowrap;
+    }
+    .th-arrow-btn {
+      font-size: 11px; color: #93c5fd; transition: transform 0.15s, color 0.15s; display: inline-block;
+      opacity: 0.8;
+    }
+    .th-arrow-btn.open { transform: rotate(180deg); color: #1d6ef5; opacity: 1; }
+    .th-arrow-btn.filtered { color: #1d6ef5; opacity: 1; font-weight: 900; }
 
+    .filter-popover {
+      position: fixed; margin-top: 0;
+      min-width: 220px; max-width: 280px; background: #ffffff;
+      border: 1.5px solid #93c5fd; border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(29,110,245,0.14); padding: 14px;
+      z-index: 9999; cursor: default; text-transform: none; font-weight: normal;
+    }
+    .popover-header { font-size: 12px; font-weight: 700; color: #1d4ed8; margin-bottom: 8px; text-align: left; }
+    .popover-search-input {
+      font-size: 12px; padding: 6px 10px; border: 1.5px solid #93c5fd;
+      border-radius: 7px; width: 100%; margin-bottom: 8px; outline: none;
+    }
+    .popover-search-input:focus { border-color: #1d6ef5; }
+    .popover-options-list {
+      max-height: 200px; overflow-y: auto; border: 1.5px solid #dbeafe;
+      border-radius: 8px; text-align: left;
+      scrollbar-width: thin; scrollbar-color: #93c5fd #f0f7ff;
+    }
+    .popover-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; font-size: 12px; color: #1e293b;
+      cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.1s;
+    }
+    .popover-option:last-child { border-bottom: none; }
+    .popover-option:hover { background: #eff6ff; }
+    .popover-option input[type="radio"] { accent-color: #1d6ef5; cursor: pointer; flex-shrink: 0; }
+    .popover-option span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .popover-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; border-top: 1px solid #dbeafe; padding-top: 10px; }
+    .btn-popover-main { background: #1d6ef5; color: #fff; border: none; padding: 5px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-popover-sub { background: #ffffff; color: #374151; border: 1.5px solid #93c5fd; padding: 5px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  `],
+  template: `
     <!-- Power BI Refresh Schedules Reference Card -->
     <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
       <div style="padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--card);">
         <div>
           <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text);">Power BI Dataset Refresh Times &amp; Schedules</h4>
-          <p class="muted" style="margin: 3px 0 0 0; font-size: 12px;">
-            Reference when Power BI datasets refresh so you can schedule sync jobs after refresh completes to avoid job crashes.
-          </p>
         </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
           <input
             [ngModel]="refreshSearch()"
             (ngModelChange)="onSearchChange($event)"
-            placeholder="Search dataset or workspace..."
-            style="font-size: 12px; padding: 6px 12px; min-width: 220px;"
+            placeholder="Search dataset, workspace, owner..."
+            style="font-size: 12px; padding: 6px 12px; min-width: 220px; border-radius: 6px; border: 1px solid var(--border2); outline: none; background: var(--card); color: var(--text);"
           />
-          <span class="tag" *ngIf="refreshSchedules().length > 0">{{ filteredRefreshes().length }} dataset(s)</span>
+          <button class="btn-secondary" (click)="load()" [disabled]="busy() || loadingRefreshes()" style="font-size: 11px; padding: 4px 10px;">
+            <span *ngIf="busy() || loadingRefreshes()" class="spinner"></span> Refresh
+          </button>
+          <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" *ngIf="hasActiveFilters()" (click)="clearAllFilters()">
+            Clear Filters
+          </button>
+          <span class="tag" *ngIf="refreshSchedules().length > 0">
+            {{ filteredRefreshes().length }} of {{ refreshSchedules().length }} dataset(s)
+          </span>
         </div>
       </div>
 
-      <table style="margin: 0;">
-        <thead>
-          <tr>
-            <th style="width: 24%;">Workspace</th>
-            <th style="width: 30%;">Dataset / Dashboard</th>
-            <th style="width: 26%;">Power BI Refresh Schedule</th>
-            <th style="width: 20%;">Last Refresh &amp; Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let s of pagedRefreshes()">
-            <td style="font-weight: 600; font-size: 12px; color: var(--text); white-space: nowrap;">
-              {{ s.workspaceName }}
-            </td>
-            <td>
-              <div style="font-weight: 600; font-size: 13px; color: var(--text);">{{ s.datasetName }}</div>
-              <div class="muted" style="font-size: 11px;" *ngIf="s.configuredBy">Owner - {{ s.configuredBy }}</div>
-            </td>
-            <td>
-              <div *ngIf="s.scheduleEnabled && s.scheduleTimes?.length">
-                <span class="badge badge-ok" style="font-weight: 600;">
-                  {{ s.scheduleTimes.join(', ') }} ({{ s.timeZone || 'UTC' }})
-                </span>
-                <div class="muted" style="font-size: 11px; margin-top: 3px;">
-                  {{ formatScheduleDays(s.scheduleDays) }}
+      <div style="max-height: 520px; overflow-y: auto;">
+        <table style="margin: 0;">
+          <thead style="position: sticky; top: 0; z-index: 10; background: #eff6ff;">
+            <tr>
+              <th style="width: 24%; cursor: pointer;" (click)="toggleHeaderFilter('workspace', $event)">
+                <div class="th-header-cell">
+                  <span class="th-title">Workspace</span>
+                  <span class="th-arrow-btn" [class.open]="activeHeaderCol() === 'workspace'" [class.filtered]="!!workspaceFilter()">▾</span>
                 </div>
-              </div>
-              <div *ngIf="!s.scheduleEnabled || !s.scheduleTimes?.length">
-                <span class="tag" style="color: var(--muted); font-size: 11px;">Manual / Not Scheduled</span>
-              </div>
-            </td>
-            <td>
-              <div *ngIf="s.lastRefreshStartTime">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span
-                    class="badge"
-                    [class.badge-ok]="s.lastRefreshStatus === 'Completed'"
-                    [class.badge-no]="s.lastRefreshStatus === 'Failed'"
-                    [style.background]="s.lastRefreshStatus === 'InProgress' ? '#e0f2fe' : ''"
-                    [style.color]="s.lastRefreshStatus === 'InProgress' ? '#0369a1' : ''"
-                  >
-                    {{ s.lastRefreshStatus || 'Completed' }}
+              </th>
+              <th style="width: 30%; cursor: pointer;" (click)="toggleHeaderFilter('dataset', $event)">
+                <div class="th-header-cell">
+                  <span class="th-title">Dataset / Dashboard</span>
+                  <span class="th-arrow-btn" [class.open]="activeHeaderCol() === 'dataset'" [class.filtered]="!!refreshSearch()">▾</span>
+                </div>
+              </th>
+              <th style="width: 26%; cursor: pointer;" (click)="toggleHeaderFilter('schedule', $event)">
+                <div class="th-header-cell">
+                  <span class="th-title">Power BI Refresh Schedule</span>
+                  <span class="th-arrow-btn" [class.open]="activeHeaderCol() === 'schedule'" [class.filtered]="!!scheduleFilter()">▾</span>
+                </div>
+              </th>
+              <th style="width: 20%; cursor: pointer;" (click)="toggleHeaderFilter('status', $event)">
+                <div class="th-header-cell">
+                  <span class="th-title">Last Refresh &amp; Status</span>
+                  <span class="th-arrow-btn" [class.open]="activeHeaderCol() === 'status'" [class.filtered]="!!statusFilter()">▾</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of filteredRefreshes()">
+              <td style="font-weight: 600; font-size: 12px; color: var(--text); white-space: nowrap;">
+                {{ s.workspaceName }}
+              </td>
+              <td>
+                <div style="font-weight: 600; font-size: 13px; color: var(--text);">{{ s.datasetName }}</div>
+                <div class="muted" style="font-size: 11px;" *ngIf="s.configuredBy">Owner - {{ s.configuredBy }}</div>
+              </td>
+              <td>
+                <div *ngIf="s.scheduleEnabled && s.scheduleTimes?.length">
+                  <span class="badge badge-ok" style="font-weight: 600;">
+                    {{ s.scheduleTimes.join(', ') }} ({{ s.timeZone || 'UTC' }})
                   </span>
-                  <span class="muted" style="font-size: 11px;" *ngIf="s.lastRefreshType">({{ s.lastRefreshType }})</span>
+                  <div class="muted" style="font-size: 11px; margin-top: 3px;">
+                    {{ formatScheduleDays(s.scheduleDays) }}
+                  </div>
                 </div>
-                <div class="muted" style="font-size: 11px; margin-top: 3px;">
-                  {{ s.lastRefreshStartTime | date: 'medium' }}
+                <div *ngIf="!s.scheduleEnabled || !s.scheduleTimes?.length">
+                  <span class="tag" style="color: var(--muted); font-size: 11px;">Manual / Not Scheduled</span>
                 </div>
-              </div>
-              <div class="muted" *ngIf="!s.lastRefreshStartTime" style="font-size: 12px;">
-                No refresh history recorded
-              </div>
-            </td>
-          </tr>
-          <tr *ngIf="pagedRefreshes().length === 0 && !loadingRefreshes()">
-            <td colspan="4" class="placeholder" style="padding: 24px;">No matching dataset refresh schedules found.</td>
-          </tr>
-          <tr *ngIf="loadingRefreshes()">
-            <td colspan="4" class="placeholder" style="padding: 24px;">
-              <span class="spinner"></span> Loading Power BI dataset refresh times...
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div style="padding: 14px 24px;" *ngIf="filteredRefreshes().length > refreshPageSize">
-        <app-pager
-          [page]="refreshPage()"
-          [total]="filteredRefreshes().length"
-          [pageSize]="refreshPageSize"
-          (go)="refreshPage.set($event)"
-        ></app-pager>
+              </td>
+              <td>
+                <div *ngIf="s.lastRefreshStartTime">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span
+                      class="badge"
+                      [class.badge-ok]="s.lastRefreshStatus === 'Completed'"
+                      [class.badge-no]="s.lastRefreshStatus === 'Failed'"
+                      [style.background]="s.lastRefreshStatus === 'InProgress' ? '#e0f2fe' : ''"
+                      [style.color]="s.lastRefreshStatus === 'InProgress' ? '#0369a1' : ''"
+                    >
+                      {{ s.lastRefreshStatus || 'Completed' }}
+                    </span>
+                    <span class="muted" style="font-size: 11px;" *ngIf="s.lastRefreshType">({{ s.lastRefreshType }})</span>
+                  </div>
+                  <div class="muted" style="font-size: 11px; margin-top: 3px;">
+                    {{ s.lastRefreshStartTime | date: 'medium' }}
+                  </div>
+                </div>
+                <div class="muted" *ngIf="!s.lastRefreshStartTime" style="font-size: 12px;">
+                  No refresh history recorded
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="filteredRefreshes().length === 0 && !loadingRefreshes()">
+              <td colspan="4" class="placeholder" style="padding: 24px;">No matching dataset refresh schedules found.</td>
+            </tr>
+            <tr *ngIf="loadingRefreshes()">
+              <td colspan="4" class="placeholder" style="padding: 24px;">
+                <span class="spinner"></span> Loading Power BI dataset refresh times...
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
 
-    <!-- Active Scheduled Jobs Card -->
-    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 32px;">
-      <div style="padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
-        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text);">Active Automation Jobs</h4>
-        <span class="tag" *ngIf="jobs().length > 0">{{ jobs().length }} job(s) configured</span>
-      </div>
-      <table style="margin: 0;">
-        <thead>
-          <tr>
-            <th style="width: 28%;">Job Name</th>
-            <th style="width: 20%;">Type &amp; Schedule</th>
-            <th style="width: 26%;">Target Table</th>
-            <th style="width: 14%;">Last Run</th>
-            <th style="width: 12%; text-align: right;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let j of pagedJobs()">
-            <td>
-              <div style="font-weight: 600;">{{ j.name }}</div>
-              <div class="tag" *ngIf="j.recipients" style="margin-top:3px; color:var(--accent); font-size:11px;" [title]="'Recipients - ' + j.recipients">
-                {{ j.recipients }}
-              </div>
-            </td>
-            <td>
-              <span class="badge" [class.badge-ok]="j.mode === 'upsert'" [class.badge-no]="j.mode === 'append'">{{ j.mode }}</span>
-              <span class="badge badge-ok" *ngIf="j.cron">{{ j.cron }}</span>
-              <span class="badge" *ngIf="!j.cron">manual</span>
-            </td>
-            <td>
-              <div class="tag">{{ j.report_name }} &rarr; {{ j.target_table }}</div>
-            </td>
-            <td>
-              <div class="tag" *ngIf="j.last_run_at">
-                {{ j.last_run_at | date: 'short' }} · <span [class]="'status-' + j.last_status">{{ j.last_status }}</span>
-              </div>
-              <div class="muted" *ngIf="!j.last_run_at">Never</div>
-            </td>
-            <td>
-              <div style="display:flex; gap:6px; justify-content:flex-end;">
-                <button class="btn-action-mini" (click)="run(j)" [disabled]="busy()">
-                  <span *ngIf="running() === j.id" class="spinner"></span> Run
-                </button>
-                <button class="btn-action-mini" (click)="remove(j)" [disabled]="busy()" style="color:var(--red); border-color:#fca5a5;">
-                  Delete
-                </button>
-              </div>
-            </td>
-          </tr>
-          <tr *ngIf="jobs().length === 0">
-            <td colspan="5" class="placeholder" style="padding: 24px;">No scheduled automation jobs configured yet.</td>
-          </tr>
-        </tbody>
-      </table>
-      <div style="padding: 16px 24px;" *ngIf="jobs().length > pageSize">
-        <app-pager [page]="jobPage()" [total]="jobs().length" [pageSize]="pageSize"
-                   (go)="jobPage.set($event)"></app-pager>
-      </div>
-    </div>
+      <!-- Floating Popover Filter Menu -->
+      <div *ngIf="activeHeaderCol() as col"
+           class="filter-popover"
+           [style.top.px]="popoverPos().top"
+           [style.left.px]="popoverPos().left"
+           (click)="$event.stopPropagation()">
 
-    <!-- Execution Run History Card -->
-    <div class="card row-between" style="padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center;">
-      <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text);">Run History</h4>
-    </div>
-    <div class="card" style="padding: 0; overflow: hidden;">
-      <table style="margin: 0;">
-        <thead>
-          <tr>
-            <th style="width: 36%;">Request</th>
-            <th style="width: 24%;">Table</th>
-            <th style="width: 10%; text-align: center;">Rows</th>
-            <th style="width: 16%;">Status</th>
-            <th style="width: 14%;">When</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let r of pagedRuns()">
-            <td>
-              <div style="font-weight: 600; color: var(--text);">{{ r.request }}</div>
-            </td>
-            <td>
-              <div class="tag">{{ r.target_table }}</div>
-            </td>
-            <td style="text-align: center; font-variant-numeric: tabular-nums; font-weight: 600;">
-              {{ r.rows_written }}
-            </td>
-            <td [class]="'status-' + r.status">
-              {{ r.status }}<span class="tag" *ngIf="r.error"> — {{ r.error }}</span>
-            </td>
-            <td class="muted">{{ r.started_at | date: 'short' }}</td>
-          </tr>
-          <tr *ngIf="runs().length === 0"><td colspan="5" class="placeholder" style="padding: 24px;">No runs yet.</td></tr>
-        </tbody>
-      </table>
-      <div style="padding: 16px 24px;" *ngIf="runs().length > pageSize">
-        <app-pager [page]="runPage()" [total]="runs().length" [pageSize]="pageSize"
-                   (go)="runPage.set($event)"></app-pager>
+        <!-- Workspace Filter -->
+        <ng-container *ngIf="col === 'workspace'">
+          <div class="popover-header">Filter Workspace</div>
+          <input class="popover-search-input" placeholder="Search workspace..."
+                 [ngModel]="wsSearch" (ngModelChange)="wsSearch = $event" (click)="$event.stopPropagation()" />
+          <div class="popover-options-list">
+            <label class="popover-option">
+              <input type="radio" name="wsFilter" [checked]="workspaceFilter() === ''" (change)="workspaceFilter.set('')" />
+              <span>All Workspaces</span>
+            </label>
+            <label *ngFor="let ws of filteredAvailableWorkspaces()" class="popover-option">
+              <input type="radio" name="wsFilter" [checked]="workspaceFilter() === ws" (change)="workspaceFilter.set(ws)" />
+              <span>{{ ws }}</span>
+            </label>
+          </div>
+          <div class="popover-actions">
+            <button class="btn-popover-sub" (click)="workspaceFilter.set(''); activeHeaderCol.set(null)">Clear</button>
+            <button class="btn-popover-main" (click)="activeHeaderCol.set(null)">Apply</button>
+          </div>
+        </ng-container>
+
+        <!-- Dataset / Dashboard Search -->
+        <ng-container *ngIf="col === 'dataset'">
+          <div class="popover-header">Filter Dataset or Owner</div>
+          <input class="popover-search-input" placeholder="Type dataset or owner name..."
+                 [ngModel]="refreshSearch()" (ngModelChange)="refreshSearch.set($event)" (click)="$event.stopPropagation()" />
+          <div class="popover-actions">
+            <button class="btn-popover-sub" (click)="refreshSearch.set(''); activeHeaderCol.set(null)">Clear</button>
+            <button class="btn-popover-main" (click)="activeHeaderCol.set(null)">Apply</button>
+          </div>
+        </ng-container>
+
+        <!-- Schedule Filter -->
+        <ng-container *ngIf="col === 'schedule'">
+          <div class="popover-header">Filter Refresh Schedule</div>
+          <div class="popover-options-list">
+            <label class="popover-option">
+              <input type="radio" name="schFilter" [checked]="scheduleFilter() === ''" (change)="scheduleFilter.set('')" />
+              <span>All Schedules</span>
+            </label>
+            <label class="popover-option">
+              <input type="radio" name="schFilter" [checked]="scheduleFilter() === 'Scheduled'" (change)="scheduleFilter.set('Scheduled')" />
+              <span>Scheduled Only</span>
+            </label>
+            <label class="popover-option">
+              <input type="radio" name="schFilter" [checked]="scheduleFilter() === 'Manual'" (change)="scheduleFilter.set('Manual')" />
+              <span>Manual / Not Scheduled</span>
+            </label>
+          </div>
+          <div class="popover-actions">
+            <button class="btn-popover-sub" (click)="scheduleFilter.set(''); activeHeaderCol.set(null)">Clear</button>
+            <button class="btn-popover-main" (click)="activeHeaderCol.set(null)">Apply</button>
+          </div>
+        </ng-container>
+
+        <!-- Status Filter -->
+        <ng-container *ngIf="col === 'status'">
+          <div class="popover-header">Filter Last Status</div>
+          <div class="popover-options-list">
+            <label class="popover-option">
+              <input type="radio" name="stFilter" [checked]="statusFilter() === ''" (change)="statusFilter.set('')" />
+              <span>All Statuses</span>
+            </label>
+            <label class="popover-option">
+              <input type="radio" name="stFilter" [checked]="statusFilter() === 'Completed'" (change)="statusFilter.set('Completed')" />
+              <span>Completed</span>
+            </label>
+            <label class="popover-option">
+              <input type="radio" name="stFilter" [checked]="statusFilter() === 'Failed'" (change)="statusFilter.set('Failed')" />
+              <span>Failed</span>
+            </label>
+            <label class="popover-option">
+              <input type="radio" name="stFilter" [checked]="statusFilter() === 'InProgress'" (change)="statusFilter.set('InProgress')" />
+              <span>In Progress</span>
+            </label>
+            <label class="popover-option">
+              <input type="radio" name="stFilter" [checked]="statusFilter() === 'No History'" (change)="statusFilter.set('No History')" />
+              <span>No History</span>
+            </label>
+          </div>
+          <div class="popover-actions">
+            <button class="btn-popover-sub" (click)="statusFilter.set(''); activeHeaderCol.set(null)">Clear</button>
+            <button class="btn-popover-main" (click)="activeHeaderCol.set(null)">Apply</button>
+          </div>
+        </ng-container>
       </div>
     </div>
   `,
@@ -224,6 +270,15 @@ export class JobsComponent implements OnInit {
   refreshSchedules = signal<DatasetRefreshInfo[]>([]);
   loadingRefreshes = signal(false);
   refreshSearch = signal('');
+  workspaceFilter = signal('');
+  statusFilter = signal('');
+  scheduleFilter = signal('');
+  jobSearch = signal('');
+  runSearch = signal('');
+
+  activeHeaderCol = signal<'workspace' | 'dataset' | 'schedule' | 'status' | null>(null);
+  popoverPos = signal<{ top: number; left: number }>({ top: 0, left: 0 });
+  wsSearch = '';
 
   busy = signal(false);
   running = signal<number | null>(null);
@@ -235,15 +290,112 @@ export class JobsComponent implements OnInit {
   refreshPageSize = 8;
   refreshPage = signal(0);
 
+  availableWorkspaces = computed(() =>
+    Array.from(new Set(this.refreshSchedules().map((s) => s.workspaceName).filter(Boolean))).sort(),
+  );
+
+  filteredAvailableWorkspaces = computed(() => {
+    const list = this.availableWorkspaces();
+    const q = (this.wsSearch || '').trim().toLowerCase();
+    return q ? list.filter((w) => w.toLowerCase().includes(q)) : list;
+  });
+
+  hasActiveFilters = computed(() => {
+    return !!this.workspaceFilter() || !!this.refreshSearch() || !!this.scheduleFilter() || !!this.statusFilter();
+  });
+
+  clearAllFilters() {
+    this.workspaceFilter.set('');
+    this.refreshSearch.set('');
+    this.scheduleFilter.set('');
+    this.statusFilter.set('');
+    this.wsSearch = '';
+    this.activeHeaderCol.set(null);
+  }
+
+  toggleHeaderFilter(col: 'workspace' | 'dataset' | 'schedule' | 'status', ev: MouseEvent) {
+    ev.stopPropagation();
+    if (this.activeHeaderCol() === col) {
+      this.activeHeaderCol.set(null);
+      return;
+    }
+    const target = ev.currentTarget as HTMLElement;
+    const th = target.closest('th') || target;
+    const rect = th.getBoundingClientRect();
+    const popoverWidth = 240;
+    let left = rect.left;
+    if (left + popoverWidth > window.innerWidth - 16) {
+      left = Math.max(16, window.innerWidth - popoverWidth - 16);
+    }
+    const top = rect.bottom + 4;
+    this.popoverPos.set({ top, left });
+    this.activeHeaderCol.set(col);
+  }
+
+  @HostListener('window:scroll')
+  @HostListener('window:resize')
+  @HostListener('document:click')
+  closePopovers() {
+    this.activeHeaderCol.set(null);
+  }
+
   filteredRefreshes = computed(() => {
     const q = this.refreshSearch().toLowerCase().trim();
-    const list = this.refreshSchedules();
+    const ws = this.workspaceFilter();
+    const st = this.statusFilter();
+    const sch = this.scheduleFilter();
+    let list = this.refreshSchedules();
+
+    if (ws) {
+      list = list.filter((s) => s.workspaceName === ws);
+    }
+
+    if (st) {
+      if (st === 'Completed') list = list.filter((s) => s.lastRefreshStatus === 'Completed');
+      else if (st === 'Failed') list = list.filter((s) => s.lastRefreshStatus === 'Failed');
+      else if (st === 'InProgress') list = list.filter((s) => s.lastRefreshStatus === 'InProgress');
+      else if (st === 'No History') list = list.filter((s) => !s.lastRefreshStartTime);
+    }
+
+    if (sch) {
+      if (sch === 'Scheduled') list = list.filter((s) => s.scheduleEnabled && s.scheduleTimes?.length);
+      else if (sch === 'Manual') list = list.filter((s) => !s.scheduleEnabled || !s.scheduleTimes?.length);
+    }
+
+    if (q) {
+      list = list.filter(
+        (s) =>
+          (s.datasetName || '').toLowerCase().includes(q) ||
+          (s.workspaceName || '').toLowerCase().includes(q) ||
+          (s.configuredBy || '').toLowerCase().includes(q),
+      );
+    }
+    return list;
+  });
+
+  filteredJobs = computed(() => {
+    const q = this.jobSearch().toLowerCase().trim();
+    const list = this.jobs();
     if (!q) return list;
     return list.filter(
-      (s) =>
-        (s.datasetName || '').toLowerCase().includes(q) ||
-        (s.workspaceName || '').toLowerCase().includes(q) ||
-        (s.configuredBy || '').toLowerCase().includes(q),
+      (j) =>
+        (j.name || '').toLowerCase().includes(q) ||
+        (j.report_name || '').toLowerCase().includes(q) ||
+        (j.target_table || '').toLowerCase().includes(q) ||
+        (j.recipients || '').toLowerCase().includes(q) ||
+        (j.mode || '').toLowerCase().includes(q),
+    );
+  });
+
+  filteredRuns = computed(() => {
+    const q = this.runSearch().toLowerCase().trim();
+    const list = this.runs();
+    if (!q) return list;
+    return list.filter(
+      (r) =>
+        (r.request || '').toLowerCase().includes(q) ||
+        (r.target_table || '').toLowerCase().includes(q) ||
+        (r.status || '').toLowerCase().includes(q),
     );
   });
 
@@ -252,12 +404,15 @@ export class JobsComponent implements OnInit {
     return this.filteredRefreshes().slice(start, start + this.refreshPageSize);
   });
 
-  pagedJobs = computed(() =>
-    this.jobs().slice(this.jobPage() * this.pageSize, (this.jobPage() + 1) * this.pageSize),
-  );
-  pagedRuns = computed(() =>
-    this.runs().slice(this.runPage() * this.pageSize, (this.runPage() + 1) * this.pageSize),
-  );
+  pagedJobs = computed(() => {
+    const start = this.jobPage() * this.pageSize;
+    return this.filteredJobs().slice(start, start + this.pageSize);
+  });
+
+  pagedRuns = computed(() => {
+    const start = this.runPage() * this.pageSize;
+    return this.filteredRuns().slice(start, start + this.pageSize);
+  });
 
   constructor(
     private api: SyncApiService,
@@ -271,6 +426,16 @@ export class JobsComponent implements OnInit {
   onSearchChange(val: string) {
     this.refreshSearch.set(val);
     this.refreshPage.set(0);
+  }
+
+  onJobSearchChange(val: string) {
+    this.jobSearch.set(val);
+    this.jobPage.set(0);
+  }
+
+  onRunSearchChange(val: string) {
+    this.runSearch.set(val);
+    this.runPage.set(0);
   }
 
   formatScheduleDays(days: string[]): string {

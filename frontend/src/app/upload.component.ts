@@ -18,7 +18,7 @@ import { EmailPickerComponent } from './email-picker.component';
 @Component({
   selector: 'app-upload',
   standalone: true,
-  imports: [CommonModule, FormsModule, PagerComponent, EmailPickerComponent],
+  imports: [CommonModule, FormsModule, EmailPickerComponent],
   template: `
     <div class="wizard-header">
       <div class="step" [class.active]="currentStep() === 1" (click)="setStep(1)">
@@ -35,7 +35,7 @@ import { EmailPickerComponent } from './email-picker.component';
       </div>
       <div class="step" [class.active]="currentStep() === 4" [class.disabled]="!loadedRows().length && !loadedCols().length" (click)="(loadedRows().length || loadedCols().length) && setStep(4)">
         <div class="step-num">4</div>
-        <div class="step-label">Schedule & Database</div>
+        <div class="step-label">Save Data</div>
       </div>
     </div>
 
@@ -45,9 +45,9 @@ import { EmailPickerComponent } from './email-picker.component';
         <h2>Pick a report</h2>
         <div class="card">
           <input class="search" placeholder="Search reports by name or workspace…" [ngModel]="filter" (ngModelChange)="onFilterChange($event)" />
-          <div class="report-list">
+          <div class="report-list" style="max-height: 480px; overflow-y: auto;">
             <div
-              *ngFor="let r of pagedReports()"
+              *ngFor="let r of filteredReports()"
               class="report-row"
               [class.active]="selectedReport()?.id === r.id"
               (click)="pickReport(r)"
@@ -60,8 +60,6 @@ import { EmailPickerComponent } from './email-picker.component';
               {{ reports().length ? 'No match.' : 'Loading reports…' }}
             </div>
           </div>
-          <app-pager [page]="repPage()" [total]="filteredReports().length" [pageSize]="pageSize"
-                     (go)="repPage.set($event)"></app-pager>
         </div>
         
         <ng-container *ngIf="!finalOnly">
@@ -132,28 +130,24 @@ import { EmailPickerComponent } from './email-picker.component';
                     <th>Column</th>
                     <th>Table</th>
                     <th>Data type</th>
-                    <th style="width:80px; text-align:center;">Key</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr *ngFor="let c of filteredColumns()">
                     <td><input type="checkbox" [checked]="selected()[c.name]" (change)="toggle(c.name)" /></td>
-                    <td>{{ c.name }} <span class="badge badge-ok" *ngIf="c.isKey">model key</span></td>
+                    <td>
+                      {{ c.name }}
+                      <span class="badge badge-ok" *ngIf="c.isKey" style="margin-left:6px;">model key</span>
+                      <span class="badge" *ngIf="c.isHidden" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:10px; padding:1px 6px; margin-left:6px;">hidden</span>
+                    </td>
                     <td>{{ c.table }}</td>
                     <td>{{ c.dataType }}</td>
-                    <td style="text-align:center;">
-                      <input type="checkbox" [checked]="keySelected()[c.name]"
-                             (change)="toggleKeyCol(c.name)" title="use as upsert/primary key" />
-                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <p class="tag" style="margin-top:6px;">
-              Check <strong>Key</strong> on unique column(s) to update existing rows instead of creating duplicates.
-            </p>
 
-            <div *ngIf="measures().length" class="measures-block">
+            <div *ngIf="measures().length" class="measures-block" style="margin-top:16px;">
               <div class="row-between">
                 <strong>Measures — viewed separately ({{ measures().length }})</strong>
                 <span class="tag">{{ selectedMeasureNames().length }} selected</span>
@@ -161,11 +155,22 @@ import { EmailPickerComponent } from './email-picker.component';
               <input class="search" placeholder="Search measures…" [ngModel]="measureFilter()" (ngModelChange)="measureFilter.set($event)" />
               <div class="scroll-list">
                 <table>
-                  <thead><tr><th style="width:40px;">Use</th><th>Measure</th><th>Type</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th style="width:40px;">Use</th>
+                      <th>Measure</th>
+                      <th>Table</th>
+                      <th>Type</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     <tr *ngFor="let m of filteredMeasures()">
                       <td><input type="checkbox" [checked]="measureSelected()[m.name]" (change)="toggleMeasure(m.name)" /></td>
-                      <td>{{ m.name }}</td>
+                      <td>
+                        {{ m.name }}
+                        <span class="badge" *ngIf="m.isHidden" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:10px; padding:1px 6px; margin-left:6px;">hidden</span>
+                      </td>
+                      <td style="font-weight:600; color:#1d4ed8;">{{ m.table }}</td>
                       <td>{{ m.dataType }}</td>
                     </tr>
                   </tbody>
@@ -209,9 +214,9 @@ import { EmailPickerComponent } from './email-picker.component';
           </div>
         </div>
         <div class="card">
-          <div class="table-container" style="overflow:auto;">
+          <div class="table-container" style="overflow:auto; max-height: 520px;">
             <table>
-              <thead>
+              <thead style="position: sticky; top: 0; z-index: 10; background: #ffffff;">
                 <tr>
                   <th *ngFor="let c of loadedCols()" style="cursor: pointer;" (click)="toggleHeaderFilter(c, $event)">
                     <div class="th-header-cell">
@@ -224,7 +229,7 @@ import { EmailPickerComponent } from './email-picker.component';
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let row of pagedRows()"><td *ngFor="let c of loadedCols()">{{ row[c] }}</td></tr>
+                <tr *ngFor="let row of filteredLoadedRows()"><td *ngFor="let c of loadedCols()">{{ row[c] }}</td></tr>
               </tbody>
             </table>
           </div>
@@ -278,13 +283,6 @@ import { EmailPickerComponent } from './email-picker.component';
               </div>
             </ng-template>
           </div>
-          <div class="row-between" *ngIf="filteredPageCount() > 1">
-            <span class="tag">page {{ page() + 1 }} / {{ filteredPageCount() }}</span>
-            <div style="display:flex;gap:6px;">
-              <button class="btn-secondary" (click)="prevPage()" [disabled]="page() === 0">‹ Prev</button>
-              <button class="btn-secondary" (click)="nextPage()" [disabled]="page() + 1 >= filteredPageCount()">Next ›</button>
-            </div>
-          </div>
         </div>
         <div class="wizard-footer row-between">
           <button class="btn-secondary" (click)="setStep(2)">‹ Back</button>
@@ -304,212 +302,98 @@ import { EmailPickerComponent } from './email-picker.component';
         </div>
       </ng-container>
 
-      <!-- STEP 4 — Schedule & Database (Optional) -->
+      <!-- STEP 4 — Save Data -->
       <ng-container *ngIf="currentStep() === 4 && (loadedRows().length || loadedCols().length)">
         <div class="row-between" style="margin-bottom:16px;">
-          <h2>Database &amp; Schedule Options</h2>
+          <h2>Save Data</h2>
           <span class="tag" style="font-size:13px;">{{ writeRows().length }} rows ready</span>
         </div>
 
-        <!-- Step 4 Top Section: 2 Side-by-Side Instant Action Cards -->
-        <div class="grid2" style="margin-bottom:20px;">
-          <!-- Database Destination & One-Time Upload -->
-          <div class="card">
-            <div class="row-between" style="margin-bottom:8px;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <strong>Database Table Destination</strong>
-                <span class="badge badge-ok" style="font-size:11px;">DB Config</span>
-              </div>
-              <button class="btn-secondary" style="font-size:11px; padding:3px 8px;" (click)="showDbForm.set(!showDbForm())">
-                {{ showDbForm() ? 'Hide DB Config' : 'Manage Connections' }}
-              </button>
+        <!-- Database Destination & One-Time Upload -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="row-between" style="margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong>Database Table Destination</strong>
+              <span class="badge badge-ok" style="font-size:11px;">DB Config</span>
             </div>
+            <button class="btn-secondary" style="font-size:11px; padding:3px 8px;" (click)="showDbForm.set(!showDbForm())">
+              {{ showDbForm() ? 'Hide DB Config' : 'Manage Connections' }}
+            </button>
+          </div>
 
-            <!-- Collapsible Database Connections Panel -->
-            <div *ngIf="showDbForm()" style="margin-bottom:12px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px;">
-              <div class="row-between" style="margin-bottom:6px;">
-                <span style="font-weight:600;">Target PostgreSQL Instance</span>
-                <button class="btn-secondary" (click)="loadDatabases()" [disabled]="busy()" style="font-size:10px; padding:2px 6px;">Refresh</button>
-              </div>
-              <div *ngIf="databases().length > 0" style="margin-bottom:8px;">
-                <div class="db-conn-row" *ngFor="let db of databases()" style="padding:4px 8px; margin-bottom:4px;">
-                  <div style="display:flex;align-items:center;gap:8px;flex:1;">
-                    <input type="radio" name="activeDb" [checked]="db.is_active" (change)="switchDatabase(db.id)" />
-                    <div>
-                      <strong>{{ db.label || db.dbname }}</strong>
-                      <span class="muted" style="margin-left:4px; font-size:11px;">({{ db.host }}:{{ db.port }})</span>
-                    </div>
+          <!-- Collapsible Database Connections Panel -->
+          <div *ngIf="showDbForm()" style="margin-bottom:12px; padding:10px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px;">
+            <div class="row-between" style="margin-bottom:6px;">
+              <span style="font-weight:600;">Target PostgreSQL Instance</span>
+              <button class="btn-secondary" (click)="loadDatabases()" [disabled]="busy()" style="font-size:10px; padding:2px 6px;">Refresh</button>
+            </div>
+            <div *ngIf="databases().length > 0" style="margin-bottom:8px;">
+              <div class="db-conn-row" *ngFor="let db of databases()" style="padding:4px 8px; margin-bottom:4px;">
+                <div style="display:flex;align-items:center;gap:8px;flex:1;">
+                  <input type="radio" name="activeDb" [checked]="db.is_active" (change)="switchDatabase(db.id)" />
+                  <div>
+                    <strong>{{ db.label || db.dbname }}</strong>
+                    <span class="muted" style="margin-left:4px; font-size:11px;">({{ db.host }}:{{ db.port }})</span>
                   </div>
                 </div>
               </div>
-              <div class="grid3" style="gap:6px;">
-                <label style="font-size:11px;">Host <input [(ngModel)]="newDb.host" placeholder="192.168.1.100" style="padding:3px 6px; font-size:11px;" /></label>
-                <label style="font-size:11px;">Port <input type="number" [(ngModel)]="newDb.port" placeholder="5432" style="padding:3px 6px; font-size:11px;" /></label>
-                <label style="font-size:11px;">DB Name <input [(ngModel)]="newDb.dbname" placeholder="power_bi_db" style="padding:3px 6px; font-size:11px;" /></label>
-              </div>
-              <div class="grid3" style="gap:6px; margin-top:4px;">
-                <label style="font-size:11px;">Username <input [(ngModel)]="newDb.username" placeholder="postgres" style="padding:3px 6px; font-size:11px;" /></label>
-                <label style="font-size:11px;">Password <input type="password" [(ngModel)]="newDb.password" placeholder="••••" style="padding:3px 6px; font-size:11px;" /></label>
-                <label style="font-size:11px;">Label <input [(ngModel)]="newDb.label" placeholder="Production" style="padding:3px 6px; font-size:11px;" /></label>
-              </div>
-              <div class="row-between" style="margin-top:6px;">
-                <button class="btn-secondary" (click)="testDbConnection()" [disabled]="busy() || !newDb.host || !newDb.dbname" style="font-size:10px; padding:2px 6px;">Test</button>
-                <button class="btn-primary" (click)="createDatabase()" [disabled]="busy() || !newDb.host || !newDb.dbname || !newDb.username || !newDb.password" style="font-size:10px; padding:2px 6px;">Save</button>
-              </div>
             </div>
-
-            <div class="grid2">
-              <label>Table name
-                <input [(ngModel)]="tableName" placeholder="e.g. daily_sales" />
-              </label>
-              <label>Owner
-                <input [(ngModel)]="owner" placeholder="your name" />
-              </label>
+            <div class="grid3" style="gap:6px;">
+              <label style="font-size:11px;">Host <input [(ngModel)]="newDb.host" placeholder="192.168.1.100" style="padding:3px 6px; font-size:11px;" /></label>
+              <label style="font-size:11px;">Port <input type="number" [(ngModel)]="newDb.port" placeholder="5432" style="padding:3px 6px; font-size:11px;" /></label>
+              <label style="font-size:11px;">DB Name <input [(ngModel)]="newDb.dbname" placeholder="power_bi_db" style="padding:3px 6px; font-size:11px;" /></label>
             </div>
-
-            <!-- Write mode -->
-            <label style="margin-top:10px;display:block;font-weight:600;font-size:12px;">Write mode</label>
-            <div class="modes" style="margin-top:4px;">
-              <label class="pick"><input type="radio" name="writeMode" value="total" [(ngModel)]="writeMode" /> Total</label>
-              <label class="pick"><input type="radio" name="writeMode" value="delta" [(ngModel)]="writeMode" /> Delta</label>
-              <label class="pick"><input type="radio" name="writeMode" value="append" [(ngModel)]="writeMode" /> Append</label>
-              <label class="pick"><input type="radio" name="writeMode" value="upsert" [(ngModel)]="writeMode" /> Upsert</label>
+            <div class="grid3" style="gap:6px; margin-top:4px;">
+              <label style="font-size:11px;">Username <input [(ngModel)]="newDb.username" placeholder="postgres" style="padding:3px 6px; font-size:11px;" /></label>
+              <label style="font-size:11px;">Password <input type="password" [(ngModel)]="newDb.password" placeholder="••••" style="padding:3px 6px; font-size:11px;" /></label>
+              <label style="font-size:11px;">Label <input [(ngModel)]="newDb.label" placeholder="Production" style="padding:3px 6px; font-size:11px;" /></label>
             </div>
-
-            <div *ngIf="writeMode === 'upsert'" style="margin-top:8px;">
-              <label style="font-size:11px;font-weight:600;">Upsert keys{{ autoKeyNote() }}</label>
-              <div class="keychips">
-                <span class="chip" *ngFor="let n of selectedKeyNames()">{{ n }}</span>
-                <span class="muted" *ngIf="selectedKeyNames().length === 0" style="font-size:11px;">
-                  Tick "Key" on columns in Step 2.
-                </span>
-              </div>
-            </div>
-
-            <div class="row-between" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border);">
-              <label class="pick" style="margin:0; font-size:11px;">
-                <input type="checkbox" [(ngModel)]="customColumns" /> Pick columns
-              </label>
-              <button class="btn-primary" (click)="upload()" [disabled]="busy()">
-                <span *ngIf="busy()" class="spinner-white"></span>
-                Upload to Database Now
-              </button>
+            <div class="row-between" style="margin-top:6px;">
+              <button class="btn-secondary" (click)="testDbConnection()" [disabled]="busy() || !newDb.host || !newDb.dbname" style="font-size:10px; padding:2px 6px;">Test</button>
+              <button class="btn-primary" (click)="createDatabase()" [disabled]="busy() || !newDb.host || !newDb.dbname || !newDb.username || !newDb.password" style="font-size:10px; padding:2px 6px;">Save</button>
             </div>
           </div>
 
-          <!-- Email Distribution & One-Time Send -->
-          <div class="card">
-            <div class="row-between" style="margin-bottom:8px;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <strong>Email Distribution</strong>
-                <span class="badge" style="font-size:11px; background:#eff6ff; color:#1d4ed8;">Optional</span>
-              </div>
-            </div>
-            <p class="muted" style="margin-top:0; font-size:12px;">
-              Select Azure AD directory users or enter custom email addresses to receive the Excel report.
-            </p>
-
-            <label style="margin-top:6px;">Recipients (Azure AD & custom)</label>
-            <app-email-picker
-              [(recipients)]="recipients"
-              [selectedReport]="selectedReport()"
-              [placeholder]="'Select AD users or type custom email...'"
-            ></app-email-picker>
-
-            <label style="margin-top:8px;">Email subject (optional)
-              <input [(ngModel)]="emailSubject" placeholder="Excel Report Export" />
+          <div class="grid2">
+            <label>Table name
+              <input [(ngModel)]="tableName" placeholder="e.g. daily_sales" />
             </label>
-
-            <div class="row-between" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border);">
-              <span class="muted" style="font-size:11px;">Direct email only (no DB write)</span>
-              <button class="btn-secondary" (click)="sendReportEmail()" [disabled]="busy()">
-                Send Email Now
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Automated Recurring Schedule (Applies Both Database & Email on Timer) -->
-        <div class="card" style="margin-bottom:20px;">
-          <div class="row-between" style="margin-bottom:6px;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <strong style="font-size:14px;">Schedule Recurring Automation</strong>
-              <span class="badge" style="font-size:11px; background:#f0fdf4; color:#166534;">Automates Pipeline</span>
-            </div>
-          </div>
-          <p class="muted" style="margin-top:0; font-size:12px;">
-            Setting a schedule automatically applies <strong>both the Database Table Upload</strong> and <strong>Email Distribution</strong> on your chosen recurring timer.
-          </p>
-
-          <div class="grid2" style="margin-top:10px;">
-            <label>Job name
-              <input [(ngModel)]="jobName" placeholder="e.g. Daily Sales Sync & Email" />
-            </label>
-            <label>Cron schedule (UTC)
-              <input [(ngModel)]="cron" placeholder="0 6 * * 3  (Wed 06:00)" />
+            <label>Owner
+              <input [(ngModel)]="owner" placeholder="your name" />
             </label>
           </div>
 
-          <!-- Live Power BI Refresh Status & Safe Cron Calculation -->
-          <div *ngIf="selectedDatasetRefresh()" style="margin-top:10px; padding:10px 12px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:12px;">
-            <div class="row-between" style="margin-bottom:6px;">
-              <span style="font-weight:700; color:var(--text);">Power BI Refresh Schedule Reference</span>
-              <span class="badge"
-                    [class.badge-ok]="selectedDatasetRefresh()?.lastRefreshStatus === 'Completed'"
-                    [class.badge-no]="selectedDatasetRefresh()?.lastRefreshStatus === 'Failed'"
-                    style="font-size:10px;">
-                {{ selectedDatasetRefresh()?.lastRefreshStatus || 'Unknown' }}
+          <!-- Write mode -->
+          <label style="margin-top:10px;display:block;font-weight:600;font-size:12px;">Write mode</label>
+          <div class="modes" style="margin-top:4px;">
+            <label class="pick"><input type="radio" name="writeMode" value="total" [(ngModel)]="writeMode" /> Total</label>
+            <label class="pick"><input type="radio" name="writeMode" value="delta" [(ngModel)]="writeMode" /> Delta</label>
+            <label class="pick"><input type="radio" name="writeMode" value="append" [(ngModel)]="writeMode" /> Append</label>
+            <label class="pick"><input type="radio" name="writeMode" value="upsert" [(ngModel)]="writeMode" /> Upsert</label>
+          </div>
+
+          <div *ngIf="writeMode === 'upsert'" style="margin-top:8px;">
+            <label style="font-size:11px;font-weight:600;">Upsert keys{{ autoKeyNote() }}</label>
+            <div class="keychips">
+              <span class="chip" *ngFor="let n of selectedKeyNames()">{{ n }}</span>
+              <span class="muted" style="font-size:11px;">
+                Dynamic Primary Key (automatic model keys or created_date)
               </span>
             </div>
-
-            <div *ngIf="selectedDatasetRefresh()?.scheduleEnabled && selectedDatasetRefresh()?.scheduleTimes?.length" style="margin-bottom:6px;">
-              <div>
-                <strong>Scheduled Times:</strong> {{ selectedDatasetRefresh()?.scheduleTimes?.join(', ') }} ({{ selectedDatasetRefresh()?.timeZone || 'UTC' }}) ·
-                <span class="muted">{{ selectedDatasetRefresh()?.scheduleDays?.join(', ') || 'Daily' }}</span>
-              </div>
-            </div>
-
-            <div style="margin-top:4px; padding:6px 8px; border-radius:4px; font-size:11px;"
-                 [style.background]="cronValidation().type === 'warning' ? '#fef3c7' : (cronValidation().type === 'success' ? '#f0fdf4' : 'var(--card)')"
-                 [style.color]="cronValidation().type === 'warning' ? '#92400e' : (cronValidation().type === 'success' ? '#166534' : 'var(--muted)')"
-                 [style.border]="cronValidation().type === 'warning' ? '1px solid #fde68a' : (cronValidation().type === 'success' ? '1px solid #bbf7d0' : '1px solid var(--border)')">
-              {{ cronValidation().message }}
-            </div>
-
-            <button class="btn-secondary"
-                    *ngIf="selectedDatasetRefresh()?.scheduleTimes?.length"
-                    (click)="autoSetSafeCron()"
-                    type="button"
-                    style="margin-top:8px; font-size:11px; padding:4px 8px; width:100%;">
-              Auto-Set Safe Cron (+30m after refresh)
-            </button>
           </div>
 
-          <!-- Schedule Pipeline Execution Summary Box -->
-          <div style="margin-top:12px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:var(--radius-sm); font-size:12px;">
-            <strong style="color:var(--text);">Scheduled Execution Pipeline -</strong>
-            <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:6px; font-size:12px;">
-              <div>
-                <span class="muted">Database Sync -</span>
-                <strong> {{ tableName || '(enter table name)' }}</strong> ({{ writeMode }})
-              </div>
-              <div>
-                <span class="muted">Email Delivery -</span>
-                <strong *ngIf="recipients.trim()"> {{ recipients.split(',').length }} recipient(s)</strong>
-                <span *ngIf="!recipients.trim()" class="muted"> None (DB sync only)</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="row-between" style="margin-top:14px;">
-            <span class="muted" style="font-size:11px;">e.g. <code>0 6 * * *</code> daily</span>
-            <button class="btn-primary" (click)="saveJob()" [disabled]="busy() || targetLocked() || !jobName.trim()">
-              Save Recurring Schedule
+          <div class="row-between" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border);">
+            <label class="pick" style="margin:0; font-size:11px;">
+              <input type="checkbox" [(ngModel)]="customColumns" /> Pick columns
+            </label>
+            <button class="btn-primary" (click)="upload()" [disabled]="busy()">
+              <span *ngIf="busy()" class="spinner-white"></span>
+              Upload to Database Now
             </button>
           </div>
         </div>
 
-        <div class="wizard-footer row-between">
+        <div class="wizard-footer row-between" style="margin-top:20px;">
           <button class="btn-secondary" (click)="setStep(3)">‹ Back</button>
           <button class="btn-primary" (click)="setStep(1)">Finish</button>
         </div>
@@ -1368,10 +1252,6 @@ export class UploadComponent implements OnInit {
       this.toast.error(`Target table "${this.targetTableName()}" is locked.`);
       return;
     }
-    if ((this.writeMode === 'upsert') && this.selectedKeyNames().length === 0) {
-      this.toast.error('Pick at least one business key for upsert.');
-      return;
-    }
     const rows = this.writeRows().length ? this.writeRows() : this.loadedRows();
     if (rows.length === 0) {
       this.toast.error('No rows available to write. Please select or load table data first.');
@@ -1500,9 +1380,6 @@ export class UploadComponent implements OnInit {
     const rep = this.selectedReport();
     if (!rep?.datasetId) return;
     if (!this.jobName.trim()) { this.toast.error('Give the job a name.'); return; }
-    if (this.writeMode === 'upsert' && this.selectedKeyNames().length === 0) {
-      this.toast.error('Pick at least one business key for upsert.'); return;
-    }
     this.busy.set(true);
     this.api
       .createJob({

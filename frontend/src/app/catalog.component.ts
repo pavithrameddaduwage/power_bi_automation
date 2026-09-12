@@ -11,7 +11,7 @@ import { PagerComponent } from './pager.component';
 @Component({
   selector: 'app-catalog',
   standalone: true,
-  imports: [CommonModule, FormsModule, PagerComponent],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="row-between">
       <h2>Dashboards</h2>
@@ -46,49 +46,41 @@ import { PagerComponent } from './pager.component';
       </label>
     </div>
 
-    <p class="muted" *ngIf="reports().length">
-      {{ reports().length }} report(s){{ downloadableOnly ? ' in downloadable mode' : '' }}.
-      Access is the workspace role; <strong>green = can download/export</strong>.
-    </p>
 
-    <app-pager [page]="page()" [total]="reports().length" [pageSize]="pageSize"
-               (go)="page.set($event)"></app-pager>
-
-    <div class="card" *ngFor="let r of pagedReports()">
-      <div class="row-between">
-        <div>
-          <strong>{{ r.name }}</strong>
-          <span class="badge" [class.badge-ok]="r.downloadable"
-                [class.badge-no]="!r.downloadable">
-            {{ r.downloadable ? 'downloadable' : 'not downloadable' }}
-          </span>
-          <div class="tag">
-            {{ r.workspaceName }} · {{ r.reportType }}
-            <a *ngIf="r.webUrl" [href]="r.webUrl" target="_blank">open ↗</a>
+    <div style="max-height: 560px; overflow-y: auto; padding-right: 4px;">
+      <div class="card" *ngFor="let r of reports()">
+        <div class="row-between">
+          <div>
+            <strong>{{ r.name }}</strong>
+            <span class="badge" [class.badge-ok]="r.downloadable"
+                  [class.badge-no]="!r.downloadable">
+              {{ r.downloadable ? 'downloadable' : 'not downloadable' }}
+            </span>
+            <div class="tag">
+              {{ r.workspaceName }} · {{ r.reportType }}
+              <a *ngIf="r.webUrl" [href]="r.webUrl" target="_blank">open ↗</a>
+            </div>
           </div>
         </div>
+        <table style="margin-top:10px;">
+          <thead>
+            <tr><th>Who has access</th><th>Role</th><th>Download?</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let a of r.access">
+              <td>{{ a.name }} <span class="tag" *ngIf="a.email">&lt;{{ a.email }}&gt;</span></td>
+              <td>{{ a.role }}</td>
+              <td [class]="a.canDownload ? 'status-success' : 'muted'">
+                {{ a.canDownload ? 'yes' : 'view only' }}
+              </td>
+            </tr>
+            <tr *ngIf="r.access.length === 0">
+              <td colspan="3" class="muted">No access info (admin API disabled).</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <table style="margin-top:10px;">
-        <thead>
-          <tr><th>Who has access</th><th>Role</th><th>Download?</th></tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let a of r.access">
-            <td>{{ a.name }} <span class="tag" *ngIf="a.email">&lt;{{ a.email }}&gt;</span></td>
-            <td>{{ a.role }}</td>
-            <td [class]="a.canDownload ? 'status-success' : 'muted'">
-              {{ a.canDownload ? 'yes' : 'view only' }}
-            </td>
-          </tr>
-          <tr *ngIf="r.access.length === 0">
-            <td colspan="3" class="muted">No access info (admin API disabled).</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
-
-    <app-pager [page]="page()" [total]="reports().length" [pageSize]="pageSize"
-               (go)="page.set($event)"></app-pager>
 
     <div class="card" *ngIf="error()">
       <span class="status-error">{{ error() }}</span>

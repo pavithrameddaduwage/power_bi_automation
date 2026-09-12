@@ -330,7 +330,7 @@ export class DynamicTableService {
     const columns = this.deriveColumns(rows);
 
     // Resolve business keys (original or sanitised names) to column names.
-    const keyCols =
+    let keyCols =
       input.mode === 'upsert'
         ? (input.keys ?? [])
             .map((k) => {
@@ -341,8 +341,44 @@ export class DynamicTableService {
             })
             .filter((n): n is string => !!n)
         : [];
+
     if (input.mode === 'upsert' && keyCols.length === 0) {
-      throw new Error('Upsert mode requires at least one valid business key.');
+      // Dynamic PK Resolution:
+      // 1. Check if columns contain date columns (created_date, created_at, date)
+      const dateCol = columns.find(
+        (c) =>
+          /^(created_date|created_at|date)$/i.test(c.original) ||
+          /^(created_date|created_at|date)$/i.test(c.name),
+      );
+      // 2. Check if columns contain ID/key fields (id, _id, *_id, code)
+      const modelKeyCols = columns.filter(
+        (c) =>
+          /^(id|_id|.*_id|key|code)$/i.test(c.original) ||
+          /^(id|_id|.*_id|key|code)$/i.test(c.name),
+      );
+
+      if (modelKeyCols.length > 0) {
+        keyCols = modelKeyCols.map((c) => c.name);
+      } else if (dateCol) {
+        keyCols = [dateCol.name];
+      } else {
+        // Fall back to 'created_date'. Add 'created_date' column dynamically if missing.
+        const createdDateColName = 'created_date';
+        if (!columns.some((c) => c.name === createdDateColName)) {
+          columns.push({
+            original: 'created_date',
+            name: createdDateColName,
+            type: 'timestamptz',
+          });
+          const todayIso = new Date().toISOString();
+          for (const row of rows) {
+            if (!row.created_date) {
+              row.created_date = todayIso;
+            }
+          }
+        }
+        keyCols = [createdDateColName];
+      }
     }
 
     await this.ensureRegistry();

@@ -35,7 +35,6 @@ import { ToastService } from './toast.service';
       flex-direction: column;
       gap: 14px;
       padding-bottom: 24px;
-      overflow-x: hidden;
     }
 
     /* ── Back Navigation Header for User Detail Page ── */
@@ -303,6 +302,11 @@ import { ToastService } from './toast.service';
       gap: 6px;
       max-height: 280px;
       box-sizing: border-box;
+    }
+
+    .dropdown-menu-pop.pop-right {
+      left: auto;
+      right: 0;
     }
 
     .menu-search-input {
@@ -785,6 +789,9 @@ import { ToastService } from './toast.service';
     .breakdown-list-container {
       display: flex;
       flex-direction: column;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
     }
 
     .breakdown-row-item {
@@ -1395,8 +1402,16 @@ import { ToastService } from './toast.service';
 
       <!-- ── 1. Top Filter Bar (6 Searchable Dropdowns with Individual Clear Buttons) ── -->
       <div class="filter-bar-card">
-        <div class="filter-bar-header" *ngIf="activeFilterCount() > 0 || loading()" style="justify-content: flex-end;">
+        <div class="filter-bar-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="filter-title">Filters</span>
+            <span class="filter-badge" *ngIf="activeFilterCount() > 0">{{ activeFilterCount() }} Active</span>
+          </div>
           <div style="display:flex; align-items:center; gap:10px;">
+            <button class="btn-back" style="font-size:12px; padding:5px 12px; background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;" (click)="exportAccessMatrixCSV()" title="Download full access matrix data sheet as CSV">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Export CSV Data Sheet
+            </button>
             <span *ngIf="loading()" style="font-size:12.5px; color:#1e40af; font-weight:600;">
               <span class="spinner"></span> Updating…
             </span>
@@ -1407,12 +1422,12 @@ import { ToastService } from './toast.service';
         </div>
 
         <div class="filter-grid">
-          <!-- 1. Workspace Dropdown -->
+          <!-- 1. Workspace Dropdown (Multi-select) -->
           <div class="filter-item">
             <label class="filter-label">Workspace</label>
-            <div class="dropdown-trigger" [class.active-filter]="filterGroupId" (click)="toggleDropdown('ws', $event)">
+            <div class="dropdown-trigger" [class.active-filter]="selectedWorkspaces().length > 0" (click)="toggleDropdown('ws', $event)">
               <span class="trigger-text">{{ getWorkspaceLabel() }}</span>
-              <button *ngIf="filterGroupId" type="button" class="trigger-clear-btn" (click)="clearFilter('ws', $event)" title="Clear Workspace filter">
+              <button *ngIf="selectedWorkspaces().length > 0" type="button" class="trigger-clear-btn" (click)="toggleWorkspace('', $event)" title="Clear Workspace filter">
                 <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
               <span class="trigger-caret">
@@ -1422,23 +1437,25 @@ import { ToastService } from './toast.service';
             <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'ws'" (click)="$event.stopPropagation()">
               <input class="menu-search-input" [ngModel]="searchWs()" (ngModelChange)="searchWs.set($event)" placeholder="Search workspace…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
-                <div class="menu-option-item" [class.selected]="!filterGroupId" (click)="selectWorkspace('')">
-                  All Workspaces
+                <div class="menu-option-item" [class.selected]="selectedWorkspaces().length === 0" (click)="toggleWorkspace('')">
+                  <input type="checkbox" [checked]="selectedWorkspaces().length === 0" (click)="$event.stopPropagation()" (change)="toggleWorkspace('')" style="margin-right: 8px;" />
+                  <span>All Workspaces</span>
                 </div>
-                <div class="menu-option-item" *ngFor="let ws of filteredWorkspaces()" [class.selected]="filterGroupId === ws.groupId" (click)="selectWorkspace(ws.groupId)">
-                  {{ ws.groupName }}
+                <div class="menu-option-item" *ngFor="let ws of filteredWorkspaces()" [class.selected]="isWorkspaceSelected(ws.groupId)" (click)="toggleWorkspace(ws.groupId, $event)">
+                  <input type="checkbox" [checked]="isWorkspaceSelected(ws.groupId)" (click)="$event.stopPropagation()" (change)="toggleWorkspace(ws.groupId)" style="margin-right: 8px;" />
+                  <span>{{ ws.groupName }}</span>
                 </div>
                 <div *ngIf="!filteredWorkspaces().length" style="padding:8px 12px; font-size:12px; color:#1e40af;">No workspaces found</div>
               </div>
             </div>
           </div>
 
-          <!-- 2. Report / Dashboard Dropdown -->
+          <!-- 2. Report / Dashboard Dropdown (Multi-select) -->
           <div class="filter-item">
             <label class="filter-label">Report / Dashboard</label>
-            <div class="dropdown-trigger" [class.active-filter]="filterReportName" (click)="toggleDropdown('rep', $event)">
-              <span class="trigger-text">{{ filterReportName || 'All Reports & Dashboards' }}</span>
-              <button *ngIf="filterReportName" type="button" class="trigger-clear-btn" (click)="clearFilter('rep', $event)" title="Clear Report/Dashboard filter">
+            <div class="dropdown-trigger" [class.active-filter]="selectedReports().length > 0" (click)="toggleDropdown('rep', $event)">
+              <span class="trigger-text">{{ getReportLabel() }}</span>
+              <button *ngIf="selectedReports().length > 0" type="button" class="trigger-clear-btn" (click)="toggleReport('', $event)" title="Clear Report/Dashboard filter">
                 <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
               <span class="trigger-caret">
@@ -1448,113 +1465,123 @@ import { ToastService } from './toast.service';
             <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'rep'" (click)="$event.stopPropagation()">
               <input class="menu-search-input" [ngModel]="searchRep()" (ngModelChange)="searchRep.set($event)" placeholder="Search report or dashboard…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
-                <div class="menu-option-item" [class.selected]="!filterReportName" (click)="selectReport('')">
-                  All Reports &amp; Dashboards
+                <div class="menu-option-item" [class.selected]="selectedReports().length === 0" (click)="toggleReport('')">
+                  <input type="checkbox" [checked]="selectedReports().length === 0" (click)="$event.stopPropagation()" (change)="toggleReport('')" style="margin-right: 8px;" />
+                  <span>All Reports &amp; Dashboards</span>
                 </div>
-                <div class="menu-option-item" *ngFor="let r of filteredReports()" [class.selected]="filterReportName === r.reportName" (click)="selectReport(r.reportName)">
-                  {{ r.reportName }}
+                <div class="menu-option-item" *ngFor="let r of filteredReports()" [class.selected]="isReportSelected(r.reportName)" (click)="toggleReport(r.reportName, $event)">
+                  <input type="checkbox" [checked]="isReportSelected(r.reportName)" (click)="$event.stopPropagation()" (change)="toggleReport(r.reportName)" style="margin-right: 8px;" />
+                  <span>{{ r.reportName }}</span>
                 </div>
                 <div *ngIf="!filteredReports().length" style="padding:8px 12px; font-size:12px; color:#1e40af;">No reports found</div>
               </div>
             </div>
           </div>
 
-          <!-- 3. User Dropdown -->
+          <!-- 3. User Dropdown (Multi-select) -->
           <div class="filter-item">
             <label class="filter-label">User</label>
-            <div class="dropdown-trigger" [class.active-filter]="filterUserEmail" (click)="toggleDropdown('user', $event)">
+            <div class="dropdown-trigger" [class.active-filter]="selectedUsers().length > 0" (click)="toggleDropdown('user', $event)">
               <span class="trigger-text">{{ getUserLabel() }}</span>
-              <button *ngIf="filterUserEmail" type="button" class="trigger-clear-btn" (click)="clearFilter('user', $event)" title="Clear User filter">
+              <button *ngIf="selectedUsers().length > 0" type="button" class="trigger-clear-btn" (click)="toggleUser('', $event)" title="Clear User filter">
                 <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
             </div>
-            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'user'" (click)="$event.stopPropagation()">
+            <div class="dropdown-menu-pop pop-right" *ngIf="openDropdown() === 'user'" (click)="$event.stopPropagation()">
               <input class="menu-search-input" [ngModel]="searchUser()" (ngModelChange)="searchUser.set($event)" placeholder="Search user…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
-                <div class="menu-option-item" [class.selected]="!filterUserEmail" (click)="selectUser('')">
-                  All Users
+                <div class="menu-option-item" [class.selected]="selectedUsers().length === 0" (click)="toggleUser('')">
+                  <input type="checkbox" [checked]="selectedUsers().length === 0" (click)="$event.stopPropagation()" (change)="toggleUser('')" style="margin-right: 8px;" />
+                  <span>All Users</span>
                 </div>
-                <div class="menu-option-item" *ngFor="let u of filteredUsers()" [class.selected]="filterUserEmail === u.email" (click)="selectUser(u.email)">
-                  {{ u.name || u.email }}
+                <div class="menu-option-item" *ngFor="let u of filteredUsers()" [class.selected]="isUserSelected(u.email)" (click)="toggleUser(u.email, $event)">
+                  <input type="checkbox" [checked]="isUserSelected(u.email)" (click)="$event.stopPropagation()" (change)="toggleUser(u.email)" style="margin-right: 8px;" />
+                  <span>{{ u.name || u.email }}</span>
                 </div>
                 <div *ngIf="!filteredUsers().length" style="padding:8px 12px; font-size:12px; color:#1e40af;">No users found</div>
               </div>
             </div>
           </div>
 
-          <!-- 4. Year Dropdown -->
+          <!-- 4. Year Dropdown (Multi-select) -->
           <div class="filter-item">
             <label class="filter-label">Year</label>
-            <div class="dropdown-trigger" [class.active-filter]="filterYear" (click)="toggleDropdown('year', $event)">
-              <span class="trigger-text">{{ filterYear ? filterYear : 'All Years' }}</span>
-              <button *ngIf="filterYear" type="button" class="trigger-clear-btn" (click)="clearFilter('year', $event)" title="Clear Year filter">
+            <div class="dropdown-trigger" [class.active-filter]="selectedYears().length > 0" (click)="toggleDropdown('year', $event)">
+              <span class="trigger-text">{{ getYearLabel() }}</span>
+              <button *ngIf="selectedYears().length > 0" type="button" class="trigger-clear-btn" (click)="toggleYear('', $event)" title="Clear Year filter">
                 <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
             </div>
-            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'year'" (click)="$event.stopPropagation()">
+            <div class="dropdown-menu-pop pop-right" *ngIf="openDropdown() === 'year'" (click)="$event.stopPropagation()">
               <input class="menu-search-input" [ngModel]="searchYear()" (ngModelChange)="searchYear.set($event)" placeholder="Search year…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
-                <div class="menu-option-item" [class.selected]="!filterYear" (click)="selectYear('')">
-                  All Years
+                <div class="menu-option-item" [class.selected]="selectedYears().length === 0" (click)="toggleYear('')">
+                  <input type="checkbox" [checked]="selectedYears().length === 0" (click)="$event.stopPropagation()" (change)="toggleYear('')" style="margin-right: 8px;" />
+                  <span>All Years</span>
                 </div>
-                <div class="menu-option-item" *ngFor="let y of filteredYears()" [class.selected]="filterYear === '' + y" (click)="selectYear('' + y)">
-                  {{ y }}
+                <div class="menu-option-item" *ngFor="let y of filteredYears()" [class.selected]="isYearSelected('' + y)" (click)="toggleYear('' + y, $event)">
+                  <input type="checkbox" [checked]="isYearSelected('' + y)" (click)="$event.stopPropagation()" (change)="toggleYear('' + y)" style="margin-right: 8px;" />
+                  <span>{{ y }}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- 5. Month Dropdown -->
+          <!-- 5. Month Dropdown (Multi-select) -->
           <div class="filter-item">
             <label class="filter-label">Month</label>
-            <div class="dropdown-trigger" [class.active-filter]="filterMonth" (click)="toggleDropdown('month', $event)">
+            <div class="dropdown-trigger" [class.active-filter]="selectedMonths().length > 0" (click)="toggleDropdown('month', $event)">
               <span class="trigger-text">{{ getMonthLabel() }}</span>
-              <button *ngIf="filterMonth" type="button" class="trigger-clear-btn" (click)="clearFilter('month', $event)" title="Clear Month filter">
+              <button *ngIf="selectedMonths().length > 0" type="button" class="trigger-clear-btn" (click)="toggleMonth('', $event)" title="Clear Month filter">
                 <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
             </div>
-            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'month'" (click)="$event.stopPropagation()">
+            <div class="dropdown-menu-pop pop-right" *ngIf="openDropdown() === 'month'" (click)="$event.stopPropagation()">
               <input class="menu-search-input" [ngModel]="searchMonth()" (ngModelChange)="searchMonth.set($event)" placeholder="Search month…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
-                <div class="menu-option-item" [class.selected]="!filterMonth" (click)="selectMonth('')">
-                  All Months
+                <div class="menu-option-item" [class.selected]="selectedMonths().length === 0" (click)="toggleMonth('')">
+                  <input type="checkbox" [checked]="selectedMonths().length === 0" (click)="$event.stopPropagation()" (change)="toggleMonth('')" style="margin-right: 8px;" />
+                  <span>All Months</span>
                 </div>
-                <div class="menu-option-item" *ngFor="let m of filteredMonths()" [class.selected]="filterMonth === m.val" (click)="selectMonth(m.val)">
-                  {{ m.name }}
+                <div class="menu-option-item" *ngFor="let m of filteredMonths()" [class.selected]="isMonthSelected(m.val)" (click)="toggleMonth(m.val, $event)">
+                  <input type="checkbox" [checked]="isMonthSelected(m.val)" (click)="$event.stopPropagation()" (change)="toggleMonth(m.val)" style="margin-right: 8px;" />
+                  <span>{{ m.name }}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- 6. Date Dropdown -->
+          <!-- 6. Date Dropdown (Multi-select) -->
           <div class="filter-item">
             <label class="filter-label">Date</label>
-            <div class="dropdown-trigger" [class.active-filter]="filterDate" (click)="toggleDropdown('date', $event)">
-              <span class="trigger-text">{{ filterDate ? filterDate : 'All Dates' }}</span>
-              <button *ngIf="filterDate" type="button" class="trigger-clear-btn" (click)="clearFilter('date', $event)" title="Clear Date filter">
+            <div class="dropdown-trigger" [class.active-filter]="selectedDates().length > 0" (click)="toggleDropdown('date', $event)">
+              <span class="trigger-text">{{ getDateLabel() }}</span>
+              <button *ngIf="selectedDates().length > 0" type="button" class="trigger-clear-btn" (click)="toggleDate('', $event)" title="Clear Date filter">
                 <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
               <span class="trigger-caret">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
               </span>
             </div>
-            <div class="dropdown-menu-pop" *ngIf="openDropdown() === 'date'" (click)="$event.stopPropagation()">
+            <div class="dropdown-menu-pop pop-right" *ngIf="openDropdown() === 'date'" (click)="$event.stopPropagation()">
               <input class="menu-search-input" [ngModel]="searchDate()" (ngModelChange)="searchDate.set($event)" placeholder="Search date…" (click)="$event.stopPropagation()" />
               <div class="menu-options-list">
-                <div class="menu-option-item" [class.selected]="!filterDate" (click)="selectDate('')">
-                  All Dates
+                <div class="menu-option-item" [class.selected]="selectedDates().length === 0" (click)="toggleDate('')">
+                  <input type="checkbox" [checked]="selectedDates().length === 0" (click)="$event.stopPropagation()" (change)="toggleDate('')" style="margin-right: 8px;" />
+                  <span>All Dates</span>
                 </div>
-                <div class="menu-option-item" *ngFor="let d of filteredDates()" [class.selected]="filterDate === d" (click)="selectDate(d)">
-                  {{ d }}
+                <div class="menu-option-item" *ngFor="let d of filteredDates()" [class.selected]="isDateSelected(d)" (click)="toggleDate(d, $event)">
+                  <input type="checkbox" [checked]="isDateSelected(d)" (click)="$event.stopPropagation()" (change)="toggleDate(d)" style="margin-right: 8px;" />
+                  <span>{{ d }}</span>
                 </div>
                 <div *ngIf="!filteredDates().length" style="padding:8px 12px; font-size:12px; color:#1e40af;">No dates found</div>
               </div>
@@ -1743,24 +1770,6 @@ import { ToastService } from './toast.service';
               No dashboards match current search.
             </div>
           </ng-template>
-
-          <!-- Dashboards Pagination -->
-          <div class="breakdown-bottom-pagination" *ngIf="filteredReportUsage().length > 5">
-            <span class="footer-range-txt">
-              {{ (reportCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(reportCurrentPage() * 5, filteredReportUsage().length) }} of {{ filteredReportUsage().length }}
-            </span>
-            <div class="footer-nav-group">
-              <button class="btn-card-nav" [disabled]="reportCurrentPage() === 1" (click)="reportCurrentPage.set(reportCurrentPage() - 1)">
-                Prev
-              </button>
-              <span class="footer-page-indicator">
-                Page {{ reportCurrentPage() }} of {{ reportTotalPages() }}
-              </span>
-              <button class="btn-card-nav" [disabled]="reportCurrentPage() >= reportTotalPages()" (click)="reportCurrentPage.set(reportCurrentPage() + 1)">
-                Next
-              </button>
-            </div>
-          </div>
         </ng-container>
 
         <!-- ── TAB 1: PAGES VIEW (When a specific report IS selected) ── -->
@@ -1804,24 +1813,6 @@ import { ToastService } from './toast.service';
               No pages match current search.
             </div>
           </ng-template>
-
-          <!-- Pages Pagination -->
-          <div class="breakdown-bottom-pagination" *ngIf="filteredPageUsage().length > 5">
-            <span class="footer-range-txt">
-              {{ (pageCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(pageCurrentPage() * 5, filteredPageUsage().length) }} of {{ filteredPageUsage().length }}
-            </span>
-            <div class="footer-nav-group">
-              <button class="btn-card-nav" [disabled]="pageCurrentPage() === 1" (click)="pageCurrentPage.set(pageCurrentPage() - 1)">
-                Prev
-              </button>
-              <span class="footer-page-indicator">
-                Page {{ pageCurrentPage() }} of {{ pageTotalPages() }}
-              </span>
-              <button class="btn-card-nav" [disabled]="pageCurrentPage() >= pageTotalPages()" (click)="pageCurrentPage.set(pageCurrentPage() + 1)">
-                Next
-              </button>
-            </div>
-          </div>
         </ng-container>
 
         <!-- ── TAB 2: PEOPLE VIEW ── -->
@@ -1855,29 +1846,11 @@ import { ToastService } from './toast.service';
               No users match current search.
             </div>
           </ng-template>
-
-          <!-- People Pagination -->
-          <div class="breakdown-bottom-pagination" *ngIf="filteredUserUsage().length > 5">
-            <span class="footer-range-txt">
-              {{ (userCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(userCurrentPage() * 5, filteredUserUsage().length) }} of {{ filteredUserUsage().length }}
-            </span>
-            <div class="footer-nav-group">
-              <button class="btn-card-nav" [disabled]="userCurrentPage() === 1" (click)="userCurrentPage.set(userCurrentPage() - 1)">
-                Prev
-              </button>
-              <span class="footer-page-indicator">
-                Page {{ userCurrentPage() }} of {{ userTotalPages() }}
-              </span>
-              <button class="btn-card-nav" [disabled]="userCurrentPage() >= userTotalPages()" (click)="userCurrentPage.set(userCurrentPage() + 1)">
-                Next
-              </button>
-            </div>
-          </div>
         </ng-container>
 
         <!-- ── TAB 3: ACCESS AUDIT VIEW ── -->
         <ng-container *ngIf="activeBreakdownTab() === 'access'">
-          <div class="access-sub-bar">
+          <div class="access-sub-bar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
             <div class="access-pill-tabs">
               <button class="access-pill-btn" [class.active]="accessFilterTab() === 'all'" (click)="accessFilterTab.set('all'); accessCurrentPage.set(1);" title="All Members">
                 All ({{ accessData()?.totalUsers || 0 }})
@@ -1890,9 +1863,15 @@ import { ToastService } from './toast.service';
               </button>
             </div>
 
-            <span style="font-size:12.5px; color:#64748b; font-weight:500;">
-              {{ filteredAccessList().length }} members audited
-            </span>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span style="font-size:12.5px; color:#64748b; font-weight:500;">
+                {{ filteredAccessList().length }} members audited
+              </span>
+              <button class="btn-back" style="font-size:12px; padding:6px 14px; border-color:#cbd5e1; background:#ffffff; color:#0f172a;" (click)="exportAccessMatrixCSV()">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export Access Matrix CSV
+              </button>
+            </div>
           </div>
 
           <div class="breakdown-list-container" *ngIf="pagedAccessList().length; else noAccessUsers">
@@ -1926,24 +1905,6 @@ import { ToastService } from './toast.service';
               No members match current access filters.
             </div>
           </ng-template>
-
-          <!-- Access Pagination -->
-          <div class="breakdown-bottom-pagination" *ngIf="filteredAccessList().length > 5">
-            <span class="footer-range-txt">
-              {{ (accessCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(accessCurrentPage() * 5, filteredAccessList().length) }} of {{ filteredAccessList().length }}
-            </span>
-            <div class="footer-nav-group">
-              <button class="btn-card-nav" [disabled]="accessCurrentPage() === 1" (click)="accessCurrentPage.set(accessCurrentPage() - 1)">
-                Prev
-              </button>
-              <span class="footer-page-indicator">
-                Page {{ accessCurrentPage() }} of {{ accessTotalPages() }}
-              </span>
-              <button class="btn-card-nav" [disabled]="accessCurrentPage() >= accessTotalPages()" (click)="accessCurrentPage.set(accessCurrentPage() + 1)">
-                Next
-              </button>
-            </div>
-          </div>
         </ng-container>
 
       </div>
@@ -2156,101 +2117,274 @@ export class UsageComponent implements OnInit {
     return s ? raw.filter(d => String(d).includes(s)) : raw;
   });
 
+  // Multi-select Signals
+  selectedWorkspaces = signal<string[]>([]);
+  selectedReports = signal<string[]>([]);
+  selectedUsers = signal<string[]>([]);
+  selectedYears = signal<string[]>([]);
+  selectedMonths = signal<string[]>([]);
+  selectedDates = signal<string[]>([]);
+
   // Dropdown Label Helpers
   getWorkspaceLabel(): string {
-    if (!this.filterGroupId) return 'All Workspaces';
-    return this.availableWorkspaces().find(w => w.groupId === this.filterGroupId)?.groupName || 'Selected Workspace';
+    const sel = this.selectedWorkspaces();
+    if (!sel || sel.length === 0) return 'All Workspaces';
+    if (sel.length === 1) {
+      return this.availableWorkspaces().find(w => w.groupId === sel[0])?.groupName || '1 Workspace';
+    }
+    if (sel.length <= 2) {
+      return sel.map(id => this.availableWorkspaces().find(w => w.groupId === id)?.groupName || id).join(', ');
+    }
+    return `${sel.length} Workspaces Selected`;
+  }
+
+  getReportLabel(): string {
+    const sel = this.selectedReports();
+    if (!sel || sel.length === 0) return 'All Reports & Dashboards';
+    if (sel.length === 1) return sel[0];
+    if (sel.length <= 2) return sel.join(', ');
+    return `${sel.length} Reports Selected`;
   }
 
   getUserLabel(): string {
-    if (!this.filterUserEmail) return 'All Users';
-    const match = this.availableUsers().find(u => u.email.toLowerCase() === this.filterUserEmail.toLowerCase());
-    return match ? (match.name || match.email) : this.filterUserEmail;
+    const sel = this.selectedUsers();
+    if (!sel || sel.length === 0) return 'All Users';
+    if (sel.length === 1) {
+      const match = this.availableUsers().find(u => u.email.toLowerCase() === sel[0].toLowerCase());
+      return match ? (match.name || match.email) : sel[0];
+    }
+    if (sel.length <= 2) {
+      return sel.map(em => {
+        const m = this.availableUsers().find(u => u.email.toLowerCase() === em.toLowerCase());
+        return m ? (m.name || m.email) : em;
+      }).join(', ');
+    }
+    return `${sel.length} Users Selected`;
+  }
+
+  getYearLabel(): string {
+    const sel = this.selectedYears();
+    if (!sel || sel.length === 0) return 'All Years';
+    if (sel.length === 1) return sel[0];
+    return sel.join(', ');
   }
 
   getMonthLabel(): string {
-    if (!this.filterMonth) return 'All Months';
-    return this.allMonthsList.find(m => m.val === this.filterMonth)?.name || 'Selected Month';
-  }
-
-  // Selection handlers
-  selectWorkspace(id: string) {
-    this.filterGroupId = id;
-    this.searchWs.set('');
-    // If a report is selected that doesn't belong to the newly picked workspace, clear it
-    if (id && this.filterReportName) {
-      const rep = this.availableReports().find((r) => r.reportName === this.filterReportName);
-      if (rep && rep.groupId && rep.groupId !== id) {
-        this.filterReportName = '';
-      }
+    const selected = this.selectedMonths();
+    if (!selected || selected.length === 0) return 'All Months';
+    if (selected.length === 1) {
+      return this.allMonthsList.find(m => m.val === selected[0])?.name || 'Selected Month';
     }
-    this.reportSearchText.set('');
-    this.reportCurrentPage.set(1);
-    this.pageSearchText.set('');
-    this.pageCurrentPage.set(1);
-    this.userSearchText.set('');
-    this.userCurrentPage.set(1);
-    this.accessSearchText.set('');
-    this.accessCurrentPage.set(1);
-    this.openDropdown.set(null);
-    this.onFilterChanged();
-  }
-
-  selectReport(name: string) {
-    this.filterReportName = name;
-    this.searchRep.set('');
-    // If the selected report has a known workspace, sync workspace if not set
-    if (name) {
-      const rep = this.availableReports().find((r) => (r.reportName || '').trim().toLowerCase() === name.trim().toLowerCase());
-      if (rep && rep.groupId && !this.filterGroupId) {
-        // keep filterGroupId aligned
-      }
+    if (selected.length <= 3) {
+      return selected
+        .map(v => this.allMonthsList.find(m => m.val === v)?.name?.slice(0, 3))
+        .filter(Boolean)
+        .join(', ');
     }
-    this.pageSearchText.set('');
+    return `${selected.length} Months Selected`;
+  }
+
+  getDateLabel(): string {
+    const sel = this.selectedDates();
+    if (!sel || sel.length === 0) return 'All Dates';
+    if (sel.length === 1) return sel[0];
+    if (sel.length <= 2) return sel.join(', ');
+    return `${sel.length} Dates Selected`;
+  }
+
+  // Check Helpers
+  isWorkspaceSelected(id: string): boolean { return this.selectedWorkspaces().includes(id); }
+  isReportSelected(name: string): boolean { return this.selectedReports().includes(name); }
+  isUserSelected(email: string): boolean { return this.selectedUsers().map(e => e.toLowerCase()).includes(email.toLowerCase()); }
+  isYearSelected(yr: string): boolean { return this.selectedYears().includes(yr); }
+  isMonthSelected(val: string): boolean { return this.selectedMonths().includes(val); }
+  isDateSelected(d: string): boolean { return this.selectedDates().includes(d); }
+
+  // Toggle Handlers
+  toggleWorkspace(id: string, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    if (!id) {
+      this.selectedWorkspaces.set([]);
+      this.filterGroupId = '';
+    } else {
+      const cur = this.selectedWorkspaces();
+      const updated = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+      this.selectedWorkspaces.set(updated);
+      this.filterGroupId = updated.join(',');
+    }
+    this.reportCurrentPage.set(1);
     this.pageCurrentPage.set(1);
-    this.userSearchText.set('');
-    this.userCurrentPage.set(1);
-    this.accessSearchText.set('');
-    this.accessCurrentPage.set(1);
-    this.openDropdown.set(null);
     this.onFilterChanged();
   }
 
-  selectUser(email: string) {
-    this.filterUserEmail = email;
-    this.selectedUserEmail.set(email);
-    this.searchUser.set('');
-    this.reportCurrentPage.set(1);
+  toggleReport(name: string, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    if (!name) {
+      this.selectedReports.set([]);
+      this.filterReportName = '';
+    } else {
+      const cur = this.selectedReports();
+      const updated = cur.includes(name) ? cur.filter(x => x !== name) : [...cur, name];
+      this.selectedReports.set(updated);
+      this.filterReportName = updated.join(',');
+    }
     this.pageCurrentPage.set(1);
-    this.userCurrentPage.set(1);
-    this.accessCurrentPage.set(1);
-    this.openDropdown.set(null);
     this.onFilterChanged();
   }
 
-  selectYear(yr: string) {
-    this.filterYear = yr;
-    this.reportCurrentPage.set(1);
-    this.pageCurrentPage.set(1);
-    this.openDropdown.set(null);
+  toggleUser(email: string, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    if (!email) {
+      this.selectedUsers.set([]);
+      this.filterUserEmail = '';
+      this.selectedUserEmail.set('');
+    } else {
+      const cur = this.selectedUsers();
+      const lower = email.toLowerCase();
+      const updated = cur.map(e=>e.toLowerCase()).includes(lower) ? cur.filter(x => x.toLowerCase() !== lower) : [...cur, email];
+      this.selectedUsers.set(updated);
+      this.filterUserEmail = updated.join(',');
+      if (updated.length === 1) this.selectedUserEmail.set(updated[0]);
+      else this.selectedUserEmail.set('');
+    }
     this.onFilterChanged();
   }
 
-  selectMonth(m: string) {
-    this.filterMonth = m;
-    this.reportCurrentPage.set(1);
-    this.pageCurrentPage.set(1);
-    this.openDropdown.set(null);
+  toggleYear(yr: string, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    if (!yr) {
+      this.selectedYears.set([]);
+      this.filterYear = '';
+    } else {
+      const cur = this.selectedYears();
+      const updated = cur.includes(yr) ? cur.filter(x => x !== yr) : [...cur, yr];
+      this.selectedYears.set(updated);
+      this.filterYear = updated.join(',');
+    }
     this.onFilterChanged();
   }
 
-  selectDate(d: string) {
-    this.filterDate = d;
-    this.reportCurrentPage.set(1);
-    this.pageCurrentPage.set(1);
-    this.openDropdown.set(null);
+  toggleMonth(val: string, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    if (!val) {
+      this.selectedMonths.set([]);
+      this.filterMonth = '';
+    } else {
+      const cur = this.selectedMonths();
+      const updated = cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val];
+      this.selectedMonths.set(updated);
+      this.filterMonth = updated.join(',');
+    }
     this.onFilterChanged();
   }
+
+  toggleDate(d: string, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    if (!d) {
+      this.selectedDates.set([]);
+      this.filterDate = '';
+    } else {
+      const cur = this.selectedDates();
+      const updated = cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d];
+      this.selectedDates.set(updated);
+      this.filterDate = updated.join(',');
+    }
+    this.onFilterChanged();
+  }
+
+  selectWorkspace(id: string) { this.toggleWorkspace(id); }
+  selectReport(name: string) { this.toggleReport(name); }
+  selectUser(email: string) { this.toggleUser(email); }
+  selectYear(yr: string) { this.toggleYear(yr); }
+  selectMonth(m: string) { this.toggleMonth(m); }
+  selectDate(d: string) { this.toggleDate(d); }
+
+  exportAccessMatrixCSV() {
+    const reports = this.filteredReportUsage() || [];
+    const pages = this.filteredPageUsage() || [];
+    const members = this.filteredAccessList() || [];
+
+    if (reports.length === 0 && pages.length === 0 && members.length === 0) {
+      this.toast.error('No report or user access records available for export.');
+      return;
+    }
+
+    const headers = [
+      'Record Type',
+      'Workspace',
+      'Report / Dashboard',
+      'Page Name',
+      'User / Member Name',
+      'Email Address',
+      'Role / Department',
+      'Access Status',
+      'Total Views',
+      'Last Accessed Date',
+    ];
+
+    const rows: (string | number)[][] = [];
+
+    // 1. Include Report & Dashboard Summaries
+    for (const r of reports) {
+      rows.push([
+        '"Dashboard / Report"',
+        `"${(r.groupName || '').replace(/"/g, '""')}"`,
+        `"${(r.reportName || '').replace(/"/g, '""')}"`,
+        `"${r.pagesCount || 0} page(s)"`,
+        `"${r.viewers || 0} viewer(s)"`,
+        '""',
+        '""',
+        '"Active"',
+        r.views || 0,
+        `"${r.lastAccessed ? this.formatAccessDate(r.lastAccessed) : 'N/A'}"`,
+      ]);
+    }
+
+    // 2. Include Page Access Breakdown
+    for (const p of pages) {
+      rows.push([
+        '"Report Page"',
+        '""',
+        `"${(p.reportName || '').replace(/"/g, '""')}"`,
+        `"${(p.pageName || '').replace(/"/g, '""')}"`,
+        `"${p.viewers || 0} viewer(s)"`,
+        '""',
+        '""',
+        '"Active"',
+        p.views || 0,
+        `"${p.lastAccessed ? this.formatAccessDate(p.lastAccessed) : 'N/A'}"`,
+      ]);
+    }
+
+    // 3. Include Member Access Audit Matrix
+    for (const u of members) {
+      rows.push([
+        '"User Access Audit"',
+        '""',
+        '""',
+        '""',
+        `"${(u.displayName || '').replace(/"/g, '""')}"`,
+        `"${(u.email || '').replace(/"/g, '""')}"`,
+        `"${(u.role || '').replace(/"/g, '""')}"`,
+        `"${(u.status || '').replace(/"/g, '""')}"`,
+        u.views || 0,
+        `"${u.lastAccessed ? this.formatAccessDate(u.lastAccessed) : 'Never active'}"`,
+      ]);
+    }
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Full_Usage_Access_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.toast.success(`Exported combined dataset CSV with ${rows.length} record(s).`);
+  }
+
+
 
   clearFilter(type: string, event: MouseEvent) {
     event.stopPropagation();
@@ -2398,11 +2532,8 @@ export class UsageComponent implements OnInit {
     return filtered;
   });
 
-  reportTotalPages = computed(() => Math.max(1, Math.ceil(this.filteredReportUsage().length / 5)));
-  pagedReports = computed(() => {
-    const p = this.reportCurrentPage();
-    return this.filteredReportUsage().slice((p - 1) * 5, p * 5);
-  });
+  reportTotalPages = computed(() => 1);
+  pagedReports = computed(() => this.filteredReportUsage());
 
   // Big Pie / Donut Chart Data in Blue Shades (Dashboards when on main overview without report filter, Pages when user or report filter active)
   pieChartData = computed(() => {
@@ -2503,11 +2634,8 @@ export class UsageComponent implements OnInit {
   });
 
   // Page Pagination
-  pageTotalPages = computed(() => Math.max(1, Math.ceil(this.filteredPageUsage().length / 5)));
-  pagedPages = computed(() => {
-    const p = this.pageCurrentPage();
-    return this.filteredPageUsage().slice((p - 1) * 5, p * 5);
-  });
+  pageTotalPages = computed(() => 1);
+  pagedPages = computed(() => this.filteredPageUsage());
 
   // Filtered User Usage for User-wise Analysis
   filteredUserUsage = computed(() => {
@@ -2521,11 +2649,8 @@ export class UsageComponent implements OnInit {
   });
 
   // User Pagination
-  userTotalPages = computed(() => Math.max(1, Math.ceil(this.filteredUserUsage().length / 5)));
-  pagedUsers = computed(() => {
-    const p = this.userCurrentPage();
-    return this.filteredUserUsage().slice((p - 1) * 5, p * 5);
-  });
+  userTotalPages = computed(() => 1);
+  pagedUsers = computed(() => this.filteredUserUsage());
 
   // Filtered Access List
   filteredAccessList = computed(() => {
@@ -2551,11 +2676,8 @@ export class UsageComponent implements OnInit {
   });
 
   // Access Pagination
-  accessTotalPages = computed(() => Math.max(1, Math.ceil(this.filteredAccessList().length / 5)));
-  pagedAccessList = computed(() => {
-    const p = this.accessCurrentPage();
-    return this.filteredAccessList().slice((p - 1) * 5, p * 5);
-  });
+  accessTotalPages = computed(() => 1);
+  pagedAccessList = computed(() => this.filteredAccessList());
 
   constructor(private api: SyncApiService, private toast: ToastService) {}
 
@@ -2569,7 +2691,13 @@ export class UsageComponent implements OnInit {
     this.loadAccessUtilization();
   }
 
-  resetFilters(): void {
+  clearAllFilters(): void {
+    this.selectedWorkspaces.set([]);
+    this.selectedReports.set([]);
+    this.selectedUsers.set([]);
+    this.selectedYears.set([]);
+    this.selectedMonths.set([]);
+    this.selectedDates.set([]);
     this.filterGroupId = '';
     this.filterReportName = '';
     this.filterUserEmail = '';
@@ -2584,14 +2712,12 @@ export class UsageComponent implements OnInit {
     this.searchMonth.set('');
     this.searchDate.set('');
     this.reportSearchText.set('');
-    this.reportSortOrder.set('views-desc');
-    this.reportCurrentPage.set(1);
     this.pageSearchText.set('');
-    this.pageSortOrder.set('views-desc');
-    this.pageCurrentPage.set(1);
     this.userSearchText.set('');
-    this.userCurrentPage.set(1);
     this.accessSearchText.set('');
+    this.reportCurrentPage.set(1);
+    this.pageCurrentPage.set(1);
+    this.userCurrentPage.set(1);
     this.accessCurrentPage.set(1);
     this.openDropdown.set(null);
     this.onFilterChanged();
