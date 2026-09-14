@@ -37,10 +37,6 @@ export class UsersService implements OnModuleInit {
     await this.ensureTables();
     await this.seedDefaultRolesAndPermissions();
     await this.seedAdminUser();
-    // Run AD user sync asynchronously without blocking app startup
-    this.syncADUsers().catch((err) => {
-      this.logger.warn(`[AD Sync Notice] Initial AD user sync warning: ${err?.message || err}`);
-    });
   }
 
   // ── Database Table Bootstrap ────────────────────────────────────────
@@ -249,10 +245,14 @@ export class UsersService implements OnModuleInit {
     throw lastError || new Error('Active Directory LDAP query failed with all candidate bind usernames.');
   }
 
+  /**
+   * Sync active directory status ONLY for existing system users in app_users.
+   * Does NOT auto-populate unadded AD users into the system database.
+   */
   async syncADUsers(): Promise<{ success: boolean; totalADUsersFound: number; newlySynced: number; updated: number; message: string }> {
     await this.ensureTables();
 
-    this.logger.log(`Starting AD user sync with LDAP pagination and multi-domain bind resolver...`);
+    this.logger.log(`Starting AD user status sync for existing system users...`);
 
     const queryOpts = {
       filter: '(&(objectCategory=person)(objectClass=user))',
@@ -265,7 +265,6 @@ export class UsersService implements OnModuleInit {
       const users = await this.executeADQuery(queryOpts, false);
 
       if (!users || users.length === 0) {
-        this.logger.log('No AD users returned from directory search.');
         return {
           success: true,
           totalADUsersFound: 0,
@@ -275,86 +274,32 @@ export class UsersService implements OnModuleInit {
         };
       }
 
-      this.logger.log(`Fetched ${users.length} AD users from directory. Processing database sync...`);
-
-      // 1. Fetch existing users from DB into Map for fast O(1) lookup
+      // Fetch existing system users from DB
       const existingRes = await this.pool.query(`SELECT id, LOWER(email) as email, name, is_active FROM app_users`);
       const existingMap = new Map<string, { id: number; name: string; is_active: boolean }>();
       for (const row of existingRes.rows) {
         existingMap.set(row.email, { id: Number(row.id), name: row.name, is_active: row.is_active });
       }
 
-      // 2. Fetch default 'User' role ID
-      const roleRes = await this.pool.query(`SELECT id FROM role_master WHERE LOWER(role) = 'user'`);
-      const defaultRoleId = roleRes.rows.length > 0 ? roleRes.rows[0].id : null;
-
-      // 3. Categorize AD users into insert and update lists
-      const usersToInsert: { email: string; name: string; isActive: boolean }[] = [];
       const usersToUpdate: { id: number; name: string; isActive: boolean }[] = [];
-      const processedEmails = new Set<string>();
 
       for (const adUser of users) {
         const rawMail = adUser.mail || (adUser.sAMAccountName ? `${adUser.sAMAccountName}@hgusa.com` : null);
         if (!rawMail) continue;
 
         const email = String(rawMail).trim().toLowerCase();
-        if (processedEmails.has(email)) continue;
-        processedEmails.add(email);
-
         const name = adUser.displayName || adUser.cn || `${adUser.givenName || ''} ${adUser.sn || ''}`.trim() || adUser.sAMAccountName || email;
         const uac = Number(adUser.userAccountControl || 0);
         const isActive = (uac & 2) === 0;
 
         const existing = existingMap.get(email);
-        if (!existing) {
-          usersToInsert.push({ email, name, isActive });
-        } else if (existing.name !== name || existing.is_active !== isActive) {
+        if (existing && (existing.name !== name || existing.is_active !== isActive)) {
           usersToUpdate.push({ id: existing.id, name, isActive });
         }
       }
 
-      let newlySynced = 0;
       let updated = 0;
       const CHUNK_SIZE = 300;
-
-      // 4. Batch INSERT new users
-      if (usersToInsert.length > 0) {
-        for (let i = 0; i < usersToInsert.length; i += CHUNK_SIZE) {
-          const chunk = usersToInsert.slice(i, i + CHUNK_SIZE);
-          const valuePlaceholders: string[] = [];
-          const params: any[] = [];
-
-          chunk.forEach((u, idx) => {
-            const base = idx * 3;
-            valuePlaceholders.push(`($${base + 1}, $${base + 2}, false, 'User', $${base + 3})`);
-            params.push(u.email, u.name, u.isActive);
-          });
-
-          const insertSql = `
-            INSERT INTO app_users (email, name, is_admin, role, is_active)
-            VALUES ${valuePlaceholders.join(', ')}
-            ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active, updated_at = now()
-            RETURNING id;
-          `;
-          const insertedRes = await this.pool.query(insertSql, params);
-
-          if (defaultRoleId && insertedRes.rows.length > 0) {
-            const rolePlaceholders: string[] = [];
-            const roleParams: any[] = [defaultRoleId];
-            insertedRes.rows.forEach((row, idx) => {
-              rolePlaceholders.push(`($${idx + 2}, $1)`);
-              roleParams.push(row.id);
-            });
-            await this.pool.query(
-              `INSERT INTO user_roles (user_id, role_id) VALUES ${rolePlaceholders.join(', ')} ON CONFLICT DO NOTHING`,
-              roleParams,
-            );
-          }
-        }
-        newlySynced = usersToInsert.length;
-      }
-
-      // 5. Batch UPDATE existing users
       if (usersToUpdate.length > 0) {
         for (let i = 0; i < usersToUpdate.length; i += CHUNK_SIZE) {
           const chunk = usersToUpdate.slice(i, i + CHUNK_SIZE);
@@ -373,13 +318,13 @@ export class UsersService implements OnModuleInit {
         updated = usersToUpdate.length;
       }
 
-      const msg = `Synced ${users.length} total AD users from directory (${newlySynced} new added, ${updated} updated).`;
+      const msg = `Synced status for ${existingMap.size} system users (${updated} updated from directory).`;
       this.logger.log(msg);
 
       return {
         success: true,
         totalADUsersFound: users.length,
-        newlySynced,
+        newlySynced: 0,
         updated,
         message: msg,
       };
@@ -395,64 +340,68 @@ export class UsersService implements OnModuleInit {
     }
   }
 
+  /**
+   * Search Active Directory live on demand. Returns matching candidates WITHOUT inserting them into database.
+   */
   async searchADUsers(query: string): Promise<any[]> {
     const searchText = String(query || '').trim();
-    if (searchText.length < 2) return this.findAllUsers();
+    if (searchText.length < 2) return [];
 
     const escapeLDAP = (value: string) => value.replace(/[\\*()\0]/g, (character) => `\\${character.charCodeAt(0).toString(16).padStart(2, '0')}`);
     const escapedQuery = escapeLDAP(searchText);
-    const syncedEmails = new Set<string>();
+
+    const existingRes = await this.pool.query(`SELECT LOWER(email) as email FROM app_users`);
+    const existingEmails = new Set(existingRes.rows.map((r) => r.email));
+
+    const candidates: any[] = [];
+    const processed = new Set<string>();
 
     try {
       const queryOpts = {
         filter: `(&(objectCategory=person)(objectClass=user)(|(displayName=*${escapedQuery}*)(cn=*${escapedQuery}*)(mail=*${escapedQuery}*)(sAMAccountName=*${escapedQuery}*)(givenName=*${escapedQuery}*)(sn=*${escapedQuery}*)))`,
         paged: true,
-        pageSize: 500,
+        pageSize: 100,
         attributes: ['sAMAccountName', 'mail', 'cn', 'displayName', 'givenName', 'sn', 'department', 'userAccountControl'],
       };
 
       const users = await this.executeADQuery(queryOpts, true);
-
-      const roleRes = await this.pool.query(`SELECT id FROM role_master WHERE LOWER(role) = 'user'`);
-      const defaultRoleId = roleRes.rows[0]?.id;
 
       for (const adUser of users) {
         const rawMail = adUser.mail || (adUser.sAMAccountName ? `${adUser.sAMAccountName}@hgusa.com` : null);
         if (!rawMail) continue;
 
         const email = String(rawMail).trim().toLowerCase();
-        syncedEmails.add(email);
+        if (processed.has(email)) continue;
+        processed.add(email);
 
         const name = adUser.displayName || adUser.cn || `${adUser.givenName || ''} ${adUser.sn || ''}`.trim() || adUser.sAMAccountName || email;
-        const uac = Number(adUser.userAccountControl || 0);
-        const isActive = (uac & 2) === 0;
+        const department = adUser.department || '';
 
-        const result = await this.pool.query(
-          `INSERT INTO app_users (email, name, is_admin, role, is_active)
-           VALUES ($1, $2, false, 'User', $3)
-           ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active, updated_at = now()
-           RETURNING id`,
-          [email, name, isActive],
-        );
-
-        if (defaultRoleId && result.rows[0]?.id) {
-          await this.pool.query(
-            `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-            [result.rows[0].id, defaultRoleId],
-          );
-        }
+        candidates.push({
+          name,
+          email,
+          department,
+          sAMAccountName: adUser.sAMAccountName || '',
+          isAlreadyAdded: existingEmails.has(email),
+        });
       }
     } catch (err: any) {
       this.logger.warn(`AD Live search notice for query "${searchText}": ${err?.message || err}`);
     }
 
-    const allUsers = await this.findAllUsers();
-    const normalizedQuery = searchText.toLowerCase();
-    return allUsers.filter((user) =>
-      syncedEmails.has((user.email || '').toLowerCase()) ||
-      (user.name || '').toLowerCase().includes(normalizedQuery) ||
-      (user.email || '').toLowerCase().includes(normalizedQuery),
+    return candidates;
+  }
+
+  async purgeAutoSyncedUsers(): Promise<{ success: boolean; deletedCount: number; message: string }> {
+    await this.ensureTables();
+    const res = await this.pool.query(
+      `DELETE FROM app_users WHERE LOWER(email) != 'admin@hgusa.com' RETURNING id`,
     );
+    return {
+      success: true,
+      deletedCount: res.rowCount || 0,
+      message: `Cleaned ${res.rowCount || 0} unadded users. Reset to explicit user list.`,
+    };
   }
 
   // ── Public User API Methods ─────────────────────────────────────────

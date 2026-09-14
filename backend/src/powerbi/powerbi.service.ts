@@ -345,8 +345,6 @@ export class PowerBiService {
       return this.cleanRows(data?.results?.[0]?.tables?.[0]?.rows ?? []);
     } catch (err: any) {
       const errBody = err?.response?.data?.error;
-      // Power BI nests the real reason in a few different places depending on the
-      // failure; dig out the most specific one we can find.
       const pbiErr = errBody?.['pbi.error'];
       const detail =
         pbiErr?.details?.find((d: any) => d?.detail?.value)?.detail?.value ||
@@ -356,31 +354,36 @@ export class PowerBiService {
         err.message;
 
       if (!options?.silent) {
-        // Log the full body once so the underlying cause is visible.
         this.logger.error(
           `executeQueries failed (dataset ${datasetId}): ${JSON.stringify(
             err?.response?.data ?? err?.message,
           )}\nDAX: ${dax}`,
-        );
-      } else {
-        this.logger.debug(
-          `executeQueries (silent fallback) failed for dataset ${datasetId} on DAX: ${dax} - ${detail}`,
         );
       }
       throw new Error(`DAX failed: ${detail}`);
     }
   }
 
-  /** Helper to load table definitions by ID from INFO.TABLES(), INFO.VIEW.TABLES(), or $SYSTEM.TMSCHEMA_TABLES */
+  /** Helper to robustly extract boolean isHidden from DAX / DMV row fields */
+  private parseIsHidden(r: any): boolean {
+    if (!r) return false;
+    const val = r.IsHidden ?? r.isHidden ?? r.IS_HIDDEN ?? r.IsPrivate ?? r.isPrivate ?? r.IS_PRIVATE;
+    if (val === true || val === 1 || val === '1' || String(val).toLowerCase() === 'true') {
+      return true;
+    }
+    return false;
+  }
+
+  /** Helper to load table definitions by ID from $SYSTEM.TMSCHEMA_TABLES, $SYSTEM.DBSCHEMA_TABLES, or INFO.TABLES() */
   private async getTableMap(
     datasetId: string,
   ): Promise<Map<string | number, { name: string; isHidden: boolean }>> {
     const map = new Map<string | number, { name: string; isHidden: boolean }>();
     const daxQueries = [
-      'EVALUATE INFO.TABLES()',
-      'EVALUATE INFO.VIEW.TABLES()',
       'EVALUATE $SYSTEM.TMSCHEMA_TABLES',
       'EVALUATE $SYSTEM.DBSCHEMA_TABLES',
+      'EVALUATE INFO.TABLES()',
+      'EVALUATE INFO.VIEW.TABLES()',
     ];
 
     for (const q of daxQueries) {
@@ -388,13 +391,10 @@ export class PowerBiService {
         const rows = await this.executeQueryByDataset(datasetId, q, { silent: true });
         if (rows && rows.length > 0) {
           for (const r of rows) {
-            const id = r.ID ?? r.Id;
-            const name = String(r.Name ?? r.ExplicitName ?? r.TableName ?? r.TABLE_NAME ?? '');
+            const id = r.ID ?? r.Id ?? r.id;
+            const name = String(r.Name ?? r.ExplicitName ?? r.TableName ?? r.TABLE_NAME ?? r.name ?? '');
             if (id !== undefined && name) {
-              const isHidden =
-                r.IsHidden === true ||
-                r.IsPrivate === true ||
-                String(r.IsHidden).toLowerCase() === 'true';
+              const isHidden = this.parseIsHidden(r);
               map.set(id, { name, isHidden });
               map.set(String(id), { name, isHidden });
             }
@@ -409,7 +409,7 @@ export class PowerBiService {
   }
 
   /**
-   * Columns of a dataset (table + name + data type), via DAX INFO or DMV functions.
+   * Columns of a dataset (table + name + data type), via DAX DMV or INFO functions.
    * Hidden and internal RowNumber columns are handled based on includeHidden.
    */
   async getDatasetColumns(datasetId: string, includeHidden = true): Promise<
@@ -427,10 +427,10 @@ export class PowerBiService {
 
     const tableMap = await this.getTableMap(datasetId);
     const daxQueries = [
-      'EVALUATE INFO.COLUMNS()',
-      'EVALUATE INFO.VIEW.COLUMNS()',
       'EVALUATE $SYSTEM.TMSCHEMA_COLUMNS',
       'EVALUATE $SYSTEM.DBSCHEMA_COLUMNS',
+      'EVALUATE INFO.COLUMNS()',
+      'EVALUATE INFO.VIEW.COLUMNS()',
     ];
 
     for (const q of daxQueries) {
@@ -439,22 +439,19 @@ export class PowerBiService {
         if (colRows && colRows.length > 0) {
           const cols = colRows
             .map((r) => {
-              const tableId = r.TableID ?? r.TableId;
+              const tableId = r.TableID ?? r.TableId ?? r.tableId;
               const tableInfo = tableMap.get(tableId) ?? tableMap.get(String(tableId));
               const tableName = tableInfo?.name || String(r.Table ?? r.TableName ?? r.TABLE_NAME ?? '');
               const colName = String(
                 r.ExplicitName ?? r.InferredName ?? r.Name ?? r.ColumnName ?? r.COLUMN_NAME ?? '',
               );
               const dataType = String(r.ExplicitDataType ?? r.DataType ?? 'Text');
-              const isHidden =
-                r.IsHidden === true ||
-                String(r.IsHidden).toLowerCase() === 'true' ||
-                tableInfo?.isHidden === true;
+              const isHidden = this.parseIsHidden(r) || tableInfo?.isHidden === true;
               return {
                 table: tableName,
                 name: colName,
                 dataType,
-                isKey: r.IsKey === true || r.IsUnique === true,
+                isKey: r.IsKey === true || r.IsUnique === true || r.IsKey === 1,
                 isHidden,
                 type: r.Type,
               };
@@ -490,10 +487,10 @@ export class PowerBiService {
   > {
     const tableMap = await this.getTableMap(datasetId);
     const daxQueries = [
-      'EVALUATE INFO.MEASURES()',
-      'EVALUATE INFO.VIEW.MEASURES()',
       'EVALUATE $SYSTEM.TMSCHEMA_MEASURES',
       'EVALUATE $SYSTEM.MDSCHEMA_MEASURES',
+      'EVALUATE INFO.MEASURES()',
+      'EVALUATE INFO.VIEW.MEASURES()',
     ];
 
     for (const q of daxQueries) {
@@ -502,17 +499,14 @@ export class PowerBiService {
         if (measRows && measRows.length > 0) {
           const measures = measRows
             .map((r) => {
-              const tableId = r.TableID ?? r.TableId;
+              const tableId = r.TableID ?? r.TableId ?? r.tableId;
               const tableInfo = tableMap.get(tableId) ?? tableMap.get(String(tableId));
               const tableName = tableInfo?.name || String(r.Table ?? r.TableName ?? r.TABLE_NAME ?? 'Measures Table');
               const measName = String(
                 r.Name ?? r.ExplicitName ?? r.MeasureName ?? r.Caption ?? r.MEASURE_NAME ?? '',
               );
               const dataType = String(r.DataType ?? r.ExplicitDataType ?? 'Number');
-              const isHidden =
-                r.IsHidden === true ||
-                String(r.IsHidden).toLowerCase() === 'true' ||
-                tableInfo?.isHidden === true;
+              const isHidden = this.parseIsHidden(r) || tableInfo?.isHidden === true;
               return {
                 table: tableName,
                 name: measName,
