@@ -85,11 +85,4 @@ export class UsersController {
   syncADUsers() {
     return this.usersService.syncADUsers();
   }
-
-  @Public()
-  @Post('purgeAutoSynced')
-  @HttpCode(HttpStatus.OK)
-  purgeAutoSyncedUsers() {
-    return this.usersService.purgeAutoSyncedUsers();
-  }
 }

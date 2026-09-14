@@ -39,9 +39,6 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
           <p style="font-size:12px; color:#64748b; margin:2px 0 0 0;">Manage explicit system users, assign access roles, and set permission capabilities.</p>
         </div>
         <div class="actions" style="display:flex; gap:10px;">
-          <button class="btn-secondary-sm" (click)="purgeAutoUsers()" title="Reset user list to explicitly added users">
-            Clean Unadded Users
-          </button>
           <button class="btn-sync-ad" (click)="syncADUsers()" [disabled]="syncingAD()">
             <span *ngIf="syncingAD()" class="spinner-sm"></span>
             <svg *ngIf="!syncingAD()" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l5.64 5.64A9 9 0 0 0 20.49 15"></path></svg>
@@ -533,25 +530,6 @@ export class RolesPermissionsComponent implements OnInit {
       error: (err) => {
         this.syncingAD.set(false);
         this.toast.error(err?.error?.message || err?.message || 'AD user sync failed.');
-      },
-    });
-  }
-
-  async purgeAutoUsers() {
-    const confirmed = await this.toast.confirm({
-      title: 'Clean Unadded Users',
-      message: 'Are you sure you want to clean unadded users and reset to explicitly added users?',
-      confirmText: 'Clean Users',
-      danger: true,
-    });
-    if (!confirmed) return;
-    this.api.purgeAutoSyncedUsers().subscribe({
-      next: (res) => {
-        this.toast.success(res?.message || 'Cleaned unadded users list.');
-        this.loadUsers();
-      },
-      error: () => {
-        this.toast.error('Failed to clean unadded users.');
       },
     });
   }

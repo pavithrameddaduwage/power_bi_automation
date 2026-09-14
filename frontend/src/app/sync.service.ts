@@ -447,9 +447,6 @@ export class SyncApiService {
   syncADUsers(): Observable<any> {
     return this.http.post(`${environment.apiUrl}/users/sync-ad`, {});
   }
-  purgeAutoSyncedUsers(): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/users/purgeAutoSynced`, {});
-  }
   searchADUsers(query: string): Observable<any[]> {
     return this.http.get<any[]>(`${environment.apiUrl}/users/search-ad`, {
       params: { query },

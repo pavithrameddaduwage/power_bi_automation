@@ -392,18 +392,6 @@ export class UsersService implements OnModuleInit {
     return candidates;
   }
 
-  async purgeAutoSyncedUsers(): Promise<{ success: boolean; deletedCount: number; message: string }> {
-    await this.ensureTables();
-    const res = await this.pool.query(
-      `DELETE FROM app_users WHERE LOWER(email) != 'admin@hgusa.com' RETURNING id`,
-    );
-    return {
-      success: true,
-      deletedCount: res.rowCount || 0,
-      message: `Cleaned ${res.rowCount || 0} unadded users. Reset to explicit user list.`,
-    };
-  }
-
   // ── Public User API Methods ─────────────────────────────────────────
 
   async findAllUsers(): Promise<any[]> {
