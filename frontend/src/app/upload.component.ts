@@ -82,10 +82,13 @@ import { EmailPickerComponent } from './email-picker.component';
 
           <ng-container *ngIf="tables().length">
             <div class="row-between" style="margin-bottom:8px;">
-              <label>
-                {{ finalOnly ? 'Final report tables' : 'Tables connected to this report' }}
-                ({{ tables().length }}) — <strong>tick multiple</strong>
-              </label>
+              <div style="display:flex; align-items:center; gap:16px;">
+                <label class="pick" style="margin:0; font-weight:600;">
+                  <input type="checkbox" [checked]="allTablesChecked()" (change)="toggleAllTables($event)" />
+                  Select all tables
+                </label>
+                <span class="tag">{{ selectedTables().length }} of {{ tables().length }} selected</span>
+              </div>
               <label class="pick" style="margin:0; font-size:13px;">
                 <input type="checkbox" [(ngModel)]="showAllTables" (ngModelChange)="reloadColumnsForHiddenToggle()" />
                 Show all tables (incl. hidden)
@@ -138,7 +141,6 @@ import { EmailPickerComponent } from './email-picker.component';
                     <td>
                       {{ c.name }}
                       <span class="badge badge-ok" *ngIf="c.isKey" style="margin-left:6px;">model key</span>
-                      <span class="badge" *ngIf="c.isHidden" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:10px; padding:1px 6px; margin-left:6px;">hidden</span>
                     </td>
                     <td>{{ c.table }}</td>
                     <td>{{ c.dataType }}</td>
@@ -149,15 +151,20 @@ import { EmailPickerComponent } from './email-picker.component';
 
             <div *ngIf="measures().length" class="measures-block" style="margin-top:16px;">
               <div class="row-between">
-                <strong>Measures — viewed separately ({{ measures().length }})</strong>
-                <span class="tag">{{ selectedMeasureNames().length }} selected</span>
+                <label class="pick" style="margin:0; font-weight:600;">
+                  <input type="checkbox" [checked]="allMeasuresChecked()" (change)="toggleAllMeasures($event)" />
+                  Select all measures
+                </label>
+                <span class="tag">{{ selectedMeasureNames().length }} of {{ measures().length }} selected</span>
               </div>
               <input class="search" placeholder="Search measures…" [ngModel]="measureFilter()" (ngModelChange)="measureFilter.set($event)" />
               <div class="scroll-list">
                 <table>
                   <thead>
                     <tr>
-                      <th style="width:40px;">Use</th>
+                      <th style="width:40px;">
+                        <input type="checkbox" [checked]="allMeasuresChecked()" (change)="toggleAllMeasures($event)" title="Select all measures" />
+                      </th>
                       <th>Measure</th>
                       <th>Table</th>
                       <th>Type</th>
@@ -168,7 +175,6 @@ import { EmailPickerComponent } from './email-picker.component';
                       <td><input type="checkbox" [checked]="measureSelected()[m.name]" (change)="toggleMeasure(m.name)" /></td>
                       <td>
                         {{ m.name }}
-                        <span class="badge" *ngIf="m.isHidden" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:10px; padding:1px 6px; margin-left:6px;">hidden</span>
                       </td>
                       <td style="font-weight:600; color:#1d4ed8;">{{ m.table }}</td>
                       <td>{{ m.dataType }}</td>
@@ -714,6 +720,16 @@ export class UploadComponent implements OnInit {
   selectedNames = computed(() =>
     this.activeColumns().map((c) => c.name).filter((n) => this.selected()[n]),
   );
+  allTablesChecked = computed(
+    () =>
+      this.tables().length > 0 &&
+      this.selectedTables().length === this.tables().length,
+  );
+  allMeasuresChecked = computed(
+    () =>
+      this.measures().length > 0 &&
+      this.selectedMeasureNames().length === this.measures().length,
+  );
   allChecked = computed(
     () =>
       this.activeColumns().length > 0 &&
@@ -894,7 +910,10 @@ export class UploadComponent implements OnInit {
       return;
     }
     this.api.datasetMeasures(r.datasetId).subscribe({
-      next: (m) => this.measures.set(m),
+      next: (m) => {
+        this.measures.set(m);
+        this.measureSelected.set({});
+      },
       error: () => this.measures.set([]),
     });
     this.loadingCols.set(true);
@@ -910,11 +929,8 @@ export class UploadComponent implements OnInit {
           tbls.sort();
         }
         this.tables.set(tbls);
-        // Auto-select first table.
-        if (tbls.length > 0) {
-          this.selectedTables.set([tbls[0]]);
-          this.resetSelection();
-        }
+        this.selectedTables.set([]);
+        this.resetSelection();
         this.loadingCols.set(false);
       },
       error: (e) => {
@@ -1118,6 +1134,23 @@ export class UploadComponent implements OnInit {
     if (this.writeMode === 'upsert' || this.writeMode === 'append') {
       this.writeMode = this.selectedKeyNames().length > 0 ? 'upsert' : 'append';
     }
+  }
+  toggleAllTables(ev: Event) {
+    const checked = (ev.target as HTMLInputElement).checked;
+    if (checked) {
+      this.selectedTables.set([...this.tables()]);
+    } else {
+      this.selectedTables.set([]);
+    }
+    this.loadedRows.set([]);
+    this.loadedCols.set([]);
+    this.resetSelection();
+  }
+  toggleAllMeasures(ev: Event) {
+    const checked = (ev.target as HTMLInputElement).checked;
+    const sel: Record<string, boolean> = { ...this.measureSelected() };
+    for (const m of this.measures()) sel[m.name] = checked;
+    this.measureSelected.set(sel);
   }
   toggleAll(ev: Event) {
     const on = (ev.target as HTMLInputElement).checked;
