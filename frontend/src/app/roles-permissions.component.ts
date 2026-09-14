@@ -537,8 +537,14 @@ export class RolesPermissionsComponent implements OnInit {
     });
   }
 
-  purgeAutoUsers() {
-    if (!confirm('Are you sure you want to clean unadded users and reset to explicitly added users?')) return;
+  async purgeAutoUsers() {
+    const confirmed = await this.toast.confirm({
+      title: 'Clean Unadded Users',
+      message: 'Are you sure you want to clean unadded users and reset to explicitly added users?',
+      confirmText: 'Clean Users',
+      danger: true,
+    });
+    if (!confirmed) return;
     this.api.purgeAutoSyncedUsers().subscribe({
       next: (res) => {
         this.toast.success(res?.message || 'Cleaned unadded users list.');
@@ -570,8 +576,14 @@ export class RolesPermissionsComponent implements OnInit {
     });
   }
 
-  deleteUser(user: any) {
-    if (!confirm(`Are you sure you want to remove user "${user.name}" (${user.email}) from the system?`)) return;
+  async deleteUser(user: any) {
+    const confirmed = await this.toast.confirm({
+      title: 'Remove System User',
+      message: `Are you sure you want to remove user "${user.name}" (${user.email}) from the system?`,
+      confirmText: 'Remove User',
+      danger: true,
+    });
+    if (!confirmed) return;
     this.deletingUser.set(user.id);
     this.api.deleteUser(user.id).subscribe({
       next: () => {

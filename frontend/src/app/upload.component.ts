@@ -1497,8 +1497,14 @@ export class UploadComponent implements OnInit {
     });
   }
 
-  removeDatabase(id: number) {
-    if (!confirm('Remove this database connection?')) return;
+  async removeDatabase(id: number) {
+    const confirmed = await this.toast.confirm({
+      title: 'Remove Connection',
+      message: 'Are you sure you want to remove this database connection?',
+      confirmText: 'Remove',
+      danger: true,
+    });
+    if (!confirmed) return;
     this.busy.set(true);
     this.api.deleteDatabase(id).subscribe({
       next: () => {

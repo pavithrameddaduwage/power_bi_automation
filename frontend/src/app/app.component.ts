@@ -524,10 +524,16 @@ export class AppComponent implements OnInit {
     });
   }
 
-  deleteSelectedEmails() {
+  async deleteSelectedEmails() {
     const ids = Array.from(this.selectedEmailIds());
     if (ids.length === 0) return;
-    if (!confirm(`Delete ${ids.length} selected email log(s)?`)) return;
+    const confirmed = await this.toast.confirm({
+      title: 'Delete Email Logs',
+      message: `Delete ${ids.length} selected email log(s)?`,
+      confirmText: 'Delete Logs',
+      danger: true,
+    });
+    if (!confirmed) return;
     this.deletingLogs.set(true);
     this.api.deleteEmailLogs(ids).subscribe({
       next: (res) => {
@@ -543,9 +549,15 @@ export class AppComponent implements OnInit {
     });
   }
 
-  clearAllEmails() {
+  async clearAllEmails() {
     if (this.emailLogs().length === 0) return;
-    if (!confirm('Are you sure you want to clear all email delivery logs? This cannot be undone.')) return;
+    const confirmed = await this.toast.confirm({
+      title: 'Clear Delivery Logs',
+      message: 'Are you sure you want to clear all email delivery logs? This cannot be undone.',
+      confirmText: 'Clear All Logs',
+      danger: true,
+    });
+    if (!confirmed) return;
     this.deletingLogs.set(true);
     this.api.clearAllEmailLogs().subscribe({
       next: () => {
