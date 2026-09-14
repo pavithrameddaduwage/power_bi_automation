@@ -204,6 +204,18 @@ export class SyncApiService {
       { params },
     );
   }
+  datasetDataSources(
+    datasetId: string,
+    groupId?: string,
+  ): Observable<any[]> {
+    let params = new HttpParams();
+    if (groupId) params = params.set('groupId', groupId);
+    return this.http.get<any[]>(
+      `${API}/catalog/datasets/${datasetId}/datasources`,
+      { params },
+    );
+  }
+
   reportData(
     datasetId: string,
     /** Single table (legacy) or multiple tables. */

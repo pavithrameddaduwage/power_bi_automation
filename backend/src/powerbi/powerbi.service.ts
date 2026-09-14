@@ -531,6 +531,29 @@ export class PowerBiService {
   }
 
   /**
+   * Data sources (SQL, Oracle, Web, Sharepoint, OData, etc.) behind a Power BI dataset.
+   */
+  async getDatasetDataSources(datasetId: string, groupId?: string): Promise<any[]> {
+    const http = await this.client();
+    if (groupId) {
+      try {
+        const { data } = await http.get(`/groups/${groupId}/datasets/${datasetId}/datasources`);
+        return data.value || [];
+      } catch (e) {
+        this.logger.warn(`Could not read datasources for dataset ${datasetId} in group ${groupId}: ${e}`);
+      }
+    }
+    try {
+      const { data } = await http.get(`/datasets/${datasetId}/datasources`);
+      return data.value || [];
+    } catch (e) {
+      this.logger.warn(`Could not read datasources for dataset ${datasetId}: ${e}`);
+      return [];
+    }
+  }
+
+
+  /**
    * Build a SUMMARIZECOLUMNS query: group by the chosen columns and compute the
    * chosen measures. Group-by columns are optional when measures are present
   /**

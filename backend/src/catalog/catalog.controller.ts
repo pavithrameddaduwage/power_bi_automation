@@ -104,6 +104,16 @@ export class CatalogController {
     return this.powerbi.getDatasetMeasures(datasetId, isIncludeHidden);
   }
 
+  /** Data sources connected to a dataset. */
+  @Get('datasets/:datasetId/datasources')
+  datasources(
+    @Param('datasetId') datasetId: string,
+    @Query('groupId') groupId?: string,
+  ) {
+    return this.powerbi.getDatasetDataSources(datasetId, groupId);
+  }
+
+
   /** Pull the selected columns'/measures' data from Power BI (the "sync" step). */
   @Post('data')
   data(
