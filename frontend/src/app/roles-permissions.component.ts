@@ -109,11 +109,8 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
                   </span>
                 </td>
                 <td style="text-align:right;">
-                  <div style="display:flex; justify-content:flex-end; gap:8px;">
-                    <button class="btn-sm btn-save" (click)="saveUserRole(u)" [disabled]="savingUser() === u.id">
-                      <span *ngIf="savingUser() === u.id" class="spinner-xs"></span>
-                      Save
-                    </button>
+                  <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px;">
+                    <span *ngIf="savingUser() === u.id" class="spinner-sm"></span>
                     <button class="btn-sm btn-danger" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;" (click)="deleteUser(u)" [disabled]="deletingUser() === u.id">
                       Remove
                     </button>
@@ -537,6 +534,7 @@ export class RolesPermissionsComponent implements OnInit {
   onUserRoleChange(user: any, newRole: string) {
     user.role = newRole;
     user.is_admin = newRole.toLowerCase() === 'admin' || newRole.toLowerCase() === 'super admin';
+    this.saveUserRole(user);
   }
 
   saveUserRole(user: any) {
