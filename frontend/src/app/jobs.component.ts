@@ -68,7 +68,7 @@ import { PagerComponent } from './pager.component';
           (click)="activeTab.set('toolJobs')"
           style="font-size: 13px; font-weight: 700; padding: 7px 18px; border-radius:8px; cursor:pointer;"
         >
-          📅 Scheduled Auto-Sync Reports ({{ jobs().length }})
+          Scheduled Auto-Sync Reports ({{ jobs().length }})
         </button>
         <button
           class="btn-secondary"
@@ -79,7 +79,7 @@ import { PagerComponent } from './pager.component';
           (click)="activeTab.set('pbiSchedules')"
           style="font-size: 13px; font-weight: 700; padding: 7px 18px; border-radius:8px; cursor:pointer;"
         >
-          ⏱️ Power BI Dataset Refresh Times ({{ refreshSchedules().length }})
+          Power BI Dataset Refresh Times ({{ refreshSchedules().length }})
         </button>
       </div>
       <button class="btn-secondary" (click)="load()" [disabled]="busy() || loadingRefreshes()" style="font-size: 12px; padding: 6px 14px;">
