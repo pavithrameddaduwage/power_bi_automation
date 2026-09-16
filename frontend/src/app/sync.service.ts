@@ -257,6 +257,9 @@ export class SyncApiService {
   exportUrl(table: string): string {
     return `${API}/uploads/datasets/${table}/export`;
   }
+  exportDatasetCsv(table: string): Observable<Blob> {
+    return this.http.get(`${API}/uploads/datasets/${table}/export`, { responseType: 'blob' });
+  }
   emailDataset(table: string, recipients: string[], subject: string): Observable<any> {
     return this.http.post(`${API}/uploads/datasets/${table}/email`, { recipients, subject });
   }

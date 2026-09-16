@@ -25,6 +25,7 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Pragma', 'Cache-Control'],
+    exposedHeaders: ['Content-Disposition', 'Content-Type'],
   });
 
   // Custom report uploads can be sizeable JSON payloads.

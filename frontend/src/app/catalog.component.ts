@@ -11,7 +11,7 @@ import { PagerComponent } from './pager.component';
 @Component({
   selector: 'app-catalog',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PagerComponent],
   template: `
     <div class="row-between">
       <h2>Dashboards</h2>
@@ -46,9 +46,8 @@ import { PagerComponent } from './pager.component';
       </label>
     </div>
 
-
     <div style="max-height: 560px; overflow-y: auto; padding-right: 4px;">
-      <div class="card" *ngFor="let r of reports()">
+      <div class="card" *ngFor="let r of pagedReports()">
         <div class="row-between">
           <div>
             <strong>{{ r.name }}</strong>
@@ -81,6 +80,14 @@ import { PagerComponent } from './pager.component';
         </table>
       </div>
     </div>
+
+    <app-pager
+      *ngIf="reports().length > pageSize"
+      [total]="reports().length"
+      [pageSize]="pageSize"
+      [page]="page()"
+      (pageChange)="page.set($event)"
+    ></app-pager>
 
     <div class="card" *ngIf="error()">
       <span class="status-error">{{ error() }}</span>

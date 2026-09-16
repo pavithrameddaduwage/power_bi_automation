@@ -2403,7 +2403,7 @@ export class UsageComponent implements OnInit {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     this.toast.success(`Exported CSV sheet according to selected filters.`);
   }
 
@@ -2791,7 +2791,7 @@ export class UsageComponent implements OnInit {
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          URL.revokeObjectURL(url);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
           this.toast.success('Downloaded multi-sheet Excel sheet (.xlsx).');
         },
         error: (err) => {

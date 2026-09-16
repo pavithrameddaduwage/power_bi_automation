@@ -214,9 +214,9 @@ import { EmailPickerComponent } from './email-picker.component';
                     >
                       {{ previewTable() === d.table_name ? 'Close Preview' : 'Preview' }}
                     </button>
-                    <a class="btn-action-mini" [href]="api.exportUrl(d.table_name)" [title]="getDatasetRefreshTooltip(d)">
+                    <button class="btn-action-mini" (click)="exportCsv(d.table_name)" [disabled]="busy()" [title]="getDatasetRefreshTooltip(d)">
                       Export CSV
-                    </a>
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -387,6 +387,30 @@ export class DatasetsComponent implements OnInit {
       error: (e) => {
         this.busy.set(false);
         this.toast.error(e?.error?.message || e?.message || 'Failed to send email');
+      },
+    });
+  }
+
+  exportCsv(tableName: string) {
+    if (!tableName) return;
+    this.busy.set(true);
+    this.api.exportDatasetCsv(tableName).subscribe({
+      next: (blob) => {
+        this.busy.set(false);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `${tableName}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+        this.toast.success(`Exported dataset CSV (${tableName}.csv)`);
+      },
+      error: (err) => {
+        this.busy.set(false);
+        this.toast.error('Failed to export dataset CSV: ' + (err?.error?.message || err?.message || 'error'));
       },
     });
   }
