@@ -33,18 +33,8 @@ export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   template: `
     <div class="roles-permissions-container">
       <!-- Header -->
-      <div class="page-header row-between">
-        <div>
-          <h2>Roles &amp; Permissions Management</h2>
-          <p style="font-size:12px; color:#64748b; margin:2px 0 0 0;">Manage explicit system users, assign access roles, and set permission capabilities.</p>
-        </div>
-        <div class="actions" style="display:flex; gap:10px;">
-          <button class="btn-sync-ad" (click)="syncADUsers()" [disabled]="syncingAD()">
-            <span *ngIf="syncingAD()" class="spinner-sm"></span>
-            <svg *ngIf="!syncingAD()" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l5.64 5.64A9 9 0 0 0 20.49 15"></path></svg>
-            Sync AD Status
-          </button>
-        </div>
+      <div class="page-header">
+        <h2>Roles &amp; Permissions Management</h2>
       </div>
 
       <!-- Navigation Tabs -->

@@ -93,7 +93,6 @@ import { PagerComponent } from './pager.component';
         <div style="padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--card);">
           <div>
             <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text);">Auto-Sync Scheduled Reports</h4>
-            <div class="muted" style="font-size:12px; margin-top:2px;">Background jobs that automatically pull Power BI data and insert into PostgreSQL tables</div>
           </div>
           <input
             [ngModel]="jobSearch()"
@@ -173,7 +172,6 @@ import { PagerComponent } from './pager.component';
         <div style="padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: var(--card);">
           <div>
             <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text);">Power BI Dataset Refresh Times &amp; Schedules</h4>
-            <div class="muted" style="font-size:12px; margin-top:2px;">Live refresh schedules and last refresh status from Power BI tenant</div>
           </div>
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <input
