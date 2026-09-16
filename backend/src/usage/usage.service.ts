@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { PowerBiAuthService } from '../auth/powerbi-auth.service';
+import { ExcelService } from '../exports/excel.service';
 import axios, { AxiosInstance } from 'axios';
 import { PG_POOL } from '../db/database.module';
 import { Pool } from 'pg';
@@ -72,7 +73,8 @@ export class UsageService {
 
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
-    private readonly auth: PowerBiAuthService
+    private readonly auth: PowerBiAuthService,
+    private readonly excelService: ExcelService,
   ) {}
 
   private async client(): Promise<AxiosInstance> {
@@ -1404,7 +1406,13 @@ export class UsageService {
   }
 
   /** Access Level and Unused Access Audit */
-  async getAccessUtilization(groupId?: string, reportName?: string) {
+  async getAccessUtilization(
+    groupId?: string,
+    reportName?: string,
+    year?: string,
+    month?: string,
+    date?: string,
+  ) {
     await this.ensureTablesExist();
 
     const isServicePrincipal = (displayName: string = '', email: string = '', principalType: string = '') => {
@@ -1446,10 +1454,14 @@ export class UsageService {
 
     if (groupId && groupId.trim() !== '') {
       try {
-        rawAccessUsers = await this.getWorkspaceUsers(groupId);
-        if (!workspaceName) {
+        const gIds = groupId.split(',').map((s) => s.trim()).filter(Boolean);
+        for (const gId of gIds) {
+          const uList = await this.getWorkspaceUsers(gId);
+          rawAccessUsers.push(...uList);
+        }
+        if (!workspaceName && gIds.length === 1) {
           const reports = await this.listUsageReports();
-          const match = reports.find((r) => r.groupId === groupId);
+          const match = reports.find((r) => r.groupId === gIds[0]);
           if (match) workspaceName = match.groupName;
         }
       } catch (err: any) {
@@ -1486,16 +1498,71 @@ export class UsageService {
       }
     }
 
-    const conditions = [`(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%')`];
+    const conditions = [
+      `(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%' AND report_name NOT ILIKE '%general usage%' AND report_name != 'Unknown')`,
+    ];
     const params: any[] = [];
     let pIdx = 1;
+
     if (groupId && groupId.trim() !== '') {
-      conditions.push(`TRIM(group_id) = TRIM($${pIdx++})`);
-      params.push(groupId.trim());
+      const vals = groupId.split(',').map((s) => s.trim()).filter(Boolean);
+      if (vals.length === 1) {
+        conditions.push(`TRIM(group_id) = TRIM($${pIdx++})`);
+        params.push(vals[0]);
+      } else if (vals.length > 1) {
+        conditions.push(`TRIM(group_id) = ANY($${pIdx++}::text[])`);
+        params.push(vals);
+      }
     }
+
     if (reportName && reportName.trim() !== '') {
-      conditions.push(`LOWER(TRIM(report_name)) = LOWER(TRIM($${pIdx++}))`);
-      params.push(reportName.trim());
+      const vals = reportName.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (vals.length === 1) {
+        conditions.push(`LOWER(TRIM(report_name)) = $${pIdx++}`);
+        params.push(vals[0]);
+      } else if (vals.length > 1) {
+        conditions.push(`LOWER(TRIM(report_name)) = ANY($${pIdx++}::text[])`);
+        params.push(vals);
+      }
+    }
+
+    if (year && String(year).trim() !== '') {
+      const yearVals = String(year)
+        .split(',')
+        .map((y) => Number(y.trim()))
+        .filter((n) => !isNaN(n) && n > 0);
+      if (yearVals.length === 1) {
+        conditions.push(`EXTRACT(YEAR FROM date) = $${pIdx++}`);
+        params.push(yearVals[0]);
+      } else if (yearVals.length > 1) {
+        conditions.push(`EXTRACT(YEAR FROM date) = ANY($${pIdx++}::int[])`);
+        params.push(yearVals);
+      }
+    }
+
+    if (month && String(month).trim() !== '') {
+      const monthVals = String(month)
+        .split(',')
+        .map((m) => Number(m.trim()))
+        .filter((n) => !isNaN(n) && n > 0);
+      if (monthVals.length === 1) {
+        conditions.push(`EXTRACT(MONTH FROM date) = $${pIdx++}`);
+        params.push(monthVals[0]);
+      } else if (monthVals.length > 1) {
+        conditions.push(`EXTRACT(MONTH FROM date) = ANY($${pIdx++}::int[])`);
+        params.push(monthVals);
+      }
+    }
+
+    if (date && date.trim() !== '') {
+      const dateVals = date.split(',').map((d) => d.trim()).filter(Boolean);
+      if (dateVals.length === 1) {
+        conditions.push(`TO_CHAR(date, 'YYYY-MM-DD') = $${pIdx++}`);
+        params.push(dateVals[0]);
+      } else if (dateVals.length > 1) {
+        conditions.push(`TO_CHAR(date, 'YYYY-MM-DD') = ANY($${pIdx++}::text[])`);
+        params.push(dateVals);
+      }
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
@@ -1523,7 +1590,7 @@ export class UsageService {
       activityMap.set(row.email, {
         name: row.name,
         views: Number(row.views),
-        lastAccessed: row.last_accessed
+        lastAccessed: row.last_accessed,
       });
     }
 
@@ -1533,7 +1600,7 @@ export class UsageService {
           displayName: act.name || em,
           email: em,
           role: 'Viewer',
-          principalType: 'User'
+          principalType: 'User',
         });
       }
     }
@@ -1546,12 +1613,8 @@ export class UsageService {
       const act = activityMap.get(em);
       const views = act ? act.views : 0;
       const lastAccessed = act ? act.lastAccessed : null;
-      // Active user criteria: must have views and last accessed in current year 2026
-      const isActiveIn2026 = Boolean(
-        views > 0 && 
-        lastAccessed && 
-        lastAccessed.startsWith('2026')
-      );
+      // Active user criteria: user has views in selected filtered range/date
+      const isActive = views > 0;
       annotatedUsers.push({
         displayName: u.displayName && u.displayName !== u.email ? u.displayName : (act?.name || u.displayName || em),
         email: em,
@@ -1559,7 +1622,7 @@ export class UsageService {
         principalType: u.principalType || 'User',
         views,
         lastAccessed,
-        status: isActiveIn2026 ? 'active' : 'unused'
+        status: isActive ? 'active' : 'unused',
       });
     }
 
@@ -1571,8 +1634,8 @@ export class UsageService {
     });
 
     const totalUsers = annotatedUsers.length;
-    const activeUsers = annotatedUsers.filter(u => u.status === 'active').length;
-    const unusedUsers = annotatedUsers.filter(u => u.status === 'unused').length;
+    const activeUsers = annotatedUsers.filter((u) => u.status === 'active').length;
+    const unusedUsers = annotatedUsers.filter((u) => u.status === 'unused').length;
     const unusedRate = totalUsers > 0 ? Math.round((unusedUsers / totalUsers) * 100) : 0;
 
     return {
@@ -1582,7 +1645,61 @@ export class UsageService {
       unusedRate,
       users: annotatedUsers,
       workspaceName,
-      reportName
+      reportName,
     };
+  }
+
+  /** Export structured multi-worksheet Excel workbook for Usage & Access Analytics */
+  async exportUsageExcelSheets(filters: {
+    groupId?: string;
+    reportName?: string;
+    email?: string;
+    year?: string;
+    month?: string;
+    date?: string;
+  }): Promise<Buffer> {
+    const analytics = await this.getDashboardAnalytics(filters);
+    const access = await this.getAccessUtilization(
+      filters.groupId,
+      filters.reportName,
+      filters.year,
+      filters.month,
+      filters.date,
+    );
+
+    // Sheet 1: Report Usage Summary
+    const reportRows = (analytics.reportUsage || []).map((r) => ({
+      'Workspace Group': r.groupName || 'Power BI Workspace',
+      'Report / Dashboard': r.reportName || 'N/A',
+      'Total Pages': r.pagesCount || 0,
+      'Unique Viewers': r.viewers || 0,
+      'Total Views': r.views || 0,
+      'Last Accessed Date': r.lastAccessed || 'N/A',
+    }));
+
+    // Sheet 2: Page Usage Breakdown
+    const pageRows = (analytics.pageUsage || []).map((p) => ({
+      'Report / Dashboard': p.reportName || 'N/A',
+      'Page Name': p.pageName || 'N/A',
+      'Unique Viewers': p.viewers || 0,
+      'Total Views': p.views || 0,
+      'Last Accessed Date': p.lastAccessed || 'N/A',
+    }));
+
+    // Sheet 3: User Access Audit Matrix
+    const userRows = (access.users || []).map((u) => ({
+      'User / Member Name': u.displayName || u.email,
+      'Email Address': u.email,
+      'Role / Access Level': u.role || 'Viewer',
+      'Access Status': u.status === 'active' ? 'Active' : 'Unused',
+      'Views Count': u.views || 0,
+      'Last Active Date': u.lastAccessed ? u.lastAccessed : 'Never active',
+    }));
+
+    return this.excelService.generateMultiSheetExcelBuffer([
+      { sheetName: 'Report Usage', rows: reportRows.length ? reportRows : [{ Note: 'No report usage data found' }] },
+      { sheetName: 'Page Usage', rows: pageRows.length ? pageRows : [{ Note: 'No page usage data found' }] },
+      { sheetName: 'User Access Audit', rows: userRows.length ? userRows : [{ Note: 'No user access data found' }] },
+    ]);
   }
 }

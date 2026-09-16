@@ -404,12 +404,43 @@ export class SyncApiService {
     return this.http.get<DashboardAnalyticsResponse>(`${API}/usage/dashboard-analytics`, { params });
   }
 
-  getAccessUtilization(groupId?: string, reportName?: string): Observable<AccessUtilizationResponse> {
+  getAccessUtilization(
+    groupId?: string,
+    reportName?: string,
+    year?: string,
+    month?: string,
+    date?: string,
+  ): Observable<AccessUtilizationResponse> {
     let params = new HttpParams();
     if (groupId) params = params.set('groupId', groupId);
     if (reportName) params = params.set('reportName', reportName);
+    if (year) params = params.set('year', year);
+    if (month) params = params.set('month', month);
+    if (date) params = params.set('date', date);
 
     return this.http.get<AccessUtilizationResponse>(`${API}/usage/access-utilization`, { params });
+  }
+
+  downloadUsageExcel(filters: {
+    groupId?: string;
+    reportName?: string;
+    email?: string;
+    year?: string;
+    month?: string;
+    date?: string;
+  }): Observable<Blob> {
+    let params = new HttpParams();
+    if (filters.groupId) params = params.set('groupId', filters.groupId);
+    if (filters.reportName) params = params.set('reportName', filters.reportName);
+    if (filters.email) params = params.set('email', filters.email);
+    if (filters.year) params = params.set('year', String(filters.year));
+    if (filters.month) params = params.set('month', String(filters.month));
+    if (filters.date) params = params.set('date', filters.date);
+
+    return this.http.get(`${API}/usage/export-excel`, {
+      params,
+      responseType: 'blob',
+    });
   }
 
   // ── Instant Cache for Dashboard Warm Start ──

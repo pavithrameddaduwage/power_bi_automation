@@ -1,4 +1,5 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { UsageService } from './usage.service';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -85,8 +86,37 @@ export class UsageController {
   getAccessUtilization(
     @Query('groupId') groupId?: string,
     @Query('reportName') reportName?: string,
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+    @Query('date') date?: string,
   ) {
-    return this.usage.getAccessUtilization(groupId, reportName);
+    return this.usage.getAccessUtilization(groupId, reportName, year, month, date);
+  }
+
+  /** Export multi-worksheet Excel workbook */
+  @Public()
+  @Get('export-excel')
+  async exportExcel(
+    @Res() res: Response,
+    @Query('groupId') groupId?: string,
+    @Query('reportName') reportName?: string,
+    @Query('email') email?: string,
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+    @Query('date') date?: string,
+  ) {
+    const buffer = await this.usage.exportUsageExcelSheets({
+      groupId,
+      reportName,
+      email,
+      year,
+      month,
+      date,
+    });
+    const filename = `Usage_Analytics_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
   }
 }
 

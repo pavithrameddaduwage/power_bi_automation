@@ -1408,14 +1408,14 @@ import { ToastService } from './toast.service';
             <span class="filter-badge" *ngIf="activeFilterCount() > 0">{{ activeFilterCount() }} Active</span>
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
-            <button class="btn-back" style="font-size:12px; padding:5px 12px; background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;" (click)="exportAccessMatrixCSV()" title="Download full access matrix data sheet as CSV">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Export CSV Data Sheet
+            <button class="btn-back" style="font-size:12px; padding:6px 14px; background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; font-weight:600;" (click)="exportAccessMatrixExcel()" title="Download Excel sheet with report, page, and user access data filtered by active selections">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              Export Excel Sheet
             </button>
             <span *ngIf="loading()" style="font-size:12.5px; color:#1e40af; font-weight:600;">
               <span class="spinner"></span> Updating…
             </span>
-            <button class="btn-reset" *ngIf="activeFilterCount() > 0" (click)="resetFilters()">
+            <button class="btn-reset" *ngIf="activeFilterCount() > 0" (click)="clearAllFilters()">
               Clear All Filters
             </button>
           </div>
@@ -2309,79 +2309,102 @@ export class UsageComponent implements OnInit {
       return;
     }
 
-    const headers = [
-      'Record Type',
-      'Workspace',
-      'Report / Dashboard',
-      'Page Name',
-      'User / Member Name',
-      'Email Address',
-      'Role / Department',
-      'Access Status',
-      'Total Views',
-      'Last Accessed Date',
-    ];
+    const escape = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
 
-    const rows: (string | number)[][] = [];
+    const csvLines: string[] = [];
 
-    // 1. Include Report & Dashboard Summaries
+    // Header Metadata
+    csvLines.push(`${escape('POWER BI USAGE & ACCESS REPORT')}`);
+    csvLines.push(`${escape('Export Date')},${escape(new Date().toISOString().slice(0, 10))}`);
+    if (this.filterGroupId) csvLines.push(`${escape('Workspace Filter')},${escape(this.filterGroupId)}`);
+    if (this.filterReportName) csvLines.push(`${escape('Report/Dashboard Filter')},${escape(this.filterReportName)}`);
+    if (this.filterUserEmail || this.selectedUserEmail()) csvLines.push(`${escape('User Filter')},${escape(this.filterUserEmail || this.selectedUserEmail())}`);
+    if (this.filterYear) csvLines.push(`${escape('Year Filter')},${escape(this.filterYear)}`);
+    if (this.filterMonth) csvLines.push(`${escape('Month Filter')},${escape(this.filterMonth)}`);
+    if (this.filterDate) csvLines.push(`${escape('Date Filter')},${escape(this.filterDate)}`);
+    csvLines.push('');
+
+    // SECTION 1: DASHBOARDS & REPORTS USAGE
+    csvLines.push(`${escape('=== SECTION 1: DASHBOARDS & REPORTS USAGE ===')}`);
+    csvLines.push([
+      escape('Workspace'),
+      escape('Report / Dashboard Name'),
+      escape('Total Pages'),
+      escape('Unique Viewers'),
+      escape('Total Views'),
+      escape('Last Accessed Date')
+    ].join(','));
+
     for (const r of reports) {
-      rows.push([
-        '"Dashboard / Report"',
-        `"${(r.groupName || '').replace(/"/g, '""')}"`,
-        `"${(r.reportName || '').replace(/"/g, '""')}"`,
-        `"${r.pagesCount || 0} page(s)"`,
-        `"${r.viewers || 0} viewer(s)"`,
-        '""',
-        '""',
-        '"Active"',
+      csvLines.push([
+        escape(r.groupName || 'Workspace'),
+        escape(r.reportName),
+        r.pagesCount || 0,
+        r.viewers || 0,
         r.views || 0,
-        `"${r.lastAccessed ? this.formatAccessDate(r.lastAccessed) : 'N/A'}"`,
-      ]);
+        escape(r.lastAccessed ? this.formatAccessDate(r.lastAccessed) : 'N/A')
+      ].join(','));
     }
+    csvLines.push('');
 
-    // 2. Include Page Access Breakdown
+    // SECTION 2: PAGE & TAB USAGE BREAKDOWN
+    csvLines.push(`${escape('=== SECTION 2: PAGE & TAB USAGE BREAKDOWN ===')}`);
+    csvLines.push([
+      escape('Report / Dashboard Name'),
+      escape('Page Name'),
+      escape('Unique Viewers'),
+      escape('Total Views'),
+      escape('Last Accessed Date')
+    ].join(','));
+
     for (const p of pages) {
-      rows.push([
-        '"Report Page"',
-        '""',
-        `"${(p.reportName || '').replace(/"/g, '""')}"`,
-        `"${(p.pageName || '').replace(/"/g, '""')}"`,
-        `"${p.viewers || 0} viewer(s)"`,
-        '""',
-        '""',
-        '"Active"',
+      csvLines.push([
+        escape(p.reportName),
+        escape(p.pageName),
+        p.viewers || 0,
         p.views || 0,
-        `"${p.lastAccessed ? this.formatAccessDate(p.lastAccessed) : 'N/A'}"`,
-      ]);
+        escape(p.lastAccessed ? this.formatAccessDate(p.lastAccessed) : 'N/A')
+      ].join(','));
     }
+    csvLines.push('');
 
-    // 3. Include Member Access Audit Matrix
+    // SECTION 3: USER ACCESS & ACTIVITY AUDIT
+    csvLines.push(`${escape('=== SECTION 3: USER ACCESS & ACTIVITY AUDIT ===')}`);
+    csvLines.push([
+      escape('User / Member Name'),
+      escape('Email Address'),
+      escape('Role / Access Level'),
+      escape('Access Status'),
+      escape('Total Views'),
+      escape('Last Accessed Date')
+    ].join(','));
+
     for (const u of members) {
-      rows.push([
-        '"User Access Audit"',
-        '""',
-        '""',
-        '""',
-        `"${(u.displayName || '').replace(/"/g, '""')}"`,
-        `"${(u.email || '').replace(/"/g, '""')}"`,
-        `"${(u.role || '').replace(/"/g, '""')}"`,
-        `"${(u.status || '').replace(/"/g, '""')}"`,
+      csvLines.push([
+        escape(u.displayName || u.email),
+        escape(u.email),
+        escape(u.role || 'Viewer'),
+        escape(u.status === 'active' ? 'Active' : 'Unused'),
         u.views || 0,
-        `"${u.lastAccessed ? this.formatAccessDate(u.lastAccessed) : 'Never active'}"`,
-      ]);
+        escape(u.lastAccessed ? this.formatAccessDate(u.lastAccessed) : 'Never active')
+      ].join(','));
     }
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const csvContent = csvLines.join('\n');
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `Full_Usage_Access_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+
+    const safeFilterSuffix = this.filterReportName 
+      ? `_${this.filterReportName.replace(/[^a-zA-Z0-9]/g, '_')}`
+      : (this.filterDate ? `_${this.filterDate}` : '');
+    link.setAttribute('download', `Usage_Access_Report${safeFilterSuffix}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    this.toast.success(`Exported combined dataset CSV with ${rows.length} record(s).`);
+    URL.revokeObjectURL(url);
+    this.toast.success(`Exported CSV sheet according to selected filters.`);
   }
 
 
@@ -2744,16 +2767,54 @@ export class UsageComponent implements OnInit {
     });
   }
 
+  resetFilters(): void {
+    this.clearAllFilters();
+  }
+
+  exportAccessMatrixExcel(): void {
+    this.toast.info('Generating multi-sheet Excel workbook…');
+    this.api
+      .downloadUsageExcel({
+        groupId: this.filterGroupId || undefined,
+        reportName: this.filterReportName || undefined,
+        email: this.filterUserEmail || undefined,
+        year: this.filterYear || undefined,
+        month: this.filterMonth || undefined,
+        date: this.filterDate || undefined,
+      })
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Usage_Analytics_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          this.toast.success('Downloaded multi-sheet Excel sheet (.xlsx).');
+        },
+        error: (err) => {
+          this.toast.error('Failed to download Excel sheet: ' + (err?.message || 'error'));
+        },
+      });
+  }
+
   private loadAccessUtilization(): void {
-    this.api.getAccessUtilization(
-      this.filterGroupId || undefined,
-      this.filterReportName || undefined,
-    ).subscribe({
-      next: (res) => {
-        this.accessData.set(res);
-      },
-      error: () => {},
-    });
+    this.api
+      .getAccessUtilization(
+        this.filterGroupId || undefined,
+        this.filterReportName || undefined,
+        this.filterYear || undefined,
+        this.filterMonth || undefined,
+        this.filterDate || undefined,
+      )
+      .subscribe({
+        next: (res) => {
+          this.accessData.set(res);
+        },
+        error: () => {},
+      });
   }
 
   // Helpers

@@ -8,29 +8,38 @@ export class ExcelService {
    * Keys of the first object are used as columns.
    */
   async generateExcelBuffer(rows: Record<string, any>[], sheetName = 'Report'): Promise<Buffer> {
+    return this.generateMultiSheetExcelBuffer([{ sheetName, rows }]);
+  }
+
+  /**
+   * Generates a multi-sheet Excel workbook from an array of sheet configurations.
+   */
+  async generateMultiSheetExcelBuffer(
+    sheets: { sheetName: string; rows: Record<string, any>[] }[],
+  ): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(sheetName);
 
-    if (rows && rows.length > 0) {
-      // Extract headers from the first row
-      const headers = Object.keys(rows[0]);
-      worksheet.columns = headers.map(header => ({
-        header,
-        key: header,
-        width: 20
-      }));
+    for (const s of sheets) {
+      const worksheet = workbook.addWorksheet(s.sheetName);
 
-      // Add all rows
-      worksheet.addRows(rows);
-      
-      // Basic styling for header row
-      const headerRow = worksheet.getRow(1);
-      headerRow.font = { bold: true };
-      headerRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE0E0E0' }
-      };
+      if (s.rows && s.rows.length > 0) {
+        const headers = Object.keys(s.rows[0]);
+        worksheet.columns = headers.map((header) => ({
+          header,
+          key: header,
+          width: Math.max(18, header.length + 4),
+        }));
+
+        worksheet.addRows(s.rows);
+
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF1E40AF' }, // Dark Blue header styling
+        };
+      }
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
