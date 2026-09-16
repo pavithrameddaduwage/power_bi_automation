@@ -388,13 +388,49 @@ import { EmailPickerComponent } from './email-picker.component';
             </div>
           </div>
 
+          <!-- Optional Auto-Sync Schedule for Database Auto-Update -->
+          <div class="card" style="margin-top:16px; margin-bottom:16px; background: #f8fafc; border: 1.5px solid #cbd5e1;">
+            <div class="row-between" style="cursor: pointer;" (click)="enableSchedule.set(!enableSchedule())">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <input type="checkbox" [checked]="enableSchedule()" (change)="enableSchedule.set($any($event.target).checked)" (click)="$event.stopPropagation()" />
+                <div>
+                  <strong style="font-size:13px; color:#1e293b;">Enable Auto-Sync Schedule</strong>
+                  <div class="muted" style="font-size:11px;">Automatically extract report data and update database table on schedule</div>
+                </div>
+              </div>
+              <span class="badge" [class.badge-ok]="enableSchedule()" [class.badge-no]="!enableSchedule()">
+                {{ enableSchedule() ? 'Scheduled' : 'Off' }}
+              </span>
+            </div>
+
+            <div *ngIf="enableSchedule()" style="margin-top:12px; padding-top:12px; border-top:1px solid #e2e8f0;">
+              <div class="grid2">
+                <label style="font-size:12px; font-weight:600;">Run Frequency
+                  <select [(ngModel)]="scheduleFrequency" style="margin-top:4px;">
+                    <option value="daily">Daily (Every day at 8:00 AM UTC)</option>
+                    <option value="weekly">Weekly (Every Monday at 8:00 AM UTC)</option>
+                    <option value="monthly">Monthly (1st of month at 8:00 AM UTC)</option>
+                    <option value="hourly">Hourly (Every hour at minute 0)</option>
+                    <option value="custom">Custom Cron Expression</option>
+                  </select>
+                </label>
+                <label *ngIf="scheduleFrequency === 'custom'" style="font-size:12px; font-weight:600;">Cron Expression (UTC)
+                  <input [(ngModel)]="customCron" placeholder="0 8 * * 1" style="margin-top:4px;" />
+                </label>
+              </div>
+              <div class="muted" style="font-size:11px; margin-top:8px;">
+                Cron Schedule: <code>{{ computedCron() }}</code> — This job will run automatically in the background to keep your PostgreSQL table updated.
+              </div>
+            </div>
+          </div>
+
           <div class="row-between" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border);">
             <label class="pick" style="margin:0; font-size:11px;">
               <input type="checkbox" [(ngModel)]="customColumns" /> Pick columns
             </label>
             <button class="btn-primary" (click)="upload()" [disabled]="busy()">
               <span *ngIf="busy()" class="spinner-white"></span>
-              Upload to Database Now
+              {{ enableSchedule() ? 'Save & Schedule Auto-Sync' : 'Upload to Database Now' }}
             </button>
           </div>
         </div>
@@ -487,6 +523,28 @@ export class UploadComponent implements OnInit {
   setStep(s: number) { this.currentStep.set(s); }
   filter = '';
   selectedReport = signal<ReportWithAccess | null>(null);
+
+  // ── Auto-Sync Schedule (Database Auto-Update, No Email) ──
+  enableSchedule = signal(false);
+  scheduleFrequency = 'daily';
+  customCron = '0 8 * * *';
+
+  computedCron(): string {
+    switch (this.scheduleFrequency) {
+      case 'daily':
+        return '0 8 * * *';
+      case 'weekly':
+        return '0 8 * * 1';
+      case 'monthly':
+        return '0 8 1 * *';
+      case 'hourly':
+        return '0 * * * *';
+      case 'custom':
+        return this.customCron.trim() || '0 8 * * *';
+      default:
+        return '0 8 * * *';
+    }
+  }
 
   columns = signal<DatasetColumn[]>([]);
   columnFilter = signal('');
@@ -1297,27 +1355,59 @@ export class UploadComponent implements OnInit {
         : this.writeMode;
 
     const targetTbl = this.tableName.trim() || this.suggestName();
-    this.api
-      .uploadReport({
-        reportName: `${rep.name} · ${this.selectedTables().join('+')}`,
-        owner: this.owner || 'anonymous',
-        rows,
-        tableName: targetTbl,
-        mode: effectiveMode,
-        businessKeys: this.selectedKeyNames(),
-      })
-      .subscribe({
-        next: (res) => {
-          this.busy.set(false);
-          this.toast.success(`Uploaded ${res.rowsWritten} row(s) to ${res.table} (now ${res.totalRows}).`);
-          this.loadDatasets();
-          this.lastSyncAt.set(new Date().toISOString());
-        },
-        error: (e) => {
-          this.busy.set(false);
-          this.fail(e);
-        },
-      });
+
+    if (this.enableSchedule()) {
+      const rawJobName = `${rep.name}_${targetTbl}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+      this.api
+        .createJob({
+          name: rawJobName,
+          reportName: rep.name,
+          datasetId: rep.datasetId || '',
+          sourceTable: this.selectedTables()[0] || 'Report',
+          columns: this.selectedNames(),
+          measures: this.selectedMeasureNames(),
+          targetTable: targetTbl,
+          mode: effectiveMode,
+          businessKeys: this.selectedKeyNames(),
+          limit: this.allRows() ? 0 : this.limit,
+          owner: this.owner || 'scheduled-sync',
+          cron: this.computedCron(),
+        })
+        .subscribe({
+          next: () => {
+            this.busy.set(false);
+            this.toast.success(`Report saved & scheduled to auto-sync to database table "${targetTbl}" (${this.scheduleFrequency}).`);
+            this.loadDatasets();
+            this.lastSyncAt.set(new Date().toISOString());
+          },
+          error: (e) => {
+            this.busy.set(false);
+            this.fail(e);
+          },
+        });
+    } else {
+      this.api
+        .uploadReport({
+          reportName: `${rep.name} · ${this.selectedTables().join('+')}`,
+          owner: this.owner || 'anonymous',
+          rows,
+          tableName: targetTbl,
+          mode: effectiveMode,
+          businessKeys: this.selectedKeyNames(),
+        })
+        .subscribe({
+          next: (res) => {
+            this.busy.set(false);
+            this.toast.success(`Uploaded ${res.rowsWritten} row(s) to ${res.table} (now ${res.totalRows}).`);
+            this.loadDatasets();
+            this.lastSyncAt.set(new Date().toISOString());
+          },
+          error: (e) => {
+            this.busy.set(false);
+            this.fail(e);
+          },
+        });
+    }
   }
 
   downloadExcelSheet() {

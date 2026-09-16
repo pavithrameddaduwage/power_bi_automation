@@ -53,14 +53,6 @@ type Tab = 'final' | 'datasets' | 'all' | 'jobs' | 'history' | 'email-history' |
               </div>
             </div>
 
-            <!-- Jobs Group -->
-            <div class="nav-group" style="margin-top:8px;">
-              <div class="nav-subitem" *ngIf="auth.hasPermission('jobs_schedules')" [class.active]="tab() === 'jobs'" (click)="tab.set('jobs')">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                Power BI Schedules
-              </div>
-            </div>
-
             <!-- Roles & Permissions Group -->
             <div class="nav-group" style="margin-top:8px;" *ngIf="auth.hasPermission('roles_permissions') || auth.isAdmin()">
               <div class="nav-subitem" [class.active]="tab() === 'roles-permissions'" (click)="tab.set('roles-permissions')">
