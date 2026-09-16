@@ -760,11 +760,23 @@ export class UploadComponent implements OnInit {
   filterSig = signal('');
   filteredReports = computed(() => {
     const f = this.filterSig().trim().toLowerCase();
-    const isUsage = (name: string) => {
+    const isExcluded = (name: string, wsName?: string) => {
       const lower = (name || '').toLowerCase();
-      return lower.includes('usage metric') || lower.includes('report usage') || lower.includes('usage metrics');
+      const wsLower = (wsName || '').toLowerCase();
+      return (
+        lower.includes('usage metric') ||
+        lower.includes('report usage') ||
+        lower.includes('usage metrics') ||
+        lower.includes('usage') ||
+        lower.includes('activity log') ||
+        lower.includes('audit log') ||
+        lower.endsWith('.xlsx') ||
+        lower.endsWith('.xls') ||
+        lower.endsWith('.csv') ||
+        wsLower.includes('usage metric')
+      );
     };
-    const list = this.reports().filter((r) => !isUsage(r.name));
+    const list = this.reports().filter((r) => !isExcluded(r.name, r.workspaceName));
     if (!f) return list;
     return list.filter(
       (r) =>

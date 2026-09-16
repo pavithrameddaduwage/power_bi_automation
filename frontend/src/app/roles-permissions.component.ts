@@ -12,11 +12,9 @@ export interface SystemPermission {
 
 export const SYSTEM_PERMISSIONS: SystemPermission[] = [
   { key: 'usage_analytics', label: 'Usage Analytics', category: 'Navigation Links' },
-  { key: 'reports', label: 'Reports Automation', category: 'Navigation Links' },
+  { key: 'reports', label: 'Reports', category: 'Navigation Links' },
   { key: 'stored_datasets', label: 'Stored Datasets', category: 'Navigation Links' },
-  { key: 'jobs_schedules', label: 'Jobs & Schedules', category: 'Navigation Links' },
-  { key: 'email_history', label: 'Email History', category: 'Navigation Links' },
-  { key: 'user_management', label: 'User Details & Management', category: 'Navigation Links' },
+  { key: 'jobs_schedules', label: 'Scheduled Reports', category: 'Navigation Links' },
   { key: 'roles_permissions', label: 'Roles & Permissions', category: 'Navigation Links' },
   { key: 'workspace_management', label: 'Workspace Management', category: 'System & Data Access' },
   { key: 'report_config', label: 'Report Configuration', category: 'System & Data Access' },
