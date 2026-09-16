@@ -1364,19 +1364,20 @@ export class UploadComponent implements OnInit {
   }
 
   uploadOnly() {
-    this.performUpload(false);
+    this.enableSchedule.set(false);
+    this.performUpload('upload');
   }
 
   saveAndSchedule() {
     this.enableSchedule.set(true);
-    this.performUpload(true);
+    this.performUpload('both');
   }
 
   upload() {
-    this.performUpload(this.enableSchedule());
+    this.performUpload(this.enableSchedule() ? 'both' : 'upload');
   }
 
-  private performUpload(isSchedule: boolean) {
+  private performUpload(mode: 'upload' | 'schedule' | 'both') {
     const rep = this.selectedReport();
     if (!rep) {
       this.toast.error('Please select a report first.');
@@ -1399,57 +1400,85 @@ export class UploadComponent implements OnInit {
 
     const targetTbl = this.tableName.trim() || this.suggestName();
 
-    if (isSchedule) {
+    const doUploadData = () => {
+      return this.api.uploadReport({
+        reportName: `${rep.name} · ${this.selectedTables().join('+')}`,
+        owner: this.owner || 'anonymous',
+        rows,
+        tableName: targetTbl,
+        mode: effectiveMode,
+        businessKeys: this.selectedKeyNames(),
+      });
+    };
+
+    const doCreateJob = () => {
       const rawJobName = `${rep.name}_${targetTbl}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-      this.api
-        .createJob({
-          name: rawJobName,
-          reportName: rep.name,
-          datasetId: rep.datasetId || '',
-          sourceTable: this.selectedTables()[0] || 'Report',
-          columns: this.selectedNames(),
-          measures: this.selectedMeasureNames(),
-          targetTable: targetTbl,
-          mode: effectiveMode,
-          businessKeys: this.selectedKeyNames(),
-          limit: this.allRows() ? 0 : this.limit,
-          owner: this.owner || 'scheduled-sync',
-          cron: this.computedCron(),
-        })
-        .subscribe({
-          next: () => {
-            this.busy.set(false);
-            this.toast.success(`Report saved & scheduled to auto-sync to database table "${targetTbl}" (${this.scheduleFrequency}).`);
-            this.loadDatasets();
-            this.lastSyncAt.set(new Date().toISOString());
-          },
-          error: (e) => {
-            this.busy.set(false);
-            this.fail(e);
-          },
-        });
-    } else {
-      this.api
-        .uploadReport({
-          reportName: `${rep.name} · ${this.selectedTables().join('+')}`,
-          owner: this.owner || 'anonymous',
-          rows,
-          tableName: targetTbl,
-          mode: effectiveMode,
-          businessKeys: this.selectedKeyNames(),
-        })
-        .subscribe({
-          next: (res) => {
-            this.busy.set(false);
-            this.toast.success(`Uploaded ${res.rowsWritten} row(s) to ${res.table} (now ${res.totalRows}).`);
-            this.loadDatasets();
-            this.lastSyncAt.set(new Date().toISOString());
-          },
-          error: (e) => {
-            this.busy.set(false);
-            this.fail(e);
-          },
-        });
+      return this.api.createJob({
+        name: rawJobName,
+        reportName: rep.name,
+        datasetId: rep.datasetId || '',
+        sourceTable: this.selectedTables()[0] || 'Report',
+        columns: this.selectedNames(),
+        measures: this.selectedMeasureNames(),
+        targetTable: targetTbl,
+        mode: effectiveMode,
+        businessKeys: this.selectedKeyNames(),
+        limit: this.allRows() ? 0 : this.limit,
+        owner: this.owner || 'scheduled-sync',
+        cron: this.computedCron(),
+      });
+    };
+
+    if (mode === 'upload') {
+      doUploadData().subscribe({
+        next: (res) => {
+          this.busy.set(false);
+          this.toast.success(`Uploaded ${res.rowsWritten} row(s) to ${res.table} (now ${res.totalRows}).`);
+          this.loadDatasets();
+          this.lastSyncAt.set(new Date().toISOString());
+        },
+        error: (e) => {
+          this.busy.set(false);
+          this.fail(e);
+        },
+      });
+    } else if (mode === 'both') {
+      // First insert rows into PostgreSQL table, then register background auto-sync schedule
+      doUploadData().subscribe({
+        next: (res) => {
+          doCreateJob().subscribe({
+            next: () => {
+              this.busy.set(false);
+              this.toast.success(
+                `Uploaded ${res.rowsWritten} row(s) to ${res.table} AND saved auto-sync schedule (${this.scheduleFrequency}).`
+              );
+              this.loadDatasets();
+              this.lastSyncAt.set(new Date().toISOString());
+            },
+            error: (e) => {
+              this.busy.set(false);
+              this.toast.warning(`Uploaded ${res.rowsWritten} row(s) to ${res.table}, but schedule save failed: ${this.msg(e)}`);
+            },
+          });
+        },
+        error: (e) => {
+          this.busy.set(false);
+          this.fail(e);
+        },
+      });
+    } else if (mode === 'schedule') {
+      doCreateJob().subscribe({
+        next: () => {
+          this.busy.set(false);
+          this.toast.success(`Report saved & scheduled to auto-sync to database table "${targetTbl}" (${this.scheduleFrequency}).`);
+          this.loadDatasets();
+          this.lastSyncAt.set(new Date().toISOString());
+        },
+        error: (e) => {
+          this.busy.set(false);
+          this.fail(e);
+        },
+      });
     }
   }
 
