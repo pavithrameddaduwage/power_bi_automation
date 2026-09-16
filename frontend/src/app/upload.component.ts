@@ -404,18 +404,45 @@ import { EmailPickerComponent } from './email-picker.component';
             </div>
 
             <div *ngIf="enableSchedule()" style="margin-top:12px; padding-top:12px; border-top:1px solid #e2e8f0;">
+              <!-- Power BI Live Dataset Refresh Schedule Info -->
+              <div *ngIf="selectedDatasetRefresh() as pbiRef" style="margin-bottom:12px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:12px;">
+                <div style="font-weight:700; color:#1e40af; display:flex; align-items:center; gap:6px;">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Power BI Refresh Schedule Info
+                </div>
+                <div style="margin-top:4px; color:#1e3a8a;">
+                  <span *ngIf="pbiRef.scheduleEnabled">
+                    <strong>Configured Power BI Times:</strong> {{ pbiRef.scheduleTimes.join(', ') || 'Scheduled' }}
+                    <span *ngIf="pbiRef.scheduleDays && pbiRef.scheduleDays.length"> ({{ pbiRef.scheduleDays.join(', ') }})</span>
+                    <span *ngIf="pbiRef.timeZone"> [{{ pbiRef.timeZone }}]</span>
+                  </span>
+                  <span *ngIf="!pbiRef.scheduleEnabled" style="color:#64748b;">
+                    Power BI scheduled refresh is not active for this dataset.
+                  </span>
+                </div>
+                <div *ngIf="pbiRef.lastRefreshStartTime" style="margin-top:3px; font-size:11px; color:#2563eb;">
+                  Last Power BI Refresh: {{ pbiRef.lastRefreshStartTime | date: 'medium' }}
+                  <span *ngIf="pbiRef.lastRefreshStatus" class="badge" [class.badge-ok]="pbiRef.lastRefreshStatus === 'Completed'" style="font-size:10px; margin-left:4px;">
+                    {{ pbiRef.lastRefreshStatus }}
+                  </span>
+                </div>
+                <div style="margin-top:6px; font-size:11px; font-weight:600; color:#0369a1;">
+                  💡 Tip: Schedule your portal auto-sync 15–30 minutes after Power BI finishes refreshing (e.g. if Power BI refreshes at 8:00 AM, schedule your auto-sync at 8:30 AM).
+                </div>
+              </div>
+
               <div class="grid2">
                 <label style="font-size:12px; font-weight:600;">Run Frequency
                   <select [(ngModel)]="scheduleFrequency" style="margin-top:4px;">
-                    <option value="daily">Daily (Every day at 8:00 AM UTC)</option>
-                    <option value="weekly">Weekly (Every Monday at 8:00 AM UTC)</option>
-                    <option value="monthly">Monthly (1st of month at 8:00 AM UTC)</option>
+                    <option value="daily">Daily (Every day at 8:30 AM UTC)</option>
+                    <option value="weekly">Weekly (Every Monday at 8:30 AM UTC)</option>
+                    <option value="monthly">Monthly (1st of month at 8:30 AM UTC)</option>
                     <option value="hourly">Hourly (Every hour at minute 0)</option>
                     <option value="custom">Custom Cron Expression</option>
                   </select>
                 </label>
                 <label *ngIf="scheduleFrequency === 'custom'" style="font-size:12px; font-weight:600;">Cron Expression (UTC)
-                  <input [(ngModel)]="customCron" placeholder="0 8 * * 1" style="margin-top:4px;" />
+                  <input [(ngModel)]="customCron" placeholder="30 8 * * 1" style="margin-top:4px;" />
                 </label>
               </div>
               <div class="muted" style="font-size:11px; margin-top:8px;">
