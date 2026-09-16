@@ -454,11 +454,11 @@ import { EmailPickerComponent } from './email-picker.component';
             </label>
             <div style="display:flex; gap:10px; align-items:center;">
               <button class="btn-secondary" (click)="uploadOnly()" [disabled]="busy()" title="Upload data into PostgreSQL database once without scheduling">
-                <span *ngIf="busy()" class="spinner"></span>
+                <span *ngIf="uploadingNow()" class="spinner"></span>
                 Upload to Database Now
               </button>
               <button class="btn-primary" (click)="saveAndSchedule()" [disabled]="busy()" title="Save report configuration and enable background auto-sync schedule">
-                <span *ngIf="busy()" class="spinner-white"></span>
+                <span *ngIf="savingSchedule()" class="spinner-white"></span>
                 Save &amp; Schedule Auto-Sync
               </button>
             </div>
@@ -632,6 +632,8 @@ export class UploadComponent implements OnInit {
   emailSubject = '';
 
   busy = signal(false);
+  uploadingNow = signal(false);
+  savingSchedule = signal(false);
   datasets = signal<DynamicDataset[]>([]);
   datasetEmails: Record<string, string> = {};
   previewTable = signal('');
@@ -1430,24 +1432,31 @@ export class UploadComponent implements OnInit {
     };
 
     if (mode === 'upload') {
+      this.uploadingNow.set(true);
+      this.busy.set(true);
       doUploadData().subscribe({
         next: (res) => {
+          this.uploadingNow.set(false);
           this.busy.set(false);
           this.toast.success(`Uploaded ${res.rowsWritten} row(s) to ${res.table} (now ${res.totalRows}).`);
           this.loadDatasets();
           this.lastSyncAt.set(new Date().toISOString());
         },
         error: (e) => {
+          this.uploadingNow.set(false);
           this.busy.set(false);
           this.fail(e);
         },
       });
     } else if (mode === 'both') {
+      this.savingSchedule.set(true);
+      this.busy.set(true);
       // First insert rows into PostgreSQL table, then register background auto-sync schedule
       doUploadData().subscribe({
         next: (res) => {
           doCreateJob().subscribe({
             next: () => {
+              this.savingSchedule.set(false);
               this.busy.set(false);
               this.toast.success(
                 `Uploaded ${res.rowsWritten} row(s) to ${res.table} AND saved auto-sync schedule (${this.scheduleFrequency}).`
@@ -1456,25 +1465,31 @@ export class UploadComponent implements OnInit {
               this.lastSyncAt.set(new Date().toISOString());
             },
             error: (e) => {
+              this.savingSchedule.set(false);
               this.busy.set(false);
               this.toast.warning(`Uploaded ${res.rowsWritten} row(s) to ${res.table}, but schedule save failed: ${this.msg(e)}`);
             },
           });
         },
         error: (e) => {
+          this.savingSchedule.set(false);
           this.busy.set(false);
           this.fail(e);
         },
       });
     } else if (mode === 'schedule') {
+      this.savingSchedule.set(true);
+      this.busy.set(true);
       doCreateJob().subscribe({
         next: () => {
+          this.savingSchedule.set(false);
           this.busy.set(false);
           this.toast.success(`Report saved & scheduled to auto-sync to database table "${targetTbl}" (${this.scheduleFrequency}).`);
           this.loadDatasets();
           this.lastSyncAt.set(new Date().toISOString());
         },
         error: (e) => {
+          this.savingSchedule.set(false);
           this.busy.set(false);
           this.fail(e);
         },
