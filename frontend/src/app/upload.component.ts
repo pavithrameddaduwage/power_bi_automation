@@ -426,9 +426,6 @@ import { EmailPickerComponent } from './email-picker.component';
                     {{ pbiRef.lastRefreshStatus }}
                   </span>
                 </div>
-                <div style="margin-top:6px; font-size:11px; font-weight:600; color:#0369a1;">
-                  💡 Tip: Schedule your portal auto-sync 15–30 minutes after Power BI finishes refreshing (e.g. if Power BI refreshes at 8:00 AM, schedule your auto-sync at 8:30 AM).
-                </div>
               </div>
 
               <div class="grid2">
@@ -451,14 +448,20 @@ import { EmailPickerComponent } from './email-picker.component';
             </div>
           </div>
 
-          <div class="row-between" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border);">
+          <div class="row-between" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--border); flex-wrap:wrap; gap:10px;">
             <label class="pick" style="margin:0; font-size:11px;">
               <input type="checkbox" [(ngModel)]="customColumns" /> Pick columns
             </label>
-            <button class="btn-primary" (click)="upload()" [disabled]="busy()">
-              <span *ngIf="busy()" class="spinner-white"></span>
-              {{ enableSchedule() ? 'Save & Schedule Auto-Sync' : 'Upload to Database Now' }}
-            </button>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button class="btn-secondary" (click)="uploadOnly()" [disabled]="busy()" title="Upload data into PostgreSQL database once without scheduling">
+                <span *ngIf="busy()" class="spinner"></span>
+                Upload to Database Now
+              </button>
+              <button class="btn-primary" (click)="saveAndSchedule()" [disabled]="busy()" title="Save report configuration and enable background auto-sync schedule">
+                <span *ngIf="busy()" class="spinner-white"></span>
+                Save &amp; Schedule Auto-Sync
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1360,7 +1363,20 @@ export class UploadComponent implements OnInit {
       });
   }
 
+  uploadOnly() {
+    this.performUpload(false);
+  }
+
+  saveAndSchedule() {
+    this.enableSchedule.set(true);
+    this.performUpload(true);
+  }
+
   upload() {
+    this.performUpload(this.enableSchedule());
+  }
+
+  private performUpload(isSchedule: boolean) {
     const rep = this.selectedReport();
     if (!rep) {
       this.toast.error('Please select a report first.');
@@ -1383,7 +1399,7 @@ export class UploadComponent implements OnInit {
 
     const targetTbl = this.tableName.trim() || this.suggestName();
 
-    if (this.enableSchedule()) {
+    if (isSchedule) {
       const rawJobName = `${rep.name}_${targetTbl}`.replace(/[^a-zA-Z0-9_-]/g, '_');
       this.api
         .createJob({

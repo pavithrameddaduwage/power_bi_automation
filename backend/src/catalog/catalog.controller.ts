@@ -26,6 +26,7 @@ export class CatalogController {
   }
 
   /** Live dashboards across all workspaces. */
+  @Public()
   @Get('dashboards')
   dashboards() {
     return this.powerbi.listAllDashboards();
@@ -35,6 +36,7 @@ export class CatalogController {
    * Live reports + access. `?downloadableOnly=true` returns only the reports
    * that are in "downloadable mode".
    */
+  @Public()
   @Get('reports')
   async reports(@Query('downloadableOnly') downloadableOnly?: string) {
     const all = await this.powerbi.reportsWithAccess();
@@ -54,6 +56,7 @@ export class CatalogController {
    * `?finalOnly=true` returns only the curated/combined report tables, hiding
    * the raw `public …` source views (the relationship/normalization layer).
    */
+  @Public()
   @Get('datasets/:datasetId/columns')
   async columns(
     @Param('datasetId') datasetId: string,
@@ -95,6 +98,7 @@ export class CatalogController {
   }
 
   /** Measures (DAX calculations) of a report's dataset, viewed separately. */
+  @Public()
   @Get('datasets/:datasetId/measures')
   measures(
     @Param('datasetId') datasetId: string,
@@ -105,6 +109,7 @@ export class CatalogController {
   }
 
   /** Data sources connected to a dataset. */
+  @Public()
   @Get('datasets/:datasetId/datasources')
   datasources(
     @Param('datasetId') datasetId: string,
@@ -113,8 +118,8 @@ export class CatalogController {
     return this.powerbi.getDatasetDataSources(datasetId, groupId);
   }
 
-
   /** Pull the selected columns'/measures' data from Power BI (the "sync" step). */
+  @Public()
   @Post('data')
   data(
     @Body()
