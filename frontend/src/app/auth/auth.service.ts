@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
+import { API } from '../sync.service';
 
 export interface UserInfo {
   id?: number;
@@ -33,7 +34,7 @@ export class AuthService {
   constructor(private http: HttpClient, private router: Router) {}
 
   login(username: string, pass: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/api/auth/login`, { username, pass }).pipe(
+    return this.http.post<AuthResponse>(`${API}/auth/login`, { username, pass }).pipe(
       tap(response => {
         if (response.access_token) {
           localStorage.setItem(this.tokenKey, response.access_token);

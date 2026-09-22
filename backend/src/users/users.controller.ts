@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Header, H
 import { UsersService } from './users.service';
 import { Public } from 'src/auth/decorators/public.decorator';
 
-@Controller('users')
+@Controller(['api/users', 'users'])
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

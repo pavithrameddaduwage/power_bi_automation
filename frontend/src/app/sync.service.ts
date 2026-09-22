@@ -3,7 +3,12 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../environments/environment';
 
-const API = `${environment.apiUrl}/api`;
+export function getApiBaseUrl(): string {
+  const url = (environment.apiUrl || '').trim().replace(/\/+$/, '');
+  return url.endsWith('/api') ? url.slice(0, -4) : url;
+}
+
+export const API = `${getApiBaseUrl()}/api`;
 
 export interface ReportConfig {
   request: string;
@@ -479,33 +484,33 @@ export class SyncApiService {
 
   // ── Active Directory & Role Management ──────────────────────────────
   syncADUsers(): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/users/sync-ad`, {});
+    return this.http.post(`${getApiBaseUrl()}/api/users/sync-ad`, {});
   }
   searchADUsers(query: string): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.apiUrl}/users/search-ad`, {
+    return this.http.get<any[]>(`${getApiBaseUrl()}/api/users/search-ad`, {
       params: { query },
     });
   }
   findAllUsers(): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.apiUrl}/users/findAllUsers`);
+    return this.http.get<any[]>(`${getApiBaseUrl()}/api/users/findAllUsers`);
   }
   deleteUser(userId: number): Observable<any> {
-    return this.http.delete(`${environment.apiUrl}/users/deleteUser/${userId}`);
+    return this.http.delete(`${getApiBaseUrl()}/api/users/deleteUser/${userId}`);
   }
   findAllRoles(): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.apiUrl}/users/findAllRoles`);
+    return this.http.get<any[]>(`${getApiBaseUrl()}/api/users/findAllRoles`);
   }
   updateUserRole(userId: number, role: string, is_admin?: boolean): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/users/updateUserRole`, { userId, role, is_admin });
+    return this.http.post(`${getApiBaseUrl()}/api/users/updateUserRole`, { userId, role, is_admin });
   }
   updateUser(data: any): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/users/createUser`, data);
+    return this.http.post(`${getApiBaseUrl()}/api/users/createUser`, data);
   }
   createRole(role: string, permissions: string[], id?: number): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/users/createRole`, { id, role, permissions });
+    return this.http.post(`${getApiBaseUrl()}/api/users/createRole`, { id, role, permissions });
   }
   deleteRole(id: number): Observable<any> {
-    return this.http.delete(`${environment.apiUrl}/users/deleteRole/${id}`);
+    return this.http.delete(`${getApiBaseUrl()}/api/users/deleteRole/${id}`);
   }
 }
 
