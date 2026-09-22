@@ -295,9 +295,12 @@ import { SyncApiService, AllUsersStat, UserDetailsBreakdown } from './sync.servi
 
   template: `
   <ng-container *ngIf="selectedUser() === null">
-    <div style="margin-bottom: 24px; display: flex; align-items: center; justify-content: flex-end;">
+    <div style="margin-bottom: 24px; display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
       <input type="text" class="table-search-input" style="width: 280px; margin: 0;" placeholder="Search user by name or email..."
              [ngModel]="userSearch()" (ngModelChange)="userSearch.set($event); userListPage.set(0)" />
+      <button class="btn-back" *ngIf="userSearch()" (click)="userSearch.set(''); userListPage.set(0)" style="font-size: 12px; padding: 6px 14px; border-color: #fecaca; color: #dc2626; background: #ffffff;">
+        Clear All Filters
+      </button>
     </div>
 
     <!-- User List -->

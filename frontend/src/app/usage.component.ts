@@ -1415,7 +1415,8 @@ import { ToastService } from './toast.service';
             <span *ngIf="loading()" style="font-size:12.5px; color:#1e40af; font-weight:600;">
               <span class="spinner"></span> Updating…
             </span>
-            <button class="btn-reset" *ngIf="activeFilterCount() > 0" (click)="clearAllFilters()">
+            <button class="btn-reset" (click)="clearAllFilters()" [style.opacity]="hasAnyActiveFilter() ? '1' : '0.65'" [title]="hasAnyActiveFilter() ? 'Clear all active filters and search queries' : 'Reset all dashboard filters'">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
               Clear All Filters
             </button>
           </div>
@@ -2310,11 +2311,13 @@ export class UsageComponent implements OnInit {
     }
 
     const escape = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const dateColTitle = this.filterDate ? 'Date' : 'Date / Activity Date';
+    const viewsColTitle = this.filterDate ? 'Day Views' : 'Views';
 
     const csvLines: string[] = [];
 
     // Header Metadata
-    csvLines.push(`${escape('POWER BI USAGE & ACCESS REPORT')}`);
+    csvLines.push(`${escape('POWER BI USAGE & ACCESS REPORT (DATE-WISE)')}`);
     csvLines.push(`${escape('Export Date')},${escape(new Date().toISOString().slice(0, 10))}`);
     if (this.filterGroupId) csvLines.push(`${escape('Workspace Filter')},${escape(this.filterGroupId)}`);
     if (this.filterReportName) csvLines.push(`${escape('Report/Dashboard Filter')},${escape(this.filterReportName)}`);
@@ -2327,22 +2330,22 @@ export class UsageComponent implements OnInit {
     // SECTION 1: DASHBOARDS & REPORTS USAGE
     csvLines.push(`${escape('=== SECTION 1: DASHBOARDS & REPORTS USAGE ===')}`);
     csvLines.push([
+      escape('Date'),
       escape('Workspace'),
       escape('Report / Dashboard Name'),
       escape('Total Pages'),
       escape('Unique Viewers'),
-      escape('Total Views'),
-      escape('Last Accessed Date')
+      escape(viewsColTitle)
     ].join(','));
 
     for (const r of reports) {
       csvLines.push([
+        escape(this.filterDate || (r.lastAccessed ? this.formatAccessDate(r.lastAccessed) : 'All Dates')),
         escape(r.groupName || 'Workspace'),
         escape(r.reportName),
         r.pagesCount || 0,
         r.viewers || 0,
-        r.views || 0,
-        escape(r.lastAccessed ? this.formatAccessDate(r.lastAccessed) : 'N/A')
+        r.views || 0
       ].join(','));
     }
     csvLines.push('');
@@ -2350,20 +2353,20 @@ export class UsageComponent implements OnInit {
     // SECTION 2: PAGE & TAB USAGE BREAKDOWN
     csvLines.push(`${escape('=== SECTION 2: PAGE & TAB USAGE BREAKDOWN ===')}`);
     csvLines.push([
+      escape('Date'),
       escape('Report / Dashboard Name'),
       escape('Page Name'),
       escape('Unique Viewers'),
-      escape('Total Views'),
-      escape('Last Accessed Date')
+      escape(viewsColTitle)
     ].join(','));
 
     for (const p of pages) {
       csvLines.push([
+        escape(this.filterDate || (p.lastAccessed ? this.formatAccessDate(p.lastAccessed) : 'All Dates')),
         escape(p.reportName),
         escape(p.pageName),
         p.viewers || 0,
-        p.views || 0,
-        escape(p.lastAccessed ? this.formatAccessDate(p.lastAccessed) : 'N/A')
+        p.views || 0
       ].join(','));
     }
     csvLines.push('');
@@ -2371,22 +2374,22 @@ export class UsageComponent implements OnInit {
     // SECTION 3: USER ACCESS & ACTIVITY AUDIT
     csvLines.push(`${escape('=== SECTION 3: USER ACCESS & ACTIVITY AUDIT ===')}`);
     csvLines.push([
+      escape('Date / Period'),
       escape('User / Member Name'),
       escape('Email Address'),
       escape('Role / Access Level'),
       escape('Access Status'),
-      escape('Total Views'),
-      escape('Last Accessed Date')
+      escape(viewsColTitle)
     ].join(','));
 
     for (const u of members) {
       csvLines.push([
+        escape(this.filterDate || (u.lastAccessed ? this.formatAccessDate(u.lastAccessed) : (u.views > 0 ? 'Active in period' : 'No views in period'))),
         escape(u.displayName || u.email),
         escape(u.email),
         escape(u.role || 'Viewer'),
         escape(u.status === 'active' ? 'Active' : 'Unused'),
-        u.views || 0,
-        escape(u.lastAccessed ? this.formatAccessDate(u.lastAccessed) : 'Never active')
+        u.views || 0
       ].join(','));
     }
 
@@ -2461,6 +2464,22 @@ export class UsageComponent implements OnInit {
     if (this.filterDate) count++;
     if (this.selectedUserEmail()) count++;
     return count;
+  });
+
+  hasAnyActiveFilter = computed(() => {
+    return (
+      this.activeFilterCount() > 0 ||
+      !!this.reportSearchText() ||
+      !!this.pageSearchText() ||
+      !!this.userSearchText() ||
+      !!this.accessSearchText() ||
+      !!this.searchWs() ||
+      !!this.searchRep() ||
+      !!this.searchUser() ||
+      !!this.searchYear() ||
+      !!this.searchMonth() ||
+      !!this.searchDate()
+    );
   });
 
   // Monthly aggregated timeline data

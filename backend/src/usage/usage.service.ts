@@ -1649,7 +1649,7 @@ export class UsageService {
     };
   }
 
-  /** Export structured multi-worksheet Excel workbook for Usage & Access Analytics */
+  /** Export structured multi-worksheet Excel workbook for Usage & Access Analytics (Date-wise) */
   async exportUsageExcelSheets(filters: {
     groupId?: string;
     reportName?: string;
@@ -1658,48 +1658,223 @@ export class UsageService {
     month?: string;
     date?: string;
   }): Promise<Buffer> {
-    const analytics = await this.getDashboardAnalytics(filters);
-    const access = await this.getAccessUtilization(
-      filters.groupId,
-      filters.reportName,
-      filters.year,
-      filters.month,
-      filters.date,
+    await this.ensureTablesExist();
+
+    let workspaceMap = new Map<string, string>();
+    try {
+      const reports = await this.listUsageReports();
+      for (const r of reports) {
+        workspaceMap.set(r.groupId, r.groupName);
+      }
+    } catch {}
+
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIdx = 1;
+
+    conditions.push(
+      `(report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%' AND report_name NOT ILIKE '%general usage%' AND report_name != 'Unknown')`,
     );
 
-    // Sheet 1: Report Usage Summary
-    const reportRows = (analytics.reportUsage || []).map((r) => ({
-      'Workspace Group': r.groupName || 'Power BI Workspace',
-      'Report / Dashboard': r.reportName || 'N/A',
-      'Total Pages': r.pagesCount || 0,
-      'Unique Viewers': r.viewers || 0,
-      'Total Views': r.views || 0,
-      'Last Accessed Date': r.lastAccessed || 'N/A',
-    }));
+    if (filters.groupId && filters.groupId.trim() !== '') {
+      const vals = filters.groupId.split(',').map((s) => s.trim()).filter(Boolean);
+      if (vals.length === 1) {
+        conditions.push(`TRIM(group_id) = TRIM($${paramIdx++})`);
+        params.push(vals[0]);
+      } else if (vals.length > 1) {
+        conditions.push(`TRIM(group_id) = ANY($${paramIdx++}::text[])`);
+        params.push(vals);
+      }
+    }
 
-    // Sheet 2: Page Usage Breakdown
-    const pageRows = (analytics.pageUsage || []).map((p) => ({
-      'Report / Dashboard': p.reportName || 'N/A',
-      'Page Name': p.pageName || 'N/A',
-      'Unique Viewers': p.viewers || 0,
-      'Total Views': p.views || 0,
-      'Last Accessed Date': p.lastAccessed || 'N/A',
-    }));
+    if (filters.reportName && filters.reportName.trim() !== '') {
+      const vals = filters.reportName.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (vals.length === 1) {
+        conditions.push(`LOWER(TRIM(report_name)) = $${paramIdx++}`);
+        params.push(vals[0]);
+      } else if (vals.length > 1) {
+        conditions.push(`LOWER(TRIM(report_name)) = ANY($${paramIdx++}::text[])`);
+        params.push(vals);
+      }
+    }
 
-    // Sheet 3: User Access Audit Matrix
-    const userRows = (access.users || []).map((u) => ({
-      'User / Member Name': u.displayName || u.email,
+    if (filters.email && filters.email.trim() !== '') {
+      const vals = filters.email.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (vals.length === 1) {
+        conditions.push(`LOWER(TRIM(email)) = $${paramIdx++}`);
+        params.push(vals[0]);
+      } else if (vals.length > 1) {
+        conditions.push(`LOWER(TRIM(email)) = ANY($${paramIdx++}::text[])`);
+        params.push(vals);
+      }
+    }
+
+    if (filters.year && String(filters.year).trim() !== '') {
+      const yearVals = String(filters.year)
+        .split(',')
+        .map((y) => Number(y.trim()))
+        .filter((n) => !isNaN(n) && n > 0);
+      if (yearVals.length === 1) {
+        conditions.push(`EXTRACT(YEAR FROM date) = $${paramIdx++}`);
+        params.push(yearVals[0]);
+      } else if (yearVals.length > 1) {
+        conditions.push(`EXTRACT(YEAR FROM date) = ANY($${paramIdx++}::int[])`);
+        params.push(yearVals);
+      }
+    }
+
+    if (filters.month && String(filters.month).trim() !== '') {
+      const monthVals = String(filters.month)
+        .split(',')
+        .map((m) => Number(m.trim()))
+        .filter((n) => !isNaN(n) && n > 0);
+      if (monthVals.length === 1) {
+        conditions.push(`EXTRACT(MONTH FROM date) = $${paramIdx++}`);
+        params.push(monthVals[0]);
+      } else if (monthVals.length > 1) {
+        conditions.push(`EXTRACT(MONTH FROM date) = ANY($${paramIdx++}::int[])`);
+        params.push(monthVals);
+      }
+    }
+
+    if (filters.date && filters.date.trim() !== '') {
+      const dateVals = filters.date.split(',').map((d) => d.trim()).filter(Boolean);
+      if (dateVals.length === 1) {
+        conditions.push(`TO_CHAR(date, 'YYYY-MM-DD') = $${paramIdx++}`);
+        params.push(dateVals[0]);
+      } else if (dateVals.length > 1) {
+        conditions.push(`TO_CHAR(date, 'YYYY-MM-DD') = ANY($${paramIdx++}::text[])`);
+        params.push(dateVals);
+      }
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // 1. Sheet 1: User Views (Date-wise) - Shows every user's daily view count for each report & page
+    const dateUserQuery = await this.pool.query(`
+      SELECT 
+        TO_CHAR(date, 'YYYY-MM-DD') as activity_date,
+        group_id,
+        COALESCE(MAX(group_name), '') as group_name,
+        report_name,
+        page_name,
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name,
+        SUM(views) as day_views
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY date, group_id, report_name, page_name, LOWER(TRIM(email))
+      ORDER BY date DESC, day_views DESC, report_name ASC, email ASC
+    `, params);
+
+    const userActivityRows = dateUserQuery.rows.map((u) => ({
+      'Date': u.activity_date,
+      'User / Member Name': u.name || u.email,
       'Email Address': u.email,
-      'Role / Access Level': u.role || 'Viewer',
-      'Access Status': u.status === 'active' ? 'Active' : 'Unused',
-      'Views Count': u.views || 0,
-      'Last Active Date': u.lastAccessed ? u.lastAccessed : 'Never active',
+      'Workspace Group': workspaceMap.get(u.group_id) || (u.group_name && u.group_name.trim() !== '' ? u.group_name : u.group_id || 'Power BI Workspace'),
+      'Report / Dashboard': u.report_name || 'N/A',
+      'Page / Tab Name': u.page_name || 'N/A',
+      'Day Views': Number(u.day_views) || 0,
     }));
 
-    return this.excelService.generateMultiSheetExcelBuffer([
-      { sheetName: 'Report Usage', rows: reportRows.length ? reportRows : [{ Note: 'No report usage data found' }] },
-      { sheetName: 'Page Usage', rows: pageRows.length ? pageRows : [{ Note: 'No page usage data found' }] },
-      { sheetName: 'User Access Audit', rows: userRows.length ? userRows : [{ Note: 'No user access data found' }] },
-    ]);
+    // 2. Sheet 2: Report Views (Date-wise) - Shows report daily view totals and active viewer counts
+    const dateReportQuery = await this.pool.query(`
+      SELECT 
+        TO_CHAR(date, 'YYYY-MM-DD') as activity_date,
+        group_id,
+        COALESCE(MAX(group_name), '') as group_name,
+        report_name,
+        COUNT(DISTINCT page_name) as pages_count,
+        COUNT(DISTINCT LOWER(TRIM(email))) as viewers_count,
+        SUM(views) as day_views
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY date, group_id, report_name
+      ORDER BY date DESC, day_views DESC, report_name ASC
+    `, params);
+
+    const reportRows = dateReportQuery.rows.map((r) => ({
+      'Date': r.activity_date,
+      'Workspace Group': workspaceMap.get(r.group_id) || (r.group_name && r.group_name.trim() !== '' ? r.group_name : r.group_id || 'Power BI Workspace'),
+      'Report / Dashboard': r.report_name || 'N/A',
+      'Total Pages Active': Number(r.pages_count) || 0,
+      'Unique Viewers (Day)': Number(r.viewers_count) || 0,
+      'Day Views': Number(r.day_views) || 0,
+    }));
+
+    // 3. Sheet 3: Page Views (Date-wise) - Shows page / tab daily view breakdown
+    const datePageQuery = await this.pool.query(`
+      SELECT 
+        TO_CHAR(date, 'YYYY-MM-DD') as activity_date,
+        group_id,
+        COALESCE(MAX(group_name), '') as group_name,
+        report_name,
+        page_name,
+        COUNT(DISTINCT LOWER(TRIM(email))) as viewers_count,
+        SUM(views) as day_views
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY date, group_id, report_name, page_name
+      ORDER BY date DESC, day_views DESC, page_name ASC
+    `, params);
+
+    const pageRows = datePageQuery.rows.map((p) => ({
+      'Date': p.activity_date,
+      'Workspace Group': workspaceMap.get(p.group_id) || (p.group_name && p.group_name.trim() !== '' ? p.group_name : p.group_id || 'Power BI Workspace'),
+      'Report / Dashboard': p.report_name || 'N/A',
+      'Page Name': p.page_name || 'N/A',
+      'Unique Viewers (Day)': Number(p.viewers_count) || 0,
+      'Day Views': Number(p.day_views) || 0,
+    }));
+
+    const sheets: { sheetName: string; rows: Record<string, any>[] }[] = [
+      { sheetName: 'User Views (Date-wise)', rows: userActivityRows.length ? userActivityRows : [{ Note: 'No user views found for selected criteria' }] },
+      { sheetName: 'Report Views (Date-wise)', rows: reportRows.length ? reportRows : [{ Note: 'No report usage data found for selected criteria' }] },
+      { sheetName: 'Page Views (Date-wise)', rows: pageRows.length ? pageRows : [{ Note: 'No page usage data found for selected criteria' }] },
+    ];
+
+    const hasAnyFilters = Boolean(
+      (filters.groupId && filters.groupId.trim() !== '') ||
+      (filters.reportName && filters.reportName.trim() !== '') ||
+      (filters.email && filters.email.trim() !== '') ||
+      (filters.year && String(filters.year).trim() !== '') ||
+      (filters.month && String(filters.month).trim() !== '') ||
+      (filters.date && filters.date.trim() !== '')
+    );
+
+    // Only include User Access Audit sheet when downloaded without any filters
+    if (!hasAnyFilters) {
+      const access = await this.getAccessUtilization(
+        filters.groupId,
+        filters.reportName,
+        filters.year ? String(filters.year) : undefined,
+        filters.month ? String(filters.month) : undefined,
+        filters.date,
+      );
+
+      const userAuditRows = (access.users || []).map((u) => ({
+        'Filter Period / Date': 'All Dates',
+        'User / Member Name': u.displayName || u.email,
+        'Email Address': u.email,
+        'Workspace Group': access.workspaceName || 'All Workspaces',
+        'Report / Dashboard': access.reportName || 'All Dashboards',
+        'Role / Access Level': u.role || 'Viewer',
+        'Access Status': u.status === 'active' ? 'Active' : 'Unused',
+        'Views Count': u.views || 0,
+        'Activity Date': u.lastAccessed ? u.lastAccessed : (u.views > 0 ? 'Active' : 'No views in period'),
+      }));
+
+      sheets.push({
+        sheetName: 'User Access Audit',
+        rows: userAuditRows.length ? userAuditRows : [{ Note: 'No user access data found' }],
+      });
+    }
+
+    return this.excelService.generateMultiSheetExcelBuffer(sheets);
   }
 }
