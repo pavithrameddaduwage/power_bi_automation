@@ -10,21 +10,33 @@ async function bootstrap() {
   const corsOriginEnv = config.get<string>('corsOrigin') || process.env.CORS_ORIGIN || '*';
   const corsOrigins = corsOriginEnv
     .split(',')
-    .map((s) => s.trim())
+    .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
-  const origin =
-    corsOrigins.includes('*') || corsOrigins.length === 0
-      ? true
-      : corsOrigins.length === 1
-      ? corsOrigins[0]
-      : corsOrigins;
-
   app.enableCors({
-    origin,
+    origin: (requestOrigin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server, postman)
+      if (!requestOrigin) return callback(null, true);
+
+      // If '*' is configured or empty, allow all origins
+      if (corsOrigins.includes('*') || corsOrigins.length === 0) {
+        return callback(null, true);
+      }
+
+      const lowerOrigin = requestOrigin.toLowerCase();
+      const isAllowed =
+        corsOrigins.some((allowed) => lowerOrigin === allowed || allowed === '*') ||
+        lowerOrigin.includes('localhost') ||
+        lowerOrigin.includes('127.0.0.1') ||
+        /^https?:\/\/10\.\d+\.\d+\.\d+(:\d+)?$/.test(lowerOrigin) ||
+        /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(lowerOrigin) ||
+        /^https?:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+(:\d+)?$/.test(lowerOrigin);
+
+      return callback(null, isAllowed);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Pragma', 'Cache-Control'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Pragma', 'Cache-Control', 'X-Requested-With'],
     exposedHeaders: ['Content-Disposition', 'Content-Type'],
   });
 
