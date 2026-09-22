@@ -1,0 +1,38 @@
+server {
+    listen 3018; # Port you want Nginx to serve the app on
+    server_name localhost 10.15.1.42;
+
+    # 1. Angular static build folder
+    root /path/to/powerbi-backup/frontend/dist/frontend;
+    index index.html;
+
+    # 2. Proxy API requests (POST/GET/DELETE/PATCH) to NestJS Backend on port 4018
+    location /api/ {
+        proxy_pass http://127.0.0.1:4018/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Allow large report payloads / uploads
+        client_max_body_size 50M;
+    }
+
+    # 3. Proxy /users/ routes to backend
+    location /users/ {
+        proxy_pass http://127.0.0.1:4018;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # 4. Angular HTML5 Routing (prevents 404 on page refresh)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
