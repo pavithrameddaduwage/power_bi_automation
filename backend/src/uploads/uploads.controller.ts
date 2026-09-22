@@ -17,7 +17,7 @@ import {
 } from './uploads.service';
 import { Public } from '../auth/decorators/public.decorator';
 
-@Controller('api/uploads')
+@Controller(['api/uploads', 'uploads'])
 export class UploadsController {
   constructor(private readonly uploads: UploadsService) {}
 

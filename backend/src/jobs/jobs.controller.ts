@@ -10,7 +10,7 @@ import { JobsService, CreateJobDto } from './jobs.service';
 
 import { Public } from '../auth/decorators/public.decorator';
 
-@Controller('api/jobs')
+@Controller(['api/jobs', 'jobs'])
 export class JobsController {
   constructor(private readonly jobs: JobsService) {}
 

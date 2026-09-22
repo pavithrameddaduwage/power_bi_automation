@@ -5,7 +5,43 @@
     "changeOrigin": true,
     "logLevel": "debug"
   },
+  "/auth": {
+    "target": "http://127.0.0.1:4018",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
   "/users": {
+    "target": "http://127.0.0.1:4018",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/usage": {
+    "target": "http://127.0.0.1:4018",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/uploads": {
+    "target": "http://127.0.0.1:4018",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/jobs": {
+    "target": "http://127.0.0.1:4018",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/catalog": {
+    "target": "http://127.0.0.1:4018",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/databases": {
     "target": "http://127.0.0.1:4018",
     "secure": false,
     "changeOrigin": true,

@@ -3,7 +3,7 @@ import { Response } from 'express';
 import { UsageService } from './usage.service';
 import { Public } from '../auth/decorators/public.decorator';
 
-@Controller('api/usage')
+@Controller(['api/usage', 'usage'])
 export class UsageController {
   constructor(private readonly usage: UsageService) {}
 

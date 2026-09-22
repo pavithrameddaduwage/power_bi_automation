@@ -7,7 +7,7 @@ import { Public } from '../auth/decorators/public.decorator';
  *  - dashboards
  *  - reports, flagged downloadable, with the access list for each.
  */
-@Controller('api/catalog')
+@Controller(['api/catalog', 'catalog'])
 export class CatalogController {
   constructor(private readonly powerbi: PowerBiService) {}
 

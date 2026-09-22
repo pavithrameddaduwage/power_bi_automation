@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { DatabasesService, DbConnectionDto } from './databases.service';
 
-@Controller('api/databases')
+@Controller(['api/databases', 'databases'])
 export class DatabasesController {
   constructor(private readonly svc: DatabasesService) {}
 
