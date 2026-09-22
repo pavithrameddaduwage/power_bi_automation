@@ -36,9 +36,7 @@ import {
       }
   
       try {
-        const payload = await this.jwtService.verifyAsync(token, {
-          secret: jwtConstants.secret 
-        });
+        const payload = await this.jwtService.verifyAsync(token);
         request['user'] = payload;
       } catch (error) {
         console.error('Token verification failed:', error);
