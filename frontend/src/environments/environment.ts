@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://10.15.1.42:3018/api/',
+  apiUrl: '', // Relative URL routes through reverse proxy on port 3018
 };
