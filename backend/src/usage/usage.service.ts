@@ -1154,25 +1154,114 @@ export class UsageService {
       views: Number(topUserQuery.rows[0].views)
     } : null;
 
+    // Helper for Service Principal filtering
+    const isServicePrincipal = (displayName: string = '', email: string = '', principalType: string = '') => {
+      const pType = (principalType || '').toLowerCase();
+      const disp = (displayName || '').toLowerCase();
+      const em = (email || '').toLowerCase();
+      const isGuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
+      return (
+        pType === 'app' ||
+        pType === 'serviceprincipal' ||
+        disp.includes('serviceprincipal') ||
+        disp.includes('powerbi-api') ||
+        em.includes('powerbi-api') ||
+        em.includes('serviceprincipal') ||
+        isGuid(disp) ||
+        isGuid(em) ||
+        isGuid(em.split('@')[0])
+      );
+    };
+
+    // Query users breakdown for reports
+    const reportUsersQuery = await this.pool.query(`
+      SELECT 
+        TRIM(report_name) as report_name,
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name,
+        SUM(views) as views,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY TRIM(report_name), LOWER(TRIM(email))
+      ORDER BY report_name, views DESC
+    `, params);
+
+    const reportUsersMap = new Map<string, Array<{ name: string; email: string; views: number; lastAccessed: string }>>();
+    for (const row of reportUsersQuery.rows) {
+      if (isServicePrincipal(row.name, row.email)) continue;
+      const repKey = (row.report_name || '').trim().toLowerCase();
+      if (!reportUsersMap.has(repKey)) {
+        reportUsersMap.set(repKey, []);
+      }
+      reportUsersMap.get(repKey)!.push({
+        name: row.name || row.email,
+        email: row.email,
+        views: Number(row.views),
+        lastAccessed: row.last_accessed,
+      });
+    }
+
+    // Query users breakdown for pages
+    const pageUsersQuery = await this.pool.query(`
+      SELECT 
+        TRIM(page_name) as page_name,
+        TRIM(report_name) as report_name,
+        LOWER(TRIM(email)) as email,
+        COALESCE(
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+          MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+          MAX(TRIM(given_name)),
+          LOWER(TRIM(email))
+        ) as name,
+        SUM(views) as views,
+        TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
+      FROM usage_user_activity
+      ${whereClause}
+      GROUP BY TRIM(page_name), TRIM(report_name), LOWER(TRIM(email))
+      ORDER BY page_name, report_name, views DESC
+    `, params);
+
+    const pageUsersMap = new Map<string, Array<{ name: string; email: string; views: number; lastAccessed: string }>>();
+    for (const row of pageUsersQuery.rows) {
+      if (isServicePrincipal(row.name, row.email)) continue;
+      const key = `${(row.report_name || '').trim().toLowerCase()}:::${(row.page_name || '').trim().toLowerCase()}`;
+      if (!pageUsersMap.has(key)) {
+        pageUsersMap.set(key, []);
+      }
+      pageUsersMap.get(key)!.push({
+        name: row.name || row.email,
+        email: row.email,
+        views: Number(row.views),
+        lastAccessed: row.last_accessed,
+      });
+    }
+
     // 4. Report / Dashboard-wise Usage
     const reportUsageQuery = await this.pool.query(`
       SELECT 
-        report_name,
+        TRIM(report_name) as report_name,
         COALESCE(MAX(group_name), '') as group_name,
         COALESCE(MAX(group_id), '') as group_id,
         SUM(views) as views,
         COUNT(DISTINCT LOWER(TRIM(email))) as viewers,
-        COUNT(DISTINCT page_name) as pages_count,
+        COUNT(DISTINCT TRIM(page_name)) as pages_count,
         TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_user_activity
       ${whereClause}
-      GROUP BY report_name
+      GROUP BY TRIM(report_name)
       ORDER BY views DESC
     `, params);
 
     const maxReportViews = reportUsageQuery.rows.length > 0 ? Number(reportUsageQuery.rows[0].views) : 1;
     const reportUsage = reportUsageQuery.rows.map(r => {
       const views = Number(r.views);
+      const repKey = (r.report_name || '').trim().toLowerCase();
       return {
         reportName: r.report_name,
         groupName: workspaceMap.get(r.group_id) || (r.group_name && r.group_name.trim() !== '' ? r.group_name : r.group_id),
@@ -1182,27 +1271,29 @@ export class UsageService {
         pagesCount: Number(r.pages_count),
         lastAccessed: r.last_accessed,
         percent: totalViews > 0 ? Math.round((views / totalViews) * 100) : 0,
-        relativePercent: maxReportViews > 0 ? Math.round((views / maxReportViews) * 100) : 0
+        relativePercent: maxReportViews > 0 ? Math.round((views / maxReportViews) * 100) : 0,
+        users: reportUsersMap.get(repKey) || [],
       };
     });
 
     // 5. Page-wise / Tab-wise Usage (Single diagram)
     const pageUsageQuery = await this.pool.query(`
       SELECT 
-        page_name,
-        report_name,
+        TRIM(page_name) as page_name,
+        TRIM(report_name) as report_name,
         SUM(views) as views,
         COUNT(DISTINCT LOWER(TRIM(email))) as viewers,
         TO_CHAR(MAX(date), 'YYYY-MM-DD') as last_accessed
       FROM usage_user_activity
       ${whereClause}
-      GROUP BY page_name, report_name
+      GROUP BY TRIM(page_name), TRIM(report_name)
       ORDER BY views DESC
     `, params);
 
     const maxPageViews = pageUsageQuery.rows.length > 0 ? Number(pageUsageQuery.rows[0].views) : 1;
     const pageUsage = pageUsageQuery.rows.map(r => {
       const views = Number(r.views);
+      const key = `${(r.report_name || '').trim().toLowerCase()}:::${(r.page_name || '').trim().toLowerCase()}`;
       return {
         pageName: r.page_name,
         reportName: r.report_name,
@@ -1210,7 +1301,8 @@ export class UsageService {
         viewers: Number(r.viewers),
         lastAccessed: r.last_accessed,
         percent: totalViews > 0 ? Math.round((views / totalViews) * 100) : 0,
-        relativePercent: maxPageViews > 0 ? Math.round((views / maxPageViews) * 100) : 0
+        relativePercent: maxPageViews > 0 ? Math.round((views / maxPageViews) * 100) : 0,
+        users: pageUsersMap.get(key) || [],
       };
     });
 
@@ -1327,23 +1419,7 @@ export class UsageService {
       GROUP BY LOWER(TRIM(email))
       ORDER BY name ASC
     `);
-    const isServicePrincipal = (displayName: string = '', email: string = '', principalType: string = '') => {
-      const pType = (principalType || '').toLowerCase();
-      const disp = (displayName || '').toLowerCase();
-      const em = (email || '').toLowerCase();
-      const isGuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
-      return (
-        pType === 'app' ||
-        pType === 'serviceprincipal' ||
-        disp.includes('serviceprincipal') ||
-        disp.includes('powerbi-api') ||
-        em.includes('powerbi-api') ||
-        em.includes('serviceprincipal') ||
-        isGuid(disp) ||
-        isGuid(em) ||
-        isGuid(em.split('@')[0])
-      );
-    };
+
 
     const availableUsers = usersFilterQuery.rows
       .filter(r => !isServicePrincipal(r.name, r.email))

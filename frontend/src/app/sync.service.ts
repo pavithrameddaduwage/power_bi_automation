@@ -524,6 +524,13 @@ export interface UsageFilterDto {
   date?: string;
 }
 
+export interface UserAccessDetail {
+  name: string;
+  email: string;
+  views: number;
+  lastAccessed: string;
+}
+
 export interface PageUsageItem {
   pageName: string;
   reportName: string;
@@ -532,6 +539,7 @@ export interface PageUsageItem {
   lastAccessed?: string;
   percent: number;
   relativePercent: number;
+  users?: UserAccessDetail[];
 }
 
 export interface UserUsageItem {
@@ -567,6 +575,7 @@ export interface ReportUsageItem {
   lastAccessed: string;
   percent?: number;
   relativePercent?: number;
+  users?: UserAccessDetail[];
 }
 
 export interface DashboardAnalyticsResponse {

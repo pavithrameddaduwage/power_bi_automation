@@ -1364,6 +1364,1152 @@ import { ToastService } from './toast.service';
       vertical-align: middle;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Power BI Style Views Count Bar Chart & Date Slider ── */
+    .pbi-chart-card {
+      position: relative;
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 14px;
+      padding: 20px 24px;
+      box-shadow: 0 2px 8px -2px rgba(37, 99, 235, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    /* Date Slider Row */
+    .date-slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .date-slider-label {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .date-range-display-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .date-chip-input {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #0f172a;
+      flex-shrink: 0;
+    }
+
+    .date-chip-input.clickable-calendar {
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .date-chip-input.clickable-calendar:hover {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #1d4ed8;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .hidden-date-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .btn-reset-dates {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #ffffff;
+      color: #dc2626;
+      border: 1.5px solid #fca5a5;
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 11.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      height: 30px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08);
+      flex-shrink: 0;
+    }
+
+    .btn-reset-dates:hover {
+      background: #fef2f2;
+      border-color: #ef4444;
+      color: #b91c1c;
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.18);
+      transform: translateY(-1px);
+    }
+
+    .date-chip-text {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .range-track-wrap {
+      position: relative;
+      flex: 1;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      min-width: 140px;
+    }
+
+    .range-track-bg {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: #0f172a;
+      border-radius: 2px;
+    }
+
+    .range-track-fill {
+      position: absolute;
+      height: 3px;
+      background: #1e3a8a;
+      border-radius: 2px;
+    }
+
+    .range-slider-input {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 24px;
+      background: none;
+      pointer-events: none;
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .range-slider-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      pointer-events: auto;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: transform 0.1s ease;
+    }
+
+    .range-slider-input::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      border-color: #1d4ed8;
+    }
+
+    /* Chart Header */
+    .pbi-chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding-top: 4px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .pbi-chart-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .pbi-chart-subtitle {
+      font-size: 12.5px;
+      color: #64748b;
+      margin-top: 2px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .pbi-active-drill-tag {
+      color: #1d4ed8;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-clear-drill {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1d4ed8;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      font-size: 9px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin-left: 2px;
+    }
+
+    .btn-clear-drill:hover {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: #dc2626;
+    }
+
+    .pbi-chart-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pbi-view-switch {
+      display: inline-flex;
+      background: #eff6ff;
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid #bfdbfe;
+      gap: 2px;
+    }
+
+    .switch-btn {
+      background: transparent;
+      border: none;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e3a8a;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .switch-btn.active {
+      background: #ffffff;
+      color: #1d4ed8;
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);
+    }
+
+    /* ── VIEWS BY DASHBOARD / PAGE: MASTER-DETAIL INTERACTIVE VIEW ── */
+    .views-master-detail-card {
+      background: #ffffff;
+      border: 1.5px solid #dbeafe;
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 2px 8px -2px rgba(37, 99, 235, 0.05);
+      position: relative;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .vmd-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-bottom: 4px;
+    }
+
+    .vmd-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .vmd-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.3px;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .vmd-subtitle {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .vmd-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .vmd-mode-switch {
+      display: inline-flex;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .vmd-mode-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      padding: 6px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+
+    .vmd-mode-btn:hover {
+      color: #1d4ed8;
+    }
+
+    .vmd-mode-btn.active {
+      background: #ffffff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(29, 78, 216, 0.1);
+    }
+
+    .vmd-export-btn {
+      background: #1d4ed8;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 3px rgba(29, 78, 216, 0.2);
+      white-space: nowrap;
+    }
+
+    .vmd-export-btn:hover {
+      background: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    /* Sub Toolbar with Date Range and Presets */
+    .vmd-controls-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+
+    .vmd-date-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .vmd-date-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #ffffff;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 4px 10px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .vmd-date-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #1e3a8a;
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+      position: relative;
+    }
+
+    .vmd-date-btn:hover {
+      color: #2563eb;
+    }
+
+    .vmd-date-sep {
+      font-size: 11.5px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .vmd-preset-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .vmd-preset-pill {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .vmd-preset-pill:hover {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+
+    .vmd-preset-pill.active {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(29, 78, 216, 0.25);
+    }
+
+    /* ── MASTER-DETAIL 2-COLUMN GRID ── */
+    .vmd-grid-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: stretch;
+      min-height: 520px;
+    }
+
+    @media (max-width: 1080px) {
+      .vmd-grid-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left Column: Master Pane (Graph with Hover/Pinned Tooltip) */
+    .vmd-master-pane {
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-sizing: border-box;
+      position: relative;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .vmd-pane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1.5px solid #f1f5f9;
+    }
+
+    .vmd-pane-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 2px 0;
+    }
+
+    .vmd-pane-sub {
+      font-size: 12px;
+      color: #64748b;
+      margin: 0;
+    }
+
+    .vmd-search-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 5px 10px;
+      width: 180px;
+      transition: all 0.15s;
+    }
+
+    .vmd-search-box:focus-within {
+      background: #ffffff;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .vmd-search-input {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 12px;
+      color: #0f172a;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .vmd-search-input::placeholder {
+      color: #94a3b8;
+    }
+
+    .vmd-master-list-scroll {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 480px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+      position: relative;
+    }
+
+    .vmd-item-row {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #ffffff;
+      position: relative;
+    }
+
+    .vmd-item-row:hover {
+      background: #f8fafc;
+      border-color: #bfdbfe;
+    }
+
+    .vmd-item-row.selected {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+    }
+
+    .vmd-item-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .vmd-item-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .vmd-item-row.selected .vmd-item-name,
+    .vmd-item-row:hover .vmd-item-name {
+      color: #1d4ed8;
+      font-weight: 700;
+    }
+
+    .vmd-item-views {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+
+    .vmd-progress-track {
+      width: 100%;
+      height: 6px;
+      background: #eff6ff;
+      border: 1px solid #dbeafe;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .vmd-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #60a5fa 0%, #2563eb 100%);
+      border-radius: 99px;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .vmd-progress-bar.low-bar {
+      background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
+    }
+
+    /* ── POWER BI STYLE TOOLTIP BOX (MODERN BLUE THEME) ── */
+    .pbi-tooltip-box {
+      position: absolute;
+      z-index: 1000;
+      background: #ffffff;
+      border: 1.5px solid #93c5fd;
+      border-radius: 12px;
+      box-shadow: 0 16px 36px -6px rgba(30, 58, 138, 0.25), 0 6px 14px -3px rgba(30, 58, 138, 0.12);
+      width: 380px;
+      max-width: 95%;
+      box-sizing: border-box;
+      pointer-events: auto;
+      animation: fadeIn 0.15s ease-out;
+      overflow: hidden;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .tooltip-top-banner {
+      background: #f8fafc;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tooltip-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .tooltip-target-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .tooltip-views-badge {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      border: 1px solid #bfdbfe;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tooltip-views-badge.low-badge {
+      background: #fef2f2;
+      color: #dc2626;
+      border-color: #fecaca;
+    }
+
+    .tooltip-close-btn {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      border-radius: 6px;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tooltip-close-btn:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: #ffffff;
+    }
+
+    .tooltip-search-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 4px 8px;
+      transition: border-color 0.15s;
+    }
+
+    .tooltip-search-wrap:focus-within {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+
+    .tooltip-search-input {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 11.5px;
+      color: #0f172a;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .tooltip-search-input::placeholder {
+      color: #94a3b8;
+    }
+
+    .btn-clear-search {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .btn-clear-search:hover {
+      color: #dc2626;
+    }
+
+    .tooltip-header-row {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1.1fr;
+      padding: 8px 14px;
+      background: #eff6ff;
+      border-bottom: 1px solid #bfdbfe;
+      font-size: 11px;
+      font-weight: 700;
+      color: #1e40af;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      align-items: center;
+    }
+
+    .th-user-col { text-align: left; }
+    .th-views-col { text-align: right; }
+    .th-date-col { text-align: right; }
+
+    .tooltip-rows-scroll {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+    }
+
+    .tooltip-data-row {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1.1fr;
+      padding: 7px 14px;
+      font-size: 11.5px;
+      color: #0f172a;
+      align-items: center;
+      background: #ffffff;
+      border-bottom: 1px solid #f1f5f9;
+      transition: background 0.1s;
+    }
+
+    .tooltip-data-row:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .tooltip-data-row:hover {
+      background: #eff6ff;
+    }
+
+    .td-user-col {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+    }
+
+    .user-avatar-chip {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 9.5px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .user-name-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .td-views-col {
+      text-align: right;
+    }
+
+    .td-views-badge {
+      display: inline-block;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: #1d4ed8;
+      background: #eff6ff;
+      border: 1px solid #dbeafe;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    .td-date-col {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .tooltip-footer-row {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1.1fr;
+      padding: 9px 14px;
+      background: #f8fafc;
+      border-top: 1.5px solid #e2e8f0;
+      font-size: 12px;
+      font-weight: 800;
+      color: #0f172a;
+      align-items: center;
+    }
+
+    .tf-total-label {
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tf-views-val {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: #1d4ed8;
+    }
+
+    .tf-date-val {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-size: 11.5px;
+      color: #475569;
+    }
+
+    /* ── RIGHT COLUMN: INACTIVE ACCESS INSPECTOR ── */
+    .vmd-inactive-pane {
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-sizing: border-box;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .vmd-inactive-header {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1.5px solid #f1f5f9;
+    }
+
+    .vmd-inactive-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .vmd-inactive-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .vmd-inactive-badge {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 99px;
+      padding: 2px 9px;
+    }
+
+    .vmd-inactive-tabs {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .vmd-tab-pill {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 99px;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .vmd-tab-pill:hover {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    .vmd-tab-pill.active {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(29, 78, 216, 0.25);
+    }
+
+    .vmd-inactive-search {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 5px 10px;
+      transition: all 0.15s;
+    }
+
+    .vmd-inactive-search:focus-within {
+      background: #ffffff;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .vmd-inactive-search-input {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 12px;
+      color: #0f172a;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .vmd-inactive-search-input::placeholder {
+      color: #94a3b8;
+    }
+
+    .vmd-inactive-table-wrap {
+      display: flex;
+      flex-direction: column;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .vmd-inactive-th {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      padding: 8px 12px;
+      background: #eff6ff;
+      border-bottom: 1px solid #bfdbfe;
+      font-size: 11px;
+      font-weight: 700;
+      color: #1e40af;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .vmd-inactive-list-scroll {
+      height: 380px;
+      max-height: 380px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+    }
+
+    .vmd-inactive-row {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      padding: 9px 12px;
+      align-items: center;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 12px;
+      transition: background 0.1s;
+    }
+
+    .vmd-inactive-row:last-child {
+      border-bottom: none;
+    }
+
+    .vmd-inactive-row:hover {
+      background: #f8fafc;
+    }
+
+    .vmd-user-info-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .vmd-user-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 10px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .vmd-user-texts {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .vmd-user-name {
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+    }
+
+    .vmd-user-role-badge {
+      font-size: 10px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .vmd-last-active-cell {
+      font-size: 11.5px;
+      color: #475569;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .vmd-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 99px;
+      white-space: nowrap;
+      justify-self: start;
+    }
+
+    .vmd-status-pill.never {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+
+    .vmd-status-pill.d90 {
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+    }
+
+    .vmd-status-pill.d30 {
+      background: #fefce8;
+      color: #854d0e;
+      border: 1px solid #fef08a;
+    }
+
+    .vmd-empty-users {
+      padding: 36px 16px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
   `],
   template: `
     <div class="analytics-container">
@@ -1694,281 +2840,279 @@ import { ToastService } from './toast.service';
 
       </div>
 
-      <!-- ── 4A. MAIN DASHBOARD DETAILED BREAKDOWN: TABBED CARD (when NO user is selected) ── -->
-      <div class="unified-breakdown-card" *ngIf="!selectedUserEmail()">
-
-        <!-- Top Bar: Segmented Tabs [ Dashboards / Pages | People | Access ] + Search & Sub-filters -->
-        <div class="breakdown-top-bar">
-          <div class="segmented-tabs">
-            <button class="segmented-tab" [class.active]="activeBreakdownTab() === 'pages'" (click)="activeBreakdownTab.set('pages'); pageCurrentPage.set(1); reportCurrentPage.set(1);">
-              {{ filterReportName ? 'Pages' : 'Dashboards' }}
-            </button>
-            <button class="segmented-tab" [class.active]="activeBreakdownTab() === 'people'" (click)="activeBreakdownTab.set('people'); userCurrentPage.set(1);">
-              People
-            </button>
-            <button class="segmented-tab" [class.active]="activeBreakdownTab() === 'access'" (click)="activeBreakdownTab.set('access'); accessCurrentPage.set(1);">
-              Access
-            </button>
-          </div>
-
-          <!-- Controls when Tab 1 is active and no report filter is applied (Dashboard Breakdown) -->
-          <div style="display:flex; align-items:center; gap:8px;" *ngIf="activeBreakdownTab() === 'pages' && !filterReportName">
-            <select class="breakdown-search-input" [ngModel]="reportSortOrder()" (ngModelChange)="reportSortOrder.set($event); reportCurrentPage.set(1);" style="width:115px; cursor:pointer;">
-              <option value="views-desc">Top Views</option>
-              <option value="views-asc">Least Views</option>
-              <option value="name-asc">A to Z</option>
-            </select>
-            <input class="breakdown-search-input" [ngModel]="reportSearchText()" (ngModelChange)="reportSearchText.set($event); reportCurrentPage.set(1);" placeholder="Search dashboard…" style="width:170px;" />
-          </div>
-
-          <!-- Controls when Tab 1 is active and a report IS selected (Page Breakdown) -->
-          <div style="display:flex; align-items:center; gap:8px;" *ngIf="activeBreakdownTab() === 'pages' && filterReportName">
-            <select class="breakdown-search-input" [ngModel]="pageSortOrder()" (ngModelChange)="pageSortOrder.set($event); pageCurrentPage.set(1);" style="width:115px; cursor:pointer;">
-              <option value="views-desc">Top Views</option>
-              <option value="views-asc">Least Views</option>
-              <option value="name-asc">A to Z</option>
-            </select>
-            <input class="breakdown-search-input" [ngModel]="pageSearchText()" (ngModelChange)="pageSearchText.set($event); pageCurrentPage.set(1);" placeholder="Search pages…" style="width:160px;" />
-          </div>
-
-          <!-- Controls for People tab -->
-          <div *ngIf="activeBreakdownTab() === 'people'">
-            <input class="breakdown-search-input" [ngModel]="userSearchText()" (ngModelChange)="userSearchText.set($event); userCurrentPage.set(1);" placeholder="Search user…" style="width:160px;" />
-          </div>
-
-          <!-- Controls for Access tab -->
-          <div *ngIf="activeBreakdownTab() === 'access'">
-            <input class="breakdown-search-input" [ngModel]="accessSearchText()" (ngModelChange)="accessSearchText.set($event); accessCurrentPage.set(1)" placeholder="Search member…" style="width:190px;" />
-          </div>
-        </div>
-
-        <!-- ── TAB 1: DASHBOARDS VIEW (When NO report filter is active) ── -->
-        <ng-container *ngIf="activeBreakdownTab() === 'pages' && !filterReportName">
-          <div class="breakdown-subtitle">
-            {{ filteredReportUsage().length }} dashboards tracked
-          </div>
-
-          <div class="breakdown-list-container" *ngIf="pagedReports().length; else noDashboards">
-            <div class="breakdown-row-item interactive" *ngFor="let r of pagedReports(); let idx = index" (click)="selectReport(r.reportName)" [title]="'Click to view page breakdown for ' + r.reportName">
-              <div style="display:flex; align-items:center; gap:16px; min-width:0; flex:1;">
-                <span class="row-rank-tag">#{{ (reportCurrentPage() - 1) * 5 + idx + 1 }}</span>
-                <div style="min-width:0; flex:1;">
-                  <div class="row-primary-title" [title]="r.reportName">{{ r.reportName }}</div>
-                  <div class="row-secondary-info" *ngIf="r.groupName" style="margin-top:2px;">
-                    <span style="color:#1d4ed8; font-weight:600;">{{ r.groupName }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="row-metric-box">
-                <div class="row-metric-val">{{ r.views | number }}</div>
-                <div class="row-metric-sub">views</div>
-              </div>
-            </div>
-          </div>
-          <ng-template #noDashboards>
-            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:35px 0;">
-              No dashboards match current search.
-            </div>
-          </ng-template>
-        </ng-container>
-
-        <!-- ── TAB 1: PAGES VIEW (When a specific report IS selected) ── -->
-        <ng-container *ngIf="activeBreakdownTab() === 'pages' && filterReportName">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px; margin-bottom:6px; padding:6px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;">
-            <div style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:#1e40af; min-width:0;">
-              <span style="font-weight:600; color:#64748b;">Filtered Dashboard:</span>
-              <span style="font-weight:700; color:#1d4ed8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" [title]="filterReportName">{{ filterReportName }}</span>
-            </div>
-            <button type="button" class="btn-card-nav" (click)="selectReport('')" style="display:flex; align-items:center; gap:4px; font-size:11.5px; padding:3px 10px; cursor:pointer;" title="View all dashboards">
-              <span>✕ View All Dashboards</span>
-            </button>
-          </div>
-
-          <div class="breakdown-subtitle">
-            {{ filteredPageUsage().length }} pages tracked for {{ filterReportName }}, ranked by views
-          </div>
-
-          <div class="breakdown-list-container" *ngIf="pagedPages().length; else noPages">
-            <div class="breakdown-row-item" *ngFor="let p of pagedPages(); let idx = index">
-              <div style="display:flex; align-items:center; gap:16px; min-width:0; flex:1;">
-                <span class="row-rank-tag">#{{ (pageCurrentPage() - 1) * 5 + idx + 1 }}</span>
-                <div style="min-width:0; flex:1;">
-                  <div class="row-primary-title" [title]="p.pageName">{{ p.pageName }}</div>
-                  <div class="row-secondary-info" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:2px;">
-                    <span *ngIf="p.reportName" style="color:#1d4ed8; font-weight:600;">Report - {{ p.reportName }}</span>
-                    <span *ngIf="p.reportName" style="opacity:0.4;">•</span>
-                    <span>{{ p.viewers }} viewer{{ p.viewers === 1 ? '' : 's' }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="row-metric-box">
-                <div class="row-metric-val">{{ p.views | number }}</div>
-                <div class="row-metric-sub">views · {{ formatAccessDate(p.lastAccessed) }}</div>
-              </div>
-            </div>
-          </div>
-          <ng-template #noPages>
-            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:35px 0;">
-              No pages match current search.
-            </div>
-          </ng-template>
-        </ng-container>
-
-        <!-- ── TAB 2: PEOPLE VIEW ── -->
-        <ng-container *ngIf="activeBreakdownTab() === 'people'">
-          <div class="breakdown-subtitle">
-            {{ filteredUserUsage().length }} users, most active first
-          </div>
-
-          <div class="breakdown-list-container" *ngIf="pagedUsers().length; else noUsers">
-            <div class="breakdown-row-item interactive" *ngFor="let u of pagedUsers(); let i = index" (click)="navigateToUser(u.email)" title="Click to view detailed analytics for {{ u.name }}">
-              <div style="display:flex; align-items:center; gap:14px; min-width:0; flex:1;">
-                <div class="user-avatar"
-                     [style.background]="getUserAvatarStyle(u.name, i).bg"
-                     [style.color]="getUserAvatarStyle(u.name, i).color">
-                  {{ getUserInitial(u.name) }}
-                </div>
-                <div style="min-width:0; flex:1;">
-                  <div class="row-primary-title" [title]="u.name">{{ u.name }}</div>
-                  <div class="row-secondary-info">{{ u.email }} · {{ u.pagesCount }} page{{ u.pagesCount === 1 ? '' : 's' }}</div>
-                </div>
-              </div>
-
-              <div class="row-metric-box">
-                <div class="row-metric-val">{{ u.views | number }}</div>
-                <div class="row-metric-sub">{{ formatAccessDate(u.lastAccessed) }}</div>
-              </div>
-            </div>
-          </div>
-          <ng-template #noUsers>
-            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:35px 0;">
-              No users match current search.
-            </div>
-          </ng-template>
-        </ng-container>
-
-        <!-- ── TAB 3: ACCESS AUDIT VIEW ── -->
-        <ng-container *ngIf="activeBreakdownTab() === 'access'">
-          <div class="access-sub-bar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-            <div class="access-pill-tabs">
-              <button class="access-pill-btn" [class.active]="accessFilterTab() === 'all'" (click)="accessFilterTab.set('all'); accessCurrentPage.set(1);" title="All Members">
-                All ({{ accessData()?.totalUsers || 0 }})
-              </button>
-              <button class="access-pill-btn" [class.active]="accessFilterTab() === 'unused'" (click)="accessFilterTab.set('unused'); accessCurrentPage.set(1);" style="color:#b45309;" title="Unused Access">
-                Unused ({{ accessData()?.unusedUsers || 0 }})
-              </button>
-              <button class="access-pill-btn" [class.active]="accessFilterTab() === 'active'" (click)="accessFilterTab.set('active'); accessCurrentPage.set(1);" title="Active Members">
-                Active ({{ accessData()?.activeUsers || 0 }})
-              </button>
-            </div>
-
-            <div style="display:flex; align-items:center; gap:12px;">
-              <span style="font-size:12.5px; color:#64748b; font-weight:500;">
-                {{ filteredAccessList().length }} members audited
+      <!-- ── 4. VIEWS BY DASHBOARD / PAGE: MASTER-DETAIL INTERACTIVE VIEW ── -->
+      <div class="views-master-detail-card">
+        <!-- Top Title & Mode Switch Row -->
+        <div class="vmd-header-row">
+          <div class="vmd-title-wrap">
+            <h2 class="vmd-title">{{ currentChartMode() === 'dashboards' ? 'Views by dashboard' : 'Views by page' }}</h2>
+            <div class="vmd-subtitle">
+              <span>{{ masterTotalViews() | number }} views across {{ currentBarItems().length }} {{ currentChartMode() === 'dashboards' ? 'dashboards' : 'pages' }}</span>
+              <span *ngIf="filterReportName" class="pbi-active-drill-tag">
+                • Filtered: <strong>{{ filterReportName }}</strong>
+                <button type="button" class="btn-clear-drill" (click)="selectReport('')" title="View all dashboards">✕</button>
               </span>
-              <button class="btn-back" style="font-size:12px; padding:6px 14px; border-color:#cbd5e1; background:#ffffff; color:#0f172a;" (click)="exportAccessMatrixCSV()">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                Export Access Matrix CSV
+            </div>
+          </div>
+
+          <div class="vmd-header-actions">
+            <!-- Mode Toggle Tabs (Dashboards vs Pages) -->
+            <div class="vmd-mode-switch">
+              <button type="button" class="vmd-mode-btn" [class.active]="currentChartMode() === 'dashboards' && !filterReportName" (click)="setChartMode('dashboards')">
+                Dashboards ({{ filteredReportUsage().length }})
+              </button>
+              <button type="button" class="vmd-mode-btn" [class.active]="currentChartMode() === 'pages' || !!filterReportName" (click)="setChartMode('pages')">
+                {{ filterReportName ? 'Pages in Dashboard (' + filteredPageUsage().length + ')' : 'Pages (' + filteredPageUsage().length + ')' }}
               </button>
             </div>
-          </div>
 
-          <div class="breakdown-list-container" *ngIf="pagedAccessList().length; else noAccessUsers">
-            <div class="breakdown-row-item" [class.interactive]="u.views > 0" *ngFor="let u of pagedAccessList(); let i = index" (click)="u.views > 0 ? navigateToUser(u.email) : null" [title]="u.views > 0 ? 'Click to view analytics for ' + u.displayName : ''">
-              <div style="display:flex; align-items:center; gap:14px; min-width:0; flex:1;">
-                <div class="user-avatar"
-                     [style.background]="getUserAvatarStyle(u.displayName, i).bg"
-                     [style.color]="getUserAvatarStyle(u.displayName, i).color">
-                  {{ getUserInitial(u.displayName) }}
-                </div>
-                <div style="min-width:0; flex:1;">
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <div class="row-primary-title" [title]="u.displayName">{{ u.displayName }}</div>
-                    <span class="role-badge" [ngClass]="getRoleBadgeClass(u.role)">{{ u.role }}</span>
-                  </div>
-                  <div class="row-secondary-info">{{ u.email }}</div>
-                </div>
-              </div>
-
-              <div class="row-metric-box">
-                <div class="row-metric-val">{{ u.views | number }}</div>
-                <div class="row-metric-sub">
-                  <span *ngIf="u.status === 'active'">{{ formatAccessDate(u.lastAccessed) }}</span>
-                  <span *ngIf="u.status !== 'active'" style="color:#dc2626; font-weight:600;">{{ u.lastAccessed ? formatAccessDate(u.lastAccessed) : 'Never active' }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <ng-template #noAccessUsers>
-            <div style="color:#94a3b8; font-size:13px; text-align:center; padding:35px 0;">
-              No members match current access filters.
-            </div>
-          </ng-template>
-        </ng-container>
-
-      </div>
-
-      <!-- ── 4B. USER DETAIL FULL-WIDTH PAGE BREAKDOWN ── -->
-      <div class="card-outlined" *ngIf="selectedUserEmail()">
-        <div class="card-header-row">
-          <div>
-            <h3 class="card-title">Pages Viewed by {{ currentUserObject()?.name || selectedUserEmail() }}</h3>
-            <div style="font-size:13px; color:#1e3a8a; margin-top:2px;">
-              {{ filteredPageUsage().length }} page{{ filteredPageUsage().length === 1 ? '' : 's' }} visited
-            </div>
-          </div>
-
-          <div style="display:flex; align-items:center; gap:10px;">
-            <input class="search-mini-input" [ngModel]="pageSearchText()" (ngModelChange)="pageSearchText.set($event); pageCurrentPage.set(1);" placeholder="Search visited pages…" style="width:200px;" />
-            <select class="search-mini-input" [ngModel]="pageSortOrder()" (ngModelChange)="pageSortOrder.set($event); pageCurrentPage.set(1);" style="width:125px; cursor:pointer;">
-              <option value="views-desc">Top Views</option>
-              <option value="views-asc">Least Views</option>
-              <option value="name-asc">A to Z</option>
-            </select>
+            <!-- Export Button -->
+            <button type="button" class="vmd-export-btn" (click)="exportAccessMatrixExcel()" title="Export complete data to Excel">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Export Excel
+            </button>
           </div>
         </div>
 
-        <div class="page-diagram-list" *ngIf="pagedPages().length; else noUserPages">
-          <div class="page-clean-row" *ngFor="let p of pagedPages(); let idx = index">
-            <div class="page-title-group">
-              <span class="page-rank-pill" *ngIf="pageSortOrder() === 'views-desc'">#{{ (pageCurrentPage() - 1) * 5 + idx + 1 }}</span>
-              <div style="min-width:0; flex:1;">
-                <div class="page-name" [title]="p.pageName">{{ p.pageName }}</div>
-                <div class="page-report-tag" *ngIf="p.reportName" [title]="p.reportName">
-                  Report - <strong>{{ p.reportName }}</strong>
-                </div>
-              </div>
-            </div>
-            <div class="page-stats-right">
-              <span class="page-views-num">{{ p.views | number }} views</span>
-            </div>
-          </div>
-
-          <!-- User Pages Pagination Controls -->
-          <div class="pagination-bar" *ngIf="filteredPageUsage().length > 5">
-            <span class="pagination-info">
-              {{ (pageCurrentPage() - 1) * 5 + 1 }}–{{ Math.min(pageCurrentPage() * 5, filteredPageUsage().length) }} of {{ filteredPageUsage().length }} visited pages
-            </span>
-            <div class="pagination-controls">
-              <button class="btn-page" [disabled]="pageCurrentPage() === 1" (click)="pageCurrentPage.set(pageCurrentPage() - 1)">
-                Previous
-              </button>
-              <span class="page-current-pill">
-                Page {{ pageCurrentPage() }} of {{ pageTotalPages() }}
+        <!-- Filter Controls & Presets Sub-Bar -->
+        <div class="vmd-controls-bar">
+          <div class="vmd-date-controls">
+            <!-- Date Range Display Chip (clickable for calendars) -->
+            <div class="vmd-date-chip">
+              <span class="vmd-date-btn" (click)="openStartDatePicker(startDateInput)" title="Click to pick start date">
+                {{ formatSliderDate(dateSliderStart()) }}
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <input #startDateInput type="date" class="hidden-date-input" [value]="dateSliderStart()" (change)="onStartDateDirectChange($event)" (click)="$event.stopPropagation()" />
               </span>
-              <button class="btn-page" [disabled]="pageCurrentPage() >= pageTotalPages()" (click)="pageCurrentPage.set(pageCurrentPage() + 1)">
-                Next
-              </button>
+              <span class="vmd-date-sep">to</span>
+              <span class="vmd-date-btn" (click)="openEndDatePicker(endDateInput)" title="Click to pick end date">
+                {{ formatSliderDate(dateSliderEnd()) }}
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <input #endDateInput type="date" class="hidden-date-input" [value]="dateSliderEnd()" (change)="onEndDateDirectChange($event)" (click)="$event.stopPropagation()" />
+              </span>
+            </div>
+
+            <!-- Quick Preset Pills: 30 days, 90 days, 6 months, 12 months, All time -->
+            <div class="vmd-preset-group">
+              <button type="button" class="vmd-preset-pill" [class.active]="activeDatePreset() === '30d'" (click)="setDatePreset('30d')">30 days</button>
+              <button type="button" class="vmd-preset-pill" [class.active]="activeDatePreset() === '90d'" (click)="setDatePreset('90d')">90 days</button>
+              <button type="button" class="vmd-preset-pill" [class.active]="activeDatePreset() === '6m'" (click)="setDatePreset('6m')">6 months</button>
+              <button type="button" class="vmd-preset-pill" [class.active]="activeDatePreset() === '12m'" (click)="setDatePreset('12m')">12 months</button>
+              <button type="button" class="vmd-preset-pill" [class.active]="activeDatePreset() === 'all'" (click)="setDatePreset('all')">All time</button>
             </div>
           </div>
         </div>
-        <ng-template #noUserPages>
-          <div style="color:#1e40af; font-size:13px; text-align:center; padding:35px 0;">
-            No visited pages match the search criteria.
+
+        <!-- Master-Detail 2-Column Grid -->
+        <div class="vmd-grid-container">
+          <!-- Left Column: Master List (Horizontal Bars with Hover / Pinned Tooltip) -->
+          <div class="vmd-master-pane">
+            <div class="vmd-pane-header">
+              <div>
+                <h3 class="vmd-pane-title">
+                  {{ currentChartMode() === 'dashboards' ? 'Most viewed dashboards' : 'Most viewed pages' }}
+                </h3>
+              </div>
+
+              <div class="vmd-search-box">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text"
+                       class="vmd-search-input"
+                       placeholder="Filter by name..."
+                       [ngModel]="masterListSearchText()"
+                       (ngModelChange)="masterListSearchText.set($event)" />
+                <button *ngIf="masterListSearchText()" type="button" class="btn-clear-search" (click)="masterListSearchText.set('')">✕</button>
+              </div>
+            </div>
+
+            <!-- Master Items List -->
+            <div class="vmd-master-list-scroll">
+              <div *ngIf="filteredMasterItems().length === 0" class="vmd-empty-state">
+                No matching {{ currentChartMode() === 'dashboards' ? 'dashboards' : 'pages' }} found for this period.
+              </div>
+
+              <div *ngFor="let item of filteredMasterItems()"
+                   class="vmd-item-row"
+                   [class.selected]="activeTooltipItem()?.name === item.name || pinnedTooltipItem()?.name === item.name"
+                   (mouseenter)="onBarHover(item, $event)"
+                   (mouseleave)="onBarLeave()"
+                   (click)="selectMasterItem(item, $event)">
+                
+                <div class="vmd-item-info">
+                  <div class="vmd-item-name" [title]="item.name + (item.reportName ? ' (' + item.reportName + ')' : '')">
+                    {{ item.name }}
+                  </div>
+                  <div class="vmd-item-views">
+                    {{ item.views | number }}
+                  </div>
+                </div>
+
+                <!-- Sleek horizontal blue progress bar -->
+                <div class="vmd-progress-track">
+                  <div class="vmd-progress-bar"
+                       [style.width.%]="getMasterBarWidthPct(item.views)"
+                       [class.low-bar]="item.views <= 2">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── POWER BI STYLE INTERACTIVE HOVER / PINNED TOOLTIP (OUTSIDE SCROLL CONTAINER FOR STABILITY) ── -->
+            <div class="pbi-tooltip-box"
+                 *ngIf="activeTooltipItem()"
+                 [style.left.px]="tooltipPos().x"
+                 [style.top.px]="tooltipPos().y"
+                 (mouseenter)="onTooltipEnter()"
+                 (mouseleave)="onTooltipLeave()"
+                 (click)="$event.stopPropagation()">
+              
+              <!-- Sleek Top Banner with title, views badge, and close button -->
+              <div class="tooltip-top-banner">
+                <div class="tooltip-title-row">
+                  <div class="tooltip-target-title" [title]="activeTooltipItem()?.name">
+                    {{ activeTooltipItem()?.name }}
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="tooltip-views-badge" [class.low-badge]="(activeTooltipItem()?.views || 0) <= 2">
+                      {{ (activeTooltipItem()?.views || 0) | number }} views
+                    </div>
+                    <button type="button" class="tooltip-close-btn" (click)="closeTooltip($event)" title="Close tooltip">✕</button>
+                  </div>
+                </div>
+
+                <!-- Instant Search inside Tooltip -->
+                <div class="tooltip-search-wrap">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  <input type="text"
+                         class="tooltip-search-input"
+                         placeholder="Search viewer name or email..."
+                         [ngModel]="tooltipUserSearch()"
+                         (ngModelChange)="tooltipUserSearch.set($event)"
+                         (click)="$event.stopPropagation()" />
+                  <button *ngIf="tooltipUserSearch()" type="button" class="btn-clear-search" (click)="tooltipUserSearch.set('')">✕</button>
+                </div>
+              </div>
+
+              <div class="tooltip-header-row">
+                <div class="th-user-col">User / Member</div>
+                <div class="th-views-col">
+                  Views <span class="sort-indicator">▼</span>
+                </div>
+                <div class="th-date-col">Last Date</div>
+              </div>
+
+              <div class="tooltip-rows-scroll"
+                   (wheel)="$event.stopPropagation()"
+                   (touchmove)="$event.stopPropagation()">
+                <div class="tooltip-data-row"
+                     *ngFor="let u of getTooltipUsers(activeTooltipItem()); let uIdx = index">
+                  <div class="td-user-col" [title]="u.name || u.email">
+                    <span class="user-avatar-chip">{{ getUserInitials(u.name || u.email) }}</span>
+                    <span class="user-name-text">{{ u.name || u.email }}</span>
+                  </div>
+                  <div class="td-views-col">
+                    <span class="td-views-badge">{{ u.views | number }}</span>
+                  </div>
+                  <div class="td-date-col">
+                    {{ formatUSDate(u.lastAccessed) }}
+                  </div>
+                </div>
+
+                <div *ngIf="!getTooltipUsers(activeTooltipItem()).length" style="padding: 16px; font-size: 11.5px; color: #64748b; text-align: center;">
+                  {{ tooltipUserSearch() ? 'No users matching "' + tooltipUserSearch() + '"' : 'No individual user access records logged.' }}
+                </div>
+              </div>
+
+              <!-- Tooltip Footer Summary -->
+              <div class="tooltip-footer-row">
+                <div class="tf-total-label">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#2563eb" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  Total ({{ getTooltipUsers(activeTooltipItem()).length }} viewers)
+                </div>
+                <div class="tf-views-val">
+                  {{ (activeTooltipItem()?.views || 0) | number }}
+                </div>
+                <div class="tf-date-val">
+                  {{ formatUSDate(activeTooltipItem()?.lastAccessed) }}
+                </div>
+              </div>
+            </div>
           </div>
-        </ng-template>
+
+          <!-- Right Column: Inactive & Unused Access Inspector -->
+          <div class="vmd-inactive-pane">
+            <div class="vmd-inactive-header">
+              <div class="vmd-inactive-title-row">
+                <h3 class="vmd-inactive-title">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  Inactive & Unused Access
+                </h3>
+                <span class="vmd-inactive-badge">{{ inactiveAccessUsers().length }} users</span>
+              </div>
+
+              <!-- Inactivity Period Filters -->
+              <div class="vmd-inactive-tabs">
+                <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === '30d'" (click)="setInactiveFilter('30d')">30+ days</button>
+                <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === '90d'" (click)="setInactiveFilter('90d')">90+ days</button>
+                <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === '180d'" (click)="setInactiveFilter('180d')">180+ days</button>
+                <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === 'all'" (click)="setInactiveFilter('all')">All Inactive</button>
+              </div>
+
+              <!-- Inactive Search -->
+              <div class="vmd-inactive-search">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text"
+                       class="vmd-inactive-search-input"
+                       placeholder="Search inactive user by name, email, or role..."
+                       [ngModel]="inactiveAccessSearch()"
+                       (ngModelChange)="inactiveAccessSearch.set($event)" />
+                <button *ngIf="inactiveAccessSearch()" type="button" class="btn-clear-search" (click)="inactiveAccessSearch.set('')">✕</button>
+              </div>
+            </div>
+
+            <!-- Inactive Users Table -->
+            <div class="vmd-inactive-table-wrap">
+              <div class="vmd-inactive-th">
+                <div>User / Member</div>
+                <div>Last Active</div>
+                <div>Status</div>
+              </div>
+
+              <div class="vmd-inactive-list-scroll">
+                <div class="vmd-inactive-row" *ngFor="let u of inactiveAccessUsers()">
+                  <div class="vmd-user-info-cell" [title]="u.displayName || u.email">
+                    <span class="vmd-user-avatar">{{ getUserInitials(u.displayName || u.email) }}</span>
+                    <div class="vmd-user-texts">
+                      <span class="vmd-user-name">{{ u.displayName || u.email }}</span>
+                      <span class="vmd-user-role-badge">{{ u.role || 'Member' }}</span>
+                    </div>
+                  </div>
+
+                  <div class="vmd-last-active-cell">
+                    <span>{{ formatDaysInactiveText(u.lastAccessed, u.views) }}</span>
+                    <span *ngIf="u.lastAccessed" style="font-size:10.5px; color:#94a3b8;">{{ formatUSDate(u.lastAccessed) }}</span>
+                  </div>
+
+                  <div>
+                    <span class="vmd-status-pill never" *ngIf="u.neverAccessed">
+                      Never Used
+                    </span>
+                    <span class="vmd-status-pill d90" *ngIf="!u.neverAccessed && u.daysInactive >= 90">
+                      90d+ Inactive
+                    </span>
+                    <span class="vmd-status-pill d30" *ngIf="!u.neverAccessed && u.daysInactive >= 30 && u.daysInactive < 90">
+                      30d+ Inactive
+                    </span>
+                  </div>
+                </div>
+
+                <div *ngIf="!inactiveAccessUsers().length" class="vmd-empty-users">
+                  {{ inactiveAccessSearch() ? 'No inactive users matching "' + inactiveAccessSearch() + '"' : 'No users found matching this inactivity period.' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `,
@@ -1999,6 +3143,26 @@ export class UsageComponent implements OnInit {
   searchYear = signal<string>('');
   searchMonth = signal<string>('');
   searchDate = signal<string>('');
+
+  // Views Master-Detail View State
+  currentChartMode = signal<'dashboards' | 'pages'>('dashboards');
+  selectedMasterItem = signal<any>(null);
+  masterListSearchText = signal<string>('');
+  activeDatePreset = signal<'30d' | '90d' | '6m' | '12m' | 'all' | 'custom'>('all');
+  activeTooltipItem = signal<{ name: string; views: number; lastAccessed: string; users: any[]; isDashboard?: boolean } | null>(null);
+  pinnedTooltipItem = signal<{ name: string; views: number; lastAccessed: string; users: any[]; isDashboard?: boolean } | null>(null);
+  tooltipPos = signal<{ x: number; y: number }>({ x: 20, y: 15 });
+  tooltipUserSearch = signal<string>('');
+  hoverTimeout: any = null;
+  isMouseOverTooltip: boolean = false;
+
+  // Inactive Access Inspector State
+  inactiveAccessFilter = signal<'all' | '30d' | '90d' | '180d' | 'never'>('30d');
+  inactiveAccessSearch = signal<string>('');
+  
+  // Date slider range indices
+  dateSliderStartIdx = signal<number>(0);
+  dateSliderEndIdx = signal<number>(-1);
 
   // Breakdown active tab ('pages' | 'people' | 'access')
   activeBreakdownTab = signal<'pages' | 'people' | 'access'>('pages');
@@ -2693,6 +3857,605 @@ export class UsageComponent implements OnInit {
   // User Pagination
   userTotalPages = computed(() => 1);
   pagedUsers = computed(() => this.filteredUserUsage());
+
+  getYesterdayDateStr(): string {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // Date Slider Computeds
+  sortedUniqueDates = computed(() => {
+    const raw = this.analytics()?.filterOptions?.dates || [];
+    return [...raw].sort((a, b) => a.localeCompare(b));
+  });
+
+  defaultYesterdayIdx = computed(() => {
+    const dates = this.sortedUniqueDates();
+    if (!dates.length) return -1;
+    const yesterdayStr = this.getYesterdayDateStr();
+    let found = -1;
+    for (let i = dates.length - 1; i >= 0; i--) {
+      if (dates[i] <= yesterdayStr) {
+        found = i;
+        break;
+      }
+    }
+    return found !== -1 ? found : dates.length - 1;
+  });
+
+  dateSliderStart = computed(() => {
+    const dates = this.sortedUniqueDates();
+    if (!dates.length) return '';
+    const idx = Math.min(Math.max(0, this.dateSliderStartIdx()), dates.length - 1);
+    return dates[idx];
+  });
+
+  dateSliderEnd = computed(() => {
+    const dates = this.sortedUniqueDates();
+    if (!dates.length) return '';
+    const rawEnd = this.dateSliderEndIdx();
+    if (rawEnd === -1) {
+      const defIdx = this.defaultYesterdayIdx();
+      return dates[defIdx >= 0 && defIdx < dates.length ? defIdx : dates.length - 1];
+    }
+    const idx = rawEnd >= dates.length ? dates.length - 1 : Math.max(0, rawEnd);
+    return dates[idx];
+  });
+
+  dateSliderLeftPct = computed(() => {
+    const len = this.sortedUniqueDates().length;
+    if (len <= 1) return 0;
+    const idx = Math.min(Math.max(0, this.dateSliderStartIdx()), len - 1);
+    return (idx / (len - 1)) * 100;
+  });
+
+  dateSliderWidthPct = computed(() => {
+    const len = this.sortedUniqueDates().length;
+    if (len <= 1) return 100;
+    const startIdx = Math.min(Math.max(0, this.dateSliderStartIdx()), len - 1);
+    const rawEnd = this.dateSliderEndIdx();
+    const defIdx = this.defaultYesterdayIdx();
+    const endIdx = rawEnd === -1 ? (defIdx >= 0 && defIdx < len ? defIdx : len - 1) : (rawEnd >= len ? len - 1 : Math.max(0, rawEnd));
+    return Math.max(0, ((endIdx - startIdx) / (len - 1)) * 100);
+  });
+
+  isDateSliderFiltered = computed(() => {
+    const dates = this.sortedUniqueDates();
+    if (dates.length <= 1) return false;
+    const startIdx = this.dateSliderStartIdx();
+    const endIdx = this.dateSliderEndIdx();
+    const defEndIdx = this.defaultYesterdayIdx();
+    return startIdx > 0 || (endIdx !== -1 && endIdx !== defEndIdx);
+  });
+
+  currentBarItems = computed(() => {
+    if (this.currentChartMode() === 'dashboards' && !this.filterReportName) {
+      const list = this.filteredReportUsage();
+      return list.map(r => ({
+        name: r.reportName,
+        views: r.views,
+        viewers: r.viewers,
+        lastAccessed: r.lastAccessed,
+        users: r.users || [],
+        isDashboard: true,
+      }));
+    } else {
+      const list = this.filteredPageUsage();
+      return list.map(p => ({
+        name: p.pageName,
+        reportName: p.reportName,
+        views: p.views,
+        viewers: p.viewers,
+        lastAccessed: p.lastAccessed || '',
+        users: p.users || [],
+        isDashboard: false,
+      }));
+    }
+  });
+
+  masterTotalViews = computed(() => {
+    return this.currentBarItems().reduce((acc, item) => acc + (item.views || 0), 0);
+  });
+
+  maxMasterViews = computed(() => {
+    const items = this.currentBarItems();
+    if (!items.length) return 1;
+    return Math.max(...items.map(i => i.views || 0), 1);
+  });
+
+  filteredMasterItems = computed(() => {
+    const items = this.currentBarItems();
+    const search = (this.masterListSearchText() || '').toLowerCase().trim();
+    if (!search) return items;
+    return items.filter(i => (i.name || '').toLowerCase().includes(search));
+  });
+
+  activeDetailItem = computed(() => {
+    const sel = this.selectedMasterItem();
+    const list = this.filteredMasterItems();
+    if (sel) {
+      const found = list.find(i => i.name === sel.name);
+      if (found) return found;
+    }
+    return list[0] || null;
+  });
+
+  getMasterBarWidthPct(views: number): number {
+    const max = this.maxMasterViews();
+    if (!max) return 0;
+    return Math.min(100, Math.max(3, (views / max) * 100));
+  }
+
+  selectMasterItem(item: any, event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    if (this.pinnedTooltipItem()?.name === item.name) {
+      this.closeTooltip();
+    } else {
+      this.pinnedTooltipItem.set(item);
+      this.selectedMasterItem.set(item);
+      if (event) {
+        this.onBarHover(item, event);
+      }
+    }
+  }
+
+  setDatePreset(preset: '30d' | '90d' | '6m' | '12m' | 'all'): void {
+    this.activeDatePreset.set(preset);
+    const dates = this.sortedUniqueDates();
+    if (!dates.length) return;
+
+    const yesterdayStr = this.getYesterdayDateStr();
+    let endIdx = this.defaultYesterdayIdx();
+    if (endIdx === -1) endIdx = dates.length - 1;
+    const endDateVal = dates[endIdx] || yesterdayStr;
+
+    if (preset === 'all') {
+      this.dateSliderStartIdx.set(0);
+      this.dateSliderEndIdx.set(-1);
+      this.selectedDates.set([]);
+      this.filterDate = '';
+      this.onFilterChanged();
+      return;
+    }
+
+    const endD = new Date(endDateVal);
+    let daysBack = 30;
+    if (preset === '90d') daysBack = 90;
+    else if (preset === '6m') daysBack = 180;
+    else if (preset === '12m') daysBack = 365;
+
+    const startD = new Date(endD);
+    startD.setDate(startD.getDate() - daysBack);
+    const startStr = `${startD.getFullYear()}-${String(startD.getMonth() + 1).padStart(2, '0')}-${String(startD.getDate()).padStart(2, '0')}`;
+
+    let startIdx = dates.findIndex(d => d >= startStr);
+    if (startIdx === -1) startIdx = 0;
+
+    this.dateSliderStartIdx.set(startIdx);
+    this.dateSliderEndIdx.set(endIdx);
+    this.applyDateRangeFilter();
+  }
+
+  formatShortDate(val?: string | null): string {
+    if (!val) return 'N/A';
+    const clean = String(val).trim().slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const month = parts[1].padStart(2, '0');
+      const day = parts[2].padStart(2, '0');
+      return `${month}/${day}`;
+    }
+    return String(val);
+  }
+
+  setInactiveFilter(filter: 'all' | '30d' | '90d' | '180d' | 'never'): void {
+    this.inactiveAccessFilter.set(filter);
+  }
+
+  getDaysInactive(lastAccessed?: string | null): number {
+    if (!lastAccessed) return 99999;
+    const now = new Date().getTime();
+    const dTime = new Date(lastAccessed).getTime();
+    if (isNaN(dTime)) return 99999;
+    return Math.max(0, Math.floor((now - dTime) / (1000 * 60 * 60 * 24)));
+  }
+
+  formatDaysInactiveText(lastAccessed?: string | null, views?: number): string {
+    if (!lastAccessed || views === 0) return 'Never accessed';
+    const days = this.getDaysInactive(lastAccessed);
+    if (days === 0) return 'Active today';
+    if (days === 1) return '1 day ago';
+    return `${days} days ago`;
+  }
+
+  inactiveAccessUsers = computed(() => {
+    const raw = (this.accessData()?.users || []).filter(u => !this.isServicePrincipal(u.displayName, u.email));
+    const filter = this.inactiveAccessFilter();
+    const search = (this.inactiveAccessSearch() || '').toLowerCase().trim();
+
+    const mapped = raw.map(u => {
+      const daysInactive = this.getDaysInactive(u.lastAccessed);
+      const neverAccessed = !u.lastAccessed || u.views === 0 || u.status === 'unused';
+      return {
+        ...u,
+        daysInactive,
+        neverAccessed,
+      };
+    });
+
+    const filtered = mapped.filter(u => {
+      if (filter === 'never') return u.neverAccessed;
+      if (filter === '30d') return u.neverAccessed || u.daysInactive >= 30;
+      if (filter === '90d') return u.neverAccessed || u.daysInactive >= 90;
+      if (filter === '180d') return u.neverAccessed || u.daysInactive >= 180;
+      return u.neverAccessed || u.daysInactive >= 30;
+    });
+
+    const searched = search
+      ? filtered.filter(u =>
+          (u.displayName || '').toLowerCase().includes(search) ||
+          (u.email || '').toLowerCase().includes(search) ||
+          (u.role || '').toLowerCase().includes(search)
+        )
+      : filtered;
+
+    return [...searched].sort((a, b) => {
+      if (a.neverAccessed && !b.neverAccessed) return -1;
+      if (!a.neverAccessed && b.neverAccessed) return 1;
+      return b.daysInactive - a.daysInactive;
+    });
+  });
+
+  chartMaxViews = computed(() => {
+    const bars = this.currentBarItems();
+    if (!bars.length) return 100;
+    return Math.max(...bars.map(b => b.views), 10);
+  });
+
+  chartTicks = computed(() => {
+    const maxVal = this.chartMaxViews();
+    let step = 100;
+    if (maxVal <= 50) step = 10;
+    else if (maxVal <= 100) step = 20;
+    else if (maxVal <= 300) step = 50;
+    else if (maxVal <= 600) step = 100;
+    else if (maxVal <= 1000) step = 200;
+    else if (maxVal <= 2500) step = 500;
+    else step = Math.max(100, Math.ceil(maxVal / 4 / 200) * 200);
+
+    const topTick = Math.ceil(maxVal / step) * step;
+    const ticks: number[] = [];
+    for (let t = topTick; t >= 0; t -= step) {
+      ticks.push(t);
+    }
+    return ticks;
+  });
+
+  getBarHeightPct(views: number): number {
+    const ticks = this.chartTicks();
+    const top = ticks[0] || 100;
+    if (views === 0) return 0;
+    return Math.max(2.5, (views / top) * 100);
+  }
+
+  getUserInitials(nameOrEmail: string): string {
+    if (!nameOrEmail) return 'U';
+    const parts = nameOrEmail.trim().split(/[\s@._-]+/);
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return nameOrEmail.slice(0, 2).toUpperCase();
+  }
+
+  onBarHover(item: any, event: MouseEvent) {
+    if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+    const target = event.currentTarget as HTMLElement;
+    const pane = target.closest('.vmd-master-pane') as HTMLElement;
+    if (pane) {
+      const targetRect = target.getBoundingClientRect();
+      const paneRect = pane.getBoundingClientRect();
+      
+      const tooltipHeight = 350;
+      let top = targetRect.top - paneRect.top - 10;
+      const maxTop = Math.max(10, paneRect.height - tooltipHeight - 15);
+      top = Math.max(10, Math.min(top, maxTop));
+
+      const tooltipWidth = 380;
+      let left = Math.min(paneRect.width - tooltipWidth - 12, Math.max(10, targetRect.left - paneRect.left + 80));
+      if (paneRect.width < 500) {
+        left = 10;
+      }
+      this.tooltipPos.set({ x: Math.max(8, left), y: top });
+    }
+    this.activeTooltipItem.set(item);
+  }
+
+  onBarLeave() {
+    if (!this.pinnedTooltipItem()) {
+      if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+      this.hoverTimeout = setTimeout(() => {
+        if (!this.isMouseOverTooltip && !this.pinnedTooltipItem()) {
+          this.activeTooltipItem.set(null);
+          this.tooltipUserSearch.set('');
+        }
+      }, 400);
+    }
+  }
+
+  onTooltipEnter() {
+    this.isMouseOverTooltip = true;
+    if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+  }
+
+  onTooltipLeave() {
+    this.isMouseOverTooltip = false;
+    if (!this.pinnedTooltipItem()) {
+      if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+      this.hoverTimeout = setTimeout(() => {
+        if (!this.isMouseOverTooltip && !this.pinnedTooltipItem()) {
+          this.activeTooltipItem.set(null);
+          this.tooltipUserSearch.set('');
+        }
+      }, 300);
+    }
+  }
+
+  closeTooltip(event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    this.pinnedTooltipItem.set(null);
+    this.activeTooltipItem.set(null);
+    this.isMouseOverTooltip = false;
+    this.tooltipUserSearch.set('');
+  }
+
+  getTooltipUsers(item: any): Array<{ name: string; email: string; views: number; lastAccessed: string }> {
+    if (!item) return [];
+    let usersList: Array<{ name: string; email: string; views: number; lastAccessed: string }> = [];
+
+    if (item.users && item.users.length > 0) {
+      usersList = item.users;
+    } else {
+      // Dynamic Fallback Resolution from userUsage
+      const userList = this.analytics()?.userUsage || [];
+      const targetName = (item.name || '').trim().toLowerCase();
+
+      for (const u of userList) {
+        if (this.isServicePrincipal(u.name, u.email)) continue;
+        if (item.isDashboard) {
+          const matchingPages = (u.pages || []).filter(p => (p.reportName || '').trim().toLowerCase() === targetName);
+          if (matchingPages.length > 0) {
+            const totalViews = matchingPages.reduce((sum, p) => sum + (p.views || 0), 0);
+            let latestDate = u.lastAccessed || '';
+            for (const p of matchingPages) {
+              if (p.lastAccessed && p.lastAccessed > latestDate) latestDate = p.lastAccessed;
+            }
+            if (totalViews > 0) {
+              usersList.push({
+                name: u.name || u.email,
+                email: u.email,
+                views: totalViews,
+                lastAccessed: latestDate,
+              });
+            }
+          }
+        } else {
+          const pageMatch = (u.pages || []).find(p => {
+            const pName = (p.pageName || '').trim().toLowerCase();
+            const rName = (p.reportName || '').trim().toLowerCase();
+            const itemRep = (item.reportName || '').trim().toLowerCase();
+            if (itemRep) {
+              return pName === targetName && rName === itemRep;
+            }
+            return pName === targetName;
+          });
+          if (pageMatch && pageMatch.views > 0) {
+            usersList.push({
+              name: u.name || u.email,
+              email: u.email,
+              views: pageMatch.views,
+              lastAccessed: pageMatch.lastAccessed || u.lastAccessed || '',
+            });
+          }
+        }
+      }
+    }
+
+    const search = (this.tooltipUserSearch() || '').toLowerCase().trim();
+    if (search) {
+      usersList = usersList.filter(u => 
+        (u.name || '').toLowerCase().includes(search) || 
+        (u.email || '').toLowerCase().includes(search)
+      );
+    }
+
+    return [...usersList].sort((a, b) => b.views - a.views);
+  }
+
+  onBarClick(item: any, event: MouseEvent) {
+    event.stopPropagation();
+    if (item.isDashboard) {
+      this.selectReport(item.name);
+      this.currentChartMode.set('pages');
+      this.activeTooltipItem.set(null);
+      this.pinnedTooltipItem.set(null);
+      this.tooltipUserSearch.set('');
+    } else {
+      if (this.pinnedTooltipItem()?.name === item.name) {
+        this.pinnedTooltipItem.set(null);
+        this.activeTooltipItem.set(null);
+        this.tooltipUserSearch.set('');
+      } else {
+        this.pinnedTooltipItem.set(item);
+        this.onBarHover(item, event);
+      }
+    }
+  }
+
+  onStageClick() {
+    this.activeTooltipItem.set(null);
+    this.pinnedTooltipItem.set(null);
+    this.tooltipUserSearch.set('');
+  }
+
+  setChartMode(mode: 'dashboards' | 'pages') {
+    this.currentChartMode.set(mode);
+    this.activeTooltipItem.set(null);
+    this.pinnedTooltipItem.set(null);
+    this.tooltipUserSearch.set('');
+    if (mode === 'dashboards') {
+      this.filterReportName = '';
+      this.selectedReports.set([]);
+      this.onFilterChanged();
+    }
+  }
+
+  openStartDatePicker(el: HTMLInputElement) {
+    if (el && typeof el.showPicker === 'function') {
+      try {
+        el.showPicker();
+      } catch {
+        el.focus();
+      }
+    } else if (el) {
+      el.focus();
+    }
+  }
+
+  openEndDatePicker(el: HTMLInputElement) {
+    if (el && typeof el.showPicker === 'function') {
+      try {
+        el.showPicker();
+      } catch {
+        el.focus();
+      }
+    } else if (el) {
+      el.focus();
+    }
+  }
+
+  onStartDateDirectChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input || !input.value) return;
+    const selectedDate = input.value;
+    const dates = this.sortedUniqueDates();
+    if (!dates.length) return;
+    let idx = dates.indexOf(selectedDate);
+    if (idx === -1) {
+      idx = dates.findIndex(d => d >= selectedDate);
+      if (idx === -1) idx = 0;
+    }
+    const defEnd = this.defaultYesterdayIdx();
+    const endIdx = this.dateSliderEndIdx() === -1 ? (defEnd >= 0 ? defEnd : dates.length - 1) : this.dateSliderEndIdx();
+    if (idx > endIdx) {
+      this.dateSliderEndIdx.set(idx);
+    }
+    this.dateSliderStartIdx.set(idx);
+    this.applyDateRangeFilter();
+  }
+
+  onEndDateDirectChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input || !input.value) return;
+    const selectedDate = input.value;
+    const dates = this.sortedUniqueDates();
+    if (!dates.length) return;
+    let idx = dates.indexOf(selectedDate);
+    if (idx === -1) {
+      let found = -1;
+      for (let i = dates.length - 1; i >= 0; i--) {
+        if (dates[i] <= selectedDate) {
+          found = i;
+          break;
+        }
+      }
+      idx = found === -1 ? dates.length - 1 : found;
+    }
+    const startIdx = this.dateSliderStartIdx();
+    if (idx < startIdx) {
+      this.dateSliderStartIdx.set(idx);
+    }
+    this.dateSliderEndIdx.set(idx);
+    this.applyDateRangeFilter();
+  }
+
+  onDateSliderStartChange(val: any) {
+    const num = Number(val);
+    const defEnd = this.defaultYesterdayIdx();
+    const endIdx = this.dateSliderEndIdx() === -1 ? (defEnd >= 0 ? defEnd : this.sortedUniqueDates().length - 1) : this.dateSliderEndIdx();
+    if (num <= endIdx) {
+      this.dateSliderStartIdx.set(num);
+      this.applyDateRangeFilter();
+    }
+  }
+
+  onDateSliderEndChange(val: any) {
+    const num = Number(val);
+    const startIdx = this.dateSliderStartIdx();
+    if (num >= startIdx) {
+      this.dateSliderEndIdx.set(num);
+      this.applyDateRangeFilter();
+    }
+  }
+
+  onLabelClick(item: any, event: MouseEvent) {
+    event.stopPropagation();
+    if (item.isDashboard) {
+      this.selectReport(item.name);
+      this.currentChartMode.set('pages');
+      this.activeTooltipItem.set(null);
+      this.pinnedTooltipItem.set(null);
+      this.tooltipUserSearch.set('');
+    }
+  }
+
+  applyDateRangeFilter() {
+    const dates = this.sortedUniqueDates();
+    if (!dates.length) return;
+    const start = this.dateSliderStart();
+    const end = this.dateSliderEnd();
+    const filteredDates = dates.filter(d => d >= start && d <= end);
+    this.selectedDates.set(filteredDates);
+    this.filterDate = filteredDates.join(',');
+    this.onFilterChanged();
+  }
+
+  resetDateSlider() {
+    this.dateSliderStartIdx.set(0);
+    this.dateSliderEndIdx.set(-1);
+    this.selectedDates.set([]);
+    this.filterDate = '';
+    this.onFilterChanged();
+  }
+
+  formatUSDate(val?: string | null): string {
+    if (!val) return 'N/A';
+    const clean = String(val).trim().slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const year = parts[0];
+      const month = parts[1].padStart(2, '0');
+      const day = parts[2].padStart(2, '0');
+      return `${month}/${day}/${year}`;
+    }
+    return String(val);
+  }
+
+  formatSliderDate(val?: string | null): string {
+    if (!val) return '';
+    const clean = String(val).trim().slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const year = parts[0];
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      return `${month}/${day}/${year}`;
+    }
+    return String(val);
+  }
 
   // Filtered Access List
   filteredAccessList = computed(() => {
