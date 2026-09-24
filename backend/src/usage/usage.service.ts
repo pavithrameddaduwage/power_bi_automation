@@ -1658,6 +1658,35 @@ export class UsageService {
       GROUP BY LOWER(TRIM(email))
     `, params);
 
+    // Query true historical all-time activity per user so lastAccessed date is never wiped out by narrow date filters
+    let allTimeMap = new Map<string, { name: string; totalViews: number; lastAccessed: string }>();
+    try {
+      const allTimeQuery = await this.pool.query(`
+        SELECT 
+          LOWER(TRIM(email)) as email,
+          COALESCE(
+            MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) AND (family_name IS NOT NULL AND TRIM(family_name) != '') THEN TRIM(given_name || ' ' || family_name) END),
+            MAX(CASE WHEN given_name IS NOT NULL AND TRIM(given_name) != '' AND LOWER(TRIM(given_name)) != LOWER(TRIM(email)) THEN TRIM(given_name) END),
+            MAX(TRIM(given_name)),
+            LOWER(TRIM(email))
+          ) as name,
+          SUM(views) as total_views,
+          TO_CHAR(MAX(date), 'YYYY-MM-DD') as all_time_last_accessed
+        FROM usage_user_activity
+        WHERE (report_name NOT ILIKE '%usage%metric%' AND report_name NOT ILIKE '%report usage%' AND report_name NOT ILIKE '%general usage%' AND report_name != 'Unknown')
+        GROUP BY LOWER(TRIM(email))
+      `);
+      for (const row of allTimeQuery.rows) {
+        if (!isServicePrincipal(row.name, row.email)) {
+          allTimeMap.set(row.email, {
+            name: row.name,
+            totalViews: Number(row.total_views),
+            lastAccessed: row.all_time_last_accessed,
+          });
+        }
+      }
+    } catch (e) {}
+
     const activityMap = new Map<string, { name: string; views: number; lastAccessed: string }>();
     for (const row of activityQuery.rows) {
       if (isServicePrincipal(row.name, row.email)) {
@@ -1687,12 +1716,13 @@ export class UsageService {
         continue;
       }
       const act = activityMap.get(em);
-      const views = act ? act.views : 0;
-      const lastAccessed = act ? act.lastAccessed : null;
-      // Active user criteria: user has views in selected filtered range/date
+      const allTime = allTimeMap.get(em);
+      const views = act ? act.views : (allTime ? allTime.totalViews : 0);
+      const lastAccessed = act?.lastAccessed || allTime?.lastAccessed || null;
+      // Active user criteria: user has views in selected filtered range or historically
       const isActive = views > 0;
       annotatedUsers.push({
-        displayName: u.displayName && u.displayName !== u.email ? u.displayName : (act?.name || u.displayName || em),
+        displayName: u.displayName && u.displayName !== u.email ? u.displayName : (act?.name || allTime?.name || u.displayName || em),
         email: em,
         role: u.role || 'Viewer',
         principalType: u.principalType || 'User',

@@ -2492,6 +2492,12 @@ import { ToastService } from './toast.service';
       border: 1px solid #fecaca;
     }
 
+    .vmd-status-pill.d180 {
+      background: #fff1f2;
+      color: #be123c;
+      border: 1px solid #fecdd3;
+    }
+
     .vmd-status-pill.d90 {
       background: #fff7ed;
       color: #c2410c;
@@ -2499,9 +2505,9 @@ import { ToastService } from './toast.service';
     }
 
     .vmd-status-pill.d30 {
-      background: #fefce8;
-      color: #854d0e;
-      border: 1px solid #fef08a;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
     }
 
     .vmd-empty-users {
@@ -3097,7 +3103,10 @@ import { ToastService } from './toast.service';
                     <span class="vmd-status-pill never" *ngIf="u.neverAccessed">
                       Never Used
                     </span>
-                    <span class="vmd-status-pill d90" *ngIf="!u.neverAccessed && u.daysInactive >= 90">
+                    <span class="vmd-status-pill d180" *ngIf="!u.neverAccessed && u.daysInactive >= 180">
+                      180d+ Inactive
+                    </span>
+                    <span class="vmd-status-pill d90" *ngIf="!u.neverAccessed && u.daysInactive >= 90 && u.daysInactive < 180">
                       90d+ Inactive
                     </span>
                     <span class="vmd-status-pill d30" *ngIf="!u.neverAccessed && u.daysInactive >= 30 && u.daysInactive < 90">
@@ -4077,21 +4086,47 @@ export class UsageComponent implements OnInit {
     const filter = this.inactiveAccessFilter();
     const search = (this.inactiveAccessSearch() || '').toLowerCase().trim();
 
+    // Cross-reference with analytics userUsage if needed
+    const userUsageMap = new Map<string, { lastAccessed?: string; views?: number }>();
+    for (const uu of (this.analytics()?.userUsage || [])) {
+      const email = (uu.email || '').toLowerCase().trim();
+      if (email) {
+        userUsageMap.set(email, {
+          lastAccessed: uu.lastAccessed,
+          views: uu.views,
+        });
+      }
+    }
+
     const mapped = raw.map(u => {
-      const daysInactive = this.getDaysInactive(u.lastAccessed);
-      const neverAccessed = !u.lastAccessed || u.views === 0 || u.status === 'unused';
+      const email = (u.email || '').toLowerCase().trim();
+      const usageFallback = userUsageMap.get(email);
+      const effectiveLastAccessed = u.lastAccessed || usageFallback?.lastAccessed || null;
+      const effectiveViews = (u.views !== undefined && u.views !== null && u.views > 0) ? u.views : (usageFallback?.views || 0);
+
+      const daysInactive = this.getDaysInactive(effectiveLastAccessed);
+      const neverAccessed = !effectiveLastAccessed || effectiveViews === 0;
+
       return {
         ...u,
+        lastAccessed: effectiveLastAccessed,
+        views: effectiveViews,
         daysInactive,
         neverAccessed,
       };
     });
 
     const filtered = mapped.filter(u => {
-      if (filter === 'never') return u.neverAccessed;
-      if (filter === '30d') return u.neverAccessed || u.daysInactive >= 30;
-      if (filter === '90d') return u.neverAccessed || u.daysInactive >= 90;
-      if (filter === '180d') return u.neverAccessed || u.daysInactive >= 180;
+      if (filter === '30d') {
+        return !u.neverAccessed && u.daysInactive >= 30;
+      }
+      if (filter === '90d') {
+        return !u.neverAccessed && u.daysInactive >= 90;
+      }
+      if (filter === '180d') {
+        return !u.neverAccessed && u.daysInactive >= 180;
+      }
+      // 'all' tab: all inactive users (both 30+ days dormant and never used)
       return u.neverAccessed || u.daysInactive >= 30;
     });
 
@@ -4104,8 +4139,8 @@ export class UsageComponent implements OnInit {
       : filtered;
 
     return [...searched].sort((a, b) => {
-      if (a.neverAccessed && !b.neverAccessed) return -1;
-      if (!a.neverAccessed && b.neverAccessed) return 1;
+      if (a.neverAccessed && !b.neverAccessed) return 1;
+      if (!a.neverAccessed && b.neverAccessed) return -1;
       return b.daysInactive - a.daysInactive;
     });
   });
@@ -4606,9 +4641,6 @@ export class UsageComponent implements OnInit {
       .getAccessUtilization(
         this.filterGroupId || undefined,
         this.filterReportName || undefined,
-        this.filterYear || undefined,
-        this.filterMonth || undefined,
-        this.filterDate || undefined,
       )
       .subscribe({
         next: (res) => {
