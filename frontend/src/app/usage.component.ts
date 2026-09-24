@@ -2976,7 +2976,7 @@ import { ToastService } from './toast.service';
                     <div class="tooltip-views-badge" [class.low-badge]="(activeTooltipItem()?.views || 0) <= 2">
                       {{ (activeTooltipItem()?.views || 0) | number }} views
                     </div>
-                    <button type="button" class="tooltip-close-btn" (click)="closeTooltip($event)" title="Close tooltip">✕</button>
+                    <button type="button" class="tooltip-close-btn" (click)="closeTooltip($event)" (mousedown)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()" title="Close tooltip">✕</button>
                   </div>
                 </div>
 
@@ -4151,8 +4151,19 @@ export class UsageComponent implements OnInit {
     return nameOrEmail.slice(0, 2).toUpperCase();
   }
 
+  private tooltipDismissedUntilLeave = false;
+  private dismissedItemName: string | null = null;
+
   onBarHover(item: any, event: MouseEvent) {
     if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+    if (this.tooltipDismissedUntilLeave && this.dismissedItemName === item.name) {
+      return; // Do NOT reopen if user just clicked close on this item
+    }
+    if (this.dismissedItemName && this.dismissedItemName !== item.name) {
+      this.tooltipDismissedUntilLeave = false;
+      this.dismissedItemName = null;
+    }
+
     const target = event.currentTarget as HTMLElement;
     const pane = target.closest('.vmd-master-pane') as HTMLElement;
     if (pane) {
@@ -4175,6 +4186,8 @@ export class UsageComponent implements OnInit {
   }
 
   onBarLeave() {
+    this.tooltipDismissedUntilLeave = false;
+    this.dismissedItemName = null;
     if (!this.pinnedTooltipItem()) {
       if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
       this.hoverTimeout = setTimeout(() => {
@@ -4205,7 +4218,13 @@ export class UsageComponent implements OnInit {
   }
 
   closeTooltip(event?: MouseEvent) {
-    if (event) event.stopPropagation();
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
+    this.dismissedItemName = this.activeTooltipItem()?.name || null;
+    this.tooltipDismissedUntilLeave = true;
     this.pinnedTooltipItem.set(null);
     this.activeTooltipItem.set(null);
     this.isMouseOverTooltip = false;
