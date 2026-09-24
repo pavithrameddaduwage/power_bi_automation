@@ -3058,9 +3058,10 @@ import { ToastService } from './toast.service';
 
               <!-- Inactivity Period Filters -->
               <div class="vmd-inactive-tabs">
-                <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === '30d'" (click)="setInactiveFilter('30d')">30+ days</button>
-                <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === '90d'" (click)="setInactiveFilter('90d')">90+ days</button>
+                <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === '30d'" (click)="setInactiveFilter('30d')">30-89 days</button>
+                <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === '90d'" (click)="setInactiveFilter('90d')">90-179 days</button>
                 <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === '180d'" (click)="setInactiveFilter('180d')">180+ days</button>
+                <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === 'never'" (click)="setInactiveFilter('never')">Never Used</button>
                 <button type="button" class="vmd-tab-pill" [class.active]="inactiveAccessFilter() === 'all'" (click)="setInactiveFilter('all')">All Inactive</button>
               </div>
 
@@ -3107,10 +3108,10 @@ import { ToastService } from './toast.service';
                       180d+ Inactive
                     </span>
                     <span class="vmd-status-pill d90" *ngIf="!u.neverAccessed && u.daysInactive >= 90 && u.daysInactive < 180">
-                      90d+ Inactive
+                      90-179d Inactive
                     </span>
                     <span class="vmd-status-pill d30" *ngIf="!u.neverAccessed && u.daysInactive >= 30 && u.daysInactive < 90">
-                      30d+ Inactive
+                      30-89d Inactive
                     </span>
                   </div>
                 </div>
@@ -3166,7 +3167,7 @@ export class UsageComponent implements OnInit {
   isMouseOverTooltip: boolean = false;
 
   // Inactive Access Inspector State
-  inactiveAccessFilter = signal<'all' | '30d' | '90d' | '180d' | 'never'>('30d');
+  inactiveAccessFilter = signal<'all' | '30d' | '90d' | '180d' | 'never'>('all');
   inactiveAccessSearch = signal<string>('');
   
   // Date slider range indices
@@ -4118,13 +4119,16 @@ export class UsageComponent implements OnInit {
 
     const filtered = mapped.filter(u => {
       if (filter === '30d') {
-        return !u.neverAccessed && u.daysInactive >= 30;
+        return !u.neverAccessed && u.daysInactive >= 30 && u.daysInactive < 90;
       }
       if (filter === '90d') {
-        return !u.neverAccessed && u.daysInactive >= 90;
+        return !u.neverAccessed && u.daysInactive >= 90 && u.daysInactive < 180;
       }
       if (filter === '180d') {
         return !u.neverAccessed && u.daysInactive >= 180;
+      }
+      if (filter === 'never') {
+        return u.neverAccessed;
       }
       // 'all' tab: all inactive users (both 30+ days dormant and never used)
       return u.neverAccessed || u.daysInactive >= 30;
